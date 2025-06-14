@@ -1,0 +1,75 @@
+import { createTest, createTestSuite, TestConfigType } from '../../lib/tester';
+import { Test, TestingModule } from '@nestjs/testing';
+import { TestConfigurations } from '../../lib/tester/test-configurations';
+import { TypeOrmModule, getRepositoryToken } from '@nestjs/typeorm';
+
+import { FixtureManager } from '../../lib/tester/fixtures/fixture-manager';
+import { CharacterArchetype } from '../../src/character/enums/character-archetype.enum';
+import { UserService } from '../../src/user/services/user.service';
+import { UserModule } from '../../src/user/user.module';
+import { CharacterModule } from '../../src/character/character.module';
+import { DialogModule } from '../../src/dialog/dialog.module';
+import { LLMModule } from '../../src/llm/llm.module';
+import { CacheModule } from '../../src/cache/cache.module';
+import { LoggingModule } from '../../src/logging/logging.module';
+import { MessageQueueModule } from '../../src/message-queue/message-queue.module';
+import { ValidationModule } from '../../src/validation/validation.module';
+import { MonitoringModule } from '../../src/monitoring/monitoring.module';
+import { PromptTemplateModule } from '../../src/prompt-template/prompt-template.module';
+import { addMockUserServiceToProviders } from '../../lib/tester/test-configurations';
+
+createTestSuite('Telegram Integration Test', () => {
+  createTest(
+    { name: 'should create fixtures correctly', configType: TestConfigType.INTEGRATION },
+    async () => {
+      // Создаем модуль
+      const moduleRef = await Test.createTestingModule({
+        imports: [
+          CharacterModule,
+          UserModule,
+          DialogModule,
+          LLMModule,
+          CacheModule,
+          LoggingModule,
+          MessageQueueModule,
+          ValidationModule,
+          MonitoringModule,
+          PromptTemplateModule,
+        ],
+        providers: addMockUserServiceToProviders([]),
+      }).compile();
+
+      // Получаем сервисы
+      const userService = moduleRef.get<UserService>(UserService);
+      const dataSource = moduleRef.get('DATA_SOURCE');
+
+      // Создаем фикстуры
+      const fixtureManager = new FixtureManager(dataSource);
+      await fixtureManager.cleanDatabase();
+
+      // Создаем пользователя
+      const user = await userService.createUser({
+        telegramId: '888999000',
+        username: 'telegramuser',
+        firstName: 'Иван',
+        lastName: 'Телеграмов',
+      });
+      // Создаем персонажа
+      const character = await fixtureManager.createCharacter({
+        name: 'Катя',
+        age: 25,
+        biography: 'Дружелюбная девушка, активная в Telegram',
+        appearance: 'Привлекательная девушка с каштановыми волосами и карими глазами',
+        archetype: CharacterArchetype.COMPANION,
+        user: user,
+      });
+      // Проверяем, что всё создалось корректно
+      expect(user).toBeDefined();
+      expect(character).toBeDefined();
+      expect(character.id).toBeDefined();
+
+      // Очищаем БД
+      await fixtureManager.cleanDatabase();
+    },
+  );
+});

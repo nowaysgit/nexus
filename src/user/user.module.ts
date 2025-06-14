@@ -1,17 +1,45 @@
-import { Module } from '@nestjs/common';
+import { Module, OnModuleInit } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { UserService } from './user.service';
 import { UserController } from './user.controller';
 import { User } from './entities/user.entity';
 import { AccessKey } from './entities/access-key.entity';
 import { PsychologicalTest } from './entities/psychological-test.entity';
-import { AccessKeyService } from './services/access-key.service';
-import { PsychologicalTestService } from './services/psychological-test.service';
+
+// Объединенный сервис вместо 4 разрозненных
+import { UserService } from './services/user.service';
+
+import { CacheModule } from '../cache/cache.module';
+import { LogService } from '../logging/log.service';
+import { IUserModule } from '../common/interfaces';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User, AccessKey, PsychologicalTest])],
+  imports: [TypeOrmModule.forFeature([User, AccessKey, PsychologicalTest]), CacheModule],
   controllers: [UserController],
-  providers: [UserService, AccessKeyService, PsychologicalTestService],
-  exports: [UserService, AccessKeyService, PsychologicalTestService],
+  providers: [
+    // Единый объединенный сервис пользователей
+    UserService,
+    LogService,
+  ],
+  exports: [UserService],
 })
-export class UserModule {}
+export class UserModule implements OnModuleInit, IUserModule {
+  constructor(
+    private readonly userService: UserService,
+    private readonly logService: LogService,
+  ) {}
+
+  /**
+   * Инициализация модуля пользователей
+   */
+  onModuleInit() {
+    this.logService.log('UserModule инициализирован');
+  }
+
+  readonly id = 'user-module';
+  readonly name = 'User Module';
+  readonly settings = {
+    authEnabled: true,
+    cachingEnabled: true,
+    cacheTTL: 3600,
+  };
+}

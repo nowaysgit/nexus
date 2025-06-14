@@ -17,18 +17,21 @@ export class AccessKey {
   @Column({ unique: true })
   key: string;
 
+  @Column({ default: true })
+  isActive: boolean;
+
   @Column({ default: false })
-  isActivated: boolean;
+  isUsed: boolean;
 
   @Column({ nullable: true })
-  activatedByUserId: number;
+  userId: string;
 
   @ManyToOne(() => User, { nullable: true })
-  @JoinColumn({ name: 'activatedByUserId' })
-  activatedByUser: User;
+  @JoinColumn({ name: 'userId' })
+  user: User;
 
   @Column({ type: 'timestamp', nullable: true })
-  activatedAt: Date;
+  usedAt: Date;
 
   @CreateDateColumn()
   createdAt: Date;

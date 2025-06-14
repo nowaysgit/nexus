@@ -5,10 +5,19 @@ import {
   ManyToOne,
   JoinColumn,
   CreateDateColumn,
+  UpdateDateColumn,
+  Index,
 } from 'typeorm';
 import { Dialog } from './dialog.entity';
+import { User } from '../../user/entities/user.entity';
+import { Character } from '../../character/entities/character.entity';
 
-@Entity()
+@Entity('messages')
+@Index(['dialogId'])
+@Index(['userId'])
+@Index(['characterId'])
+@Index(['isFromUser'])
+@Index(['createdAt'])
 export class Message {
   @PrimaryGeneratedColumn()
   id: number;
@@ -16,9 +25,23 @@ export class Message {
   @Column()
   dialogId: number;
 
-  @ManyToOne(() => Dialog, dialog => dialog.messages)
+  @ManyToOne(() => Dialog, dialog => dialog.messages, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'dialogId' })
   dialog: Dialog;
+
+  @Column({ nullable: true })
+  userId: number;
+
+  @ManyToOne(() => User, { nullable: true })
+  @JoinColumn({ name: 'userId' })
+  user: User;
+
+  @Column({ nullable: true })
+  characterId: number;
+
+  @ManyToOne(() => Character, { nullable: true })
+  @JoinColumn({ name: 'characterId' })
+  character: Character;
 
   @Column({ type: 'text' })
   content: string;
@@ -31,6 +54,9 @@ export class Message {
 
   @CreateDateColumn()
   createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
 
   @Column({ type: 'jsonb', nullable: true })
   metadata?: Record<string, any>;

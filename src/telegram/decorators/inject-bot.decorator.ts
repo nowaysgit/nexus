@@ -1,4 +1,8 @@
 import { Inject } from '@nestjs/common';
 import { TELEGRAF_TOKEN } from '../constants';
 
-export const InjectBot = () => Inject(TELEGRAF_TOKEN);
+/**
+ * Декоратор для инъекции экземпляра бота Telegraf в сервисы
+ * @returns Декоратор Inject с токеном TELEGRAF_TOKEN
+ */
+export const InjectBot = (): ParameterDecorator => Inject(TELEGRAF_TOKEN);

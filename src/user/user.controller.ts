@@ -1,62 +1,69 @@
-import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
-import { UserService } from './user.service';
-import { AccessKeyService } from './services/access-key.service';
-import { PsychologicalTestService } from './services/psychological-test.service';
+import { Controller, Get, Post, Param, UseGuards, Query } from '@nestjs/common';
+import { UserService, PaginatedResult } from './services/user.service';
 import { User } from './entities/user.entity';
-import { AccessKey } from './entities/access-key.entity';
 import { PsychologicalTest } from './entities/psychological-test.entity';
-
-// Простая проверка на админа
-class AdminGuard {
-  canActivate(context: any): boolean {
-    const request = context.switchToHttp().getRequest();
-    const user = request.user;
-    return user && user.isAdmin;
-  }
-}
+import { RoleGuard, Roles } from '../common/guards/role.guard';
 
 @Controller('users')
 export class UserController {
-  constructor(
-    private readonly userService: UserService,
-    private readonly accessKeyService: AccessKeyService,
-    private readonly psychologicalTestService: PsychologicalTestService,
-  ) {}
+  constructor(private readonly userService: UserService) {}
 
   @Get()
-  @UseGuards(AdminGuard)
-  async findAll(): Promise<User[]> {
-    return this.userService.findAll();
+  @UseGuards(RoleGuard)
+  @Roles('admin')
+  async findAll(): Promise<PaginatedResult<User>> {
+    return this.userService.findAllPaginated();
+  }
+
+  @Get('paginated')
+  @UseGuards(RoleGuard)
+  @Roles('admin')
+  async findAllPaginated(
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+  ): Promise<PaginatedResult<User>> {
+    return this.userService.findAllPaginated({ page, limit });
   }
 
   @Get(':id')
-  @UseGuards(AdminGuard)
-  async findOne(@Param('id') id: number): Promise<User> {
-    return this.userService.findOne(id);
+  @UseGuards(RoleGuard)
+  @Roles('admin')
+  async findOne(@Param('id') id: string): Promise<User> {
+    return this.userService.findUserById(id, []);
   }
 
-  @Post('keys/generate')
-  @UseGuards(AdminGuard)
-  async generateKeys(@Body('count') count: number = 10): Promise<AccessKey[]> {
-    return this.accessKeyService.generateBatchKeys(count);
+  @Post(':id/activity')
+  @UseGuards(RoleGuard)
+  @Roles('admin')
+  async updateActivity(@Param('id') id: string): Promise<User> {
+    return this.userService.updateLastActivity(id);
   }
 
-  @Get('keys/all')
-  @UseGuards(AdminGuard)
-  async getAllKeys(): Promise<AccessKey[]> {
-    return this.accessKeyService.findAllKeys();
+  @Post('keys/generate/:userId')
+  @UseGuards(RoleGuard)
+  @Roles('admin')
+  async generateKey(@Param('userId') userId: string): Promise<string> {
+    return this.userService.generateAccessKey(userId);
   }
 
-  @Get(':userId/tests')
-  @UseGuards(AdminGuard)
-  async getUserTests(@Param('userId') userId: number): Promise<PsychologicalTest[]> {
-    const user = await this.userService.findOne(userId);
-    return user.psychologicalTests;
+  @Get(':telegramId/test-result')
+  @UseGuards(RoleGuard)
+  @Roles('admin')
+  async getTestResult(@Param('telegramId') telegramId: string): Promise<PsychologicalTest | null> {
+    return this.userService.getTestResult(telegramId);
   }
 
-  @Get(':userId/latest-test')
-  @UseGuards(AdminGuard)
-  async getLatestTest(@Param('userId') userId: number): Promise<PsychologicalTest | null> {
-    return this.psychologicalTestService.getUserLatestTest(userId);
+  @Get(':telegramId/has-completed-test')
+  @UseGuards(RoleGuard)
+  @Roles('admin')
+  async hasCompletedTest(@Param('telegramId') telegramId: string): Promise<boolean> {
+    return this.userService.hasCompletedTest(telegramId);
+  }
+
+  @Get('telegram/:telegramId')
+  @UseGuards(RoleGuard)
+  @Roles('admin')
+  async findByTelegramId(@Param('telegramId') telegramId: string): Promise<User> {
+    return this.userService.findByTelegramId(telegramId);
   }
 }

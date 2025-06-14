@@ -9,8 +9,20 @@ export interface EmotionalState {
   // Интенсивность эмоционального состояния (0-100)
   intensity: number;
 
+  // Стабильность эмоционального состояния (0-100)
+  stability?: number;
+
+  // Триггеры, вызывающие эмоцию
+  triggers?: string[];
+
+  // Продолжительность эмоции в минутах
+  duration?: number;
+
+  // Время последнего обновления
+  lastUpdated?: Date;
+
   // Текстовое описание эмоционального состояния
-  description: string;
+  description?: string;
 }
 
 // Мотивация персонажа к действию

@@ -8,52 +8,96 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { Character } from './character.entity';
+import { CharacterNeedType } from '../enums/character-need-type.enum';
 
-export enum NeedType {
-  COMMUNICATION = 'communication',
-  ENTERTAINMENT = 'entertainment',
-  SELF_REALIZATION = 'self_realization',
-  ATTENTION = 'attention',
-  AFFECTION = 'affection',
-  RESPECT = 'respect',
-}
-
+/**
+ * Приоритеты потребностей
+ */
 export enum NeedPriority {
-  LOW = 'low',
-  MEDIUM = 'medium',
-  HIGH = 'high',
-  CRITICAL = 'critical',
+  LOW = 1,      // Низкий приоритет
+  MEDIUM = 5,   // Средний приоритет
+  HIGH = 10     // Высокий приоритет
 }
 
-@Entity('needs')
+/**
+ * Сущность потребности персонажа
+ */
+@Entity('character_needs')
 export class Need {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ type: 'enum', enum: NeedType })
-  type: NeedType;
+  @Column()
+  characterId: number;
 
-  @Column({ type: 'int', default: 100 })
-  value: number;
-
-  @Column({ type: 'enum', enum: NeedPriority, default: NeedPriority.LOW })
-  priority: NeedPriority;
-
-  @Column({ type: 'timestamp', nullable: true })
-  lastSatisfied: Date;
-
-  @ManyToOne(() => Character, character => character.needs, {
-    onDelete: 'CASCADE',
-  })
+  @ManyToOne(() => Character)
   @JoinColumn({ name: 'characterId' })
   character: Character;
 
-  @Column()
-  characterId: number;
+  @Column({
+    type: 'enum',
+    enum: CharacterNeedType,
+  })
+  type: CharacterNeedType;
+
+  @Column('float')
+  currentValue: number;
+
+  @Column('float')
+  maxValue: number;
+
+  @Column('float')
+  growthRate: number;
+
+  @Column('float')
+  decayRate: number;
+
+  @Column('int')
+  priority: number;
+
+  @Column('float')
+  threshold: number;
+
+  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  lastUpdated: Date;
+
+  @Column({ default: true })
+  isActive: boolean;
 
   @CreateDateColumn()
   createdAt: Date;
 
-  @UpdateDateColumn()
-  updatedAt: Date;
+  /**
+   * Проверяет, достигла ли потребность порогового значения
+   */
+  hasReachedThreshold(): boolean {
+    return this.currentValue >= this.threshold;
+  }
+
+  /**
+   * Увеличивает уровень потребности
+   */
+  grow(hours: number = 1): void {
+    if (!this.isActive) return;
+
+    const growth = this.growthRate * hours * (this.priority / 10);
+    this.currentValue = Math.min(this.maxValue, this.currentValue + growth);
+    this.lastUpdated = new Date();
+  }
+
+  /**
+   * Сбрасывает потребность после удовлетворения
+   */
+  reset(): void {
+    this.currentValue = 0;
+    this.lastUpdated = new Date();
+  }
+
+  /**
+   * Обновляет уровень потребности
+   */
+  updateLevel(change: number): void {
+    this.currentValue = Math.max(0, Math.min(this.maxValue, this.currentValue + change));
+    this.lastUpdated = new Date();
+  }
 }

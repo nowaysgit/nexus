@@ -7,21 +7,25 @@ import {
   ManyToOne,
   OneToMany,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { User } from '../../user/entities/user.entity';
 import { Dialog } from '../../dialog/entities/dialog.entity';
 import { Need } from './need.entity';
 import { CharacterMemory } from './character-memory.entity';
+import { Action } from './action.entity';
+import { CharacterMotivation } from './character-motivation.entity';
+import {
+  PsychologicalProfile,
+  PreferencesSystem,
+  IdealPartnerProfile,
+} from '../interfaces/character-persona.interface';
+import { CharacterArchetype } from '../enums/character-archetype.enum';
 
-export enum CharacterArchetype {
-  GENTLE = 'gentle',
-  FEMME_FATALE = 'femme_fatale',
-  INTELLECTUAL = 'intellectual',
-  ADVENTUROUS = 'adventurous',
-  MYSTERIOUS = 'mysterious',
-  NURTURING = 'nurturing',
-  REBEL = 'rebel',
-  ROMANTIC = 'romantic',
+export enum CharacterGender {
+  FEMALE = 'female',
+  MALE = 'male',
+  OTHER = 'other',
 }
 
 export enum RelationshipStage {
@@ -33,7 +37,20 @@ export enum RelationshipStage {
   COMMITMENT = 'commitment',
 }
 
+export interface PersonalityData {
+  traits: string[];
+  hobbies: string[];
+  fears: string[];
+  values: string[];
+  musicTaste: string[];
+  strengths: string[];
+  weaknesses: string[];
+}
+
 @Entity('characters')
+@Index(['userId'])
+@Index(['name'])
+@Index(['archetype'])
 export class Character {
   @PrimaryGeneratedColumn()
   id: number;
@@ -41,8 +58,24 @@ export class Character {
   @Column()
   name: string;
 
+  /**
+   * Полное имя персонажа (имя и фамилия)
+   */
+  @Column({ nullable: true })
+  fullName: string;
+
   @Column()
   age: number;
+
+  /**
+   * Пол персонажа
+   */
+  @Column({
+    type: 'enum',
+    enum: CharacterGender,
+    default: CharacterGender.FEMALE,
+  })
+  gender: CharacterGender;
 
   @Column({ type: 'enum', enum: CharacterArchetype })
   archetype: CharacterArchetype;
@@ -53,16 +86,29 @@ export class Character {
   @Column({ type: 'text' })
   appearance: string;
 
+  /**
+   * Данные о личности персонажа в структурированном виде
+   */
   @Column({ type: 'jsonb' })
-  personality: {
-    traits: string[];
-    hobbies: string[];
-    fears: string[];
-    values: string[];
-    musicTaste: string[];
-    strengths: string[];
-    weaknesses: string[];
-  };
+  personality: PersonalityData;
+
+  /**
+   * Детализированный психологический профиль согласно ТЗ ПЕРСОНА
+   */
+  @Column({ type: 'jsonb', nullable: true })
+  psychologicalProfile: PsychologicalProfile;
+
+  /**
+   * Система предпочтений персонажа согласно ТЗ ПЕРСОНА
+   */
+  @Column({ type: 'jsonb', nullable: true })
+  preferences: PreferencesSystem;
+
+  /**
+   * Психологический портрет идеального партнера согласно ТЗ ПЕРСОНА
+   */
+  @Column({ type: 'jsonb', nullable: true })
+  idealPartner: IdealPartnerProfile;
 
   @Column({ type: 'jsonb', nullable: true })
   knowledgeAreas: string[];
@@ -74,6 +120,9 @@ export class Character {
   })
   relationshipStage: RelationshipStage;
 
+  @Column({ type: 'varchar', nullable: true })
+  developmentStage: string;
+
   @Column({ type: 'int', default: 50 })
   affection: number;
 
@@ -82,6 +131,12 @@ export class Character {
 
   @Column({ type: 'int', default: 100 })
   energy: number;
+
+  @Column({ default: false })
+  isActive: boolean;
+
+  @Column({ default: false })
+  isArchived: boolean;
 
   @ManyToOne(() => User, user => user.characters)
   @JoinColumn({ name: 'userId' })
@@ -101,6 +156,14 @@ export class Character {
 
   @OneToMany(() => CharacterMemory, memory => memory.character)
   memories: CharacterMemory[];
+
+  @OneToMany(() => Action, action => action.character)
+  actions: Action[];
+
+  @OneToMany(() => CharacterMotivation, motivation => motivation.character, {
+    cascade: true,
+  })
+  motivations: CharacterMotivation[];
 
   @CreateDateColumn()
   createdAt: Date;

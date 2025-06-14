@@ -24,7 +24,7 @@ export class PsychologicalTest {
   id: number;
 
   @Column()
-  userId: number;
+  userId: string;
 
   @ManyToOne(() => User, user => user.psychologicalTests)
   @JoinColumn({ name: 'userId' })

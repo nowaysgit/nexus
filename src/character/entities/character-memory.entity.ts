@@ -8,10 +8,24 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { Character } from './character.entity';
-import { MemoryType } from '../interfaces/memory-type.enum';
+import { MemoryType } from '../interfaces/memory.interfaces';
 
 // Расширенная шкала важности памяти
 export type MemoryImportance = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+
+// Экспортируем константы для использования вместо цифровых значений
+export const MemoryImportanceLevel = {
+  LOWEST: 1 as MemoryImportance,
+  VERY_LOW: 2 as MemoryImportance,
+  LOW: 3 as MemoryImportance,
+  BELOW_AVERAGE: 4 as MemoryImportance,
+  AVERAGE: 5 as MemoryImportance,
+  ABOVE_AVERAGE: 6 as MemoryImportance,
+  MODERATE: 7 as MemoryImportance,
+  HIGH: 8 as MemoryImportance,
+  VERY_HIGH: 9 as MemoryImportance,
+  HIGHEST: 10 as MemoryImportance,
+};
 
 @Entity('character_memories')
 export class CharacterMemory {
@@ -29,8 +43,7 @@ export class CharacterMemory {
   type: MemoryType;
 
   @Column({
-    type: 'enum',
-    enum: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    type: 'int',
     default: 5,
   })
   importance: MemoryImportance;

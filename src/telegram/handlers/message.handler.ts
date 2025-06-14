@@ -1,302 +1,337 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Context } from '../interfaces/context.interface';
-import { SessionService } from '../services/session.service';
-import { AccessService } from '../services/access.service';
 import { MessageService } from '../services/message.service';
-import { CharacterService } from '../services/character.service';
-import { OpenAIService } from '../../openai/openai.service';
-import { DialogService } from '../../dialog/services/dialog.service';
 import { NeedsService } from '../../character/services/needs.service';
-import { CharacterActionService } from '../services/character-action.service';
 import { CharacterBehaviorService } from '../../character/services/character-behavior.service';
+import { ActionService } from '../../character/services/action.service';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Dialog } from '../../dialog/entities/dialog.entity';
+import { withErrorHandling } from '../../common/utils/error-handling/error-handling.utils';
+import { ModuleRef } from '@nestjs/core';
+import { LogService } from '../../logging/log.service';
+
+import { MessageFormatterService } from '../services/message-formatter.service';
+import { DialogService } from '../../dialog/services/dialog.service';
+import { CharacterService } from '../../character/services/character.service';
+import { AccessControlService } from '../services/access-control.service';
+import { ConfigService } from '@nestjs/config';
+import { MessageProcessingCoordinator } from '../../character/services/message-processing-coordinator.service';
 
 @Injectable()
 export class MessageHandler {
-  private readonly logger = new Logger(MessageHandler.name);
-
   constructor(
-    private sessionService: SessionService,
-    private accessService: AccessService,
     private messageService: MessageService,
-    private characterService: CharacterService,
-    private openaiService: OpenAIService,
     private dialogService: DialogService,
+    private characterService: CharacterService,
     private needsService: NeedsService,
-    private characterActionService: CharacterActionService,
     private characterBehaviorService: CharacterBehaviorService,
+    private actionService: ActionService,
+    @InjectRepository(Dialog)
+    private dialogRepository: Repository<Dialog>,
+    private moduleRef: ModuleRef,
+    private readonly messageFormatterService: MessageFormatterService,
+    private readonly accessControlService: AccessControlService,
+    private readonly configService: ConfigService,
+    private readonly messageProcessingCoordinator: MessageProcessingCoordinator,
+    private readonly logService: LogService,
   ) {}
+
+  /**
+   * Обработчик завершения общения с персонажем
+   */
+  private async handleStopChatting(ctx: Context): Promise<void> {
+    if (!ctx.from?.id) return;
+
+    await ctx.reply('Общение с персонажем завершено.');
+    await this.messageService.sendMainMenu(ctx);
+    // Простая заглушка для state machine - сбрасываем состояние в сессии
+    if (ctx.session) {
+      ctx.session.state = 'initial';
+    }
+    // Удаляем активный разговор
+    await this.removeActiveConversation(ctx.from.id);
+  }
+
+  /**
+   * Обработчик запроса статуса персонажа
+   */
+  private async handleCharacterStatus(ctx: Context): Promise<void> {
+    if (!ctx.from?.id) return;
+
+    // Простая заглушка для получения characterId из сессии
+    const characterId = ctx.session?.activeCharacterId;
+
+    if (!characterId) {
+      await ctx.reply('Ошибка: персонаж не выбран.');
+      return;
+    }
+
+    // Получаем персонажа и его потребности
+    const character = await this.characterService.findOne(characterId);
+    if (!character) {
+      await ctx.reply('Ошибка: персонаж не найден.');
+      return;
+    }
+
+    // Отправляем статус персонажа
+    await this.messageService.sendCharacterStatus(ctx, character);
+  }
+
+  /**
+   * Регистрирует активный разговор между пользователем и персонажем
+   */
+  public async registerActiveConversation(userId: number, characterId: number): Promise<void> {
+    const telegramId = userId.toString();
+
+    // Проверяем, существует ли диалог
+    let dialog = await this.dialogRepository.findOne({
+      where: {
+        telegramId,
+        characterId,
+      },
+    });
+
+    if (!dialog) {
+      // Создаем новый диалог если не существует
+      dialog = await this.dialogService.getOrCreateDialog(telegramId, characterId);
+    }
+
+    // Обновляем статус активности диалога
+    dialog.isActive = true;
+    dialog.lastInteractionDate = new Date();
+    await this.dialogRepository.save(dialog);
+
+    // Уведомляем ActionService о связи персонажа с чатом
+    this.actionService.updateChatState(characterId.toString(), userId.toString(), true);
+
+    this.logService.log(
+      `Активирован диалог #${dialog.id} между пользователем ${userId} и персонажем ${characterId}`,
+    );
+  }
+
+  /**
+   * Удаляет активный разговор
+   */
+  public async removeActiveConversation(userId: number): Promise<void> {
+    return withErrorHandling(
+      async () => {
+        const telegramId = userId.toString();
+
+        // Получаем все активные диалоги пользователя
+        const dialogs = await this.dialogRepository.find({
+          where: {
+            telegramId,
+            isActive: true,
+          },
+        });
+
+        for (const dialog of dialogs) {
+          // Обновляем статус активности диалога
+          dialog.isActive = false;
+          await this.dialogRepository.save(dialog);
+
+          // Уведомляем ActionService об отключении связи персонажа с чатом
+          this.actionService.updateChatState(
+            dialog.characterId.toString(),
+            userId.toString(),
+            false,
+          );
+
+          this.logService.log(
+            `Деактивирован диалог #${dialog.id} между пользователем ${userId} и персонажем ${dialog.characterId}`,
+          );
+        }
+      },
+      'удалении активного разговора',
+      this.logService,
+      { userId },
+    );
+  }
 
   // Обработка текстовых сообщений
   async handleMessage(ctx: Context): Promise<void> {
-    try {
-      const messageText = ctx.message.text;
-      const currentState = this.sessionService.getState(ctx);
+    return await withErrorHandling(
+      async () => {
+        // Проверяем, что ctx.message существует и имеет свойство text
+        if (!ctx.message || !('text' in ctx.message)) {
+          return;
+        }
 
-      // Проверяем, ожидается ли ввод ключа доступа
-      if (currentState === 'waiting_for_access_key') {
-        await this.handleAccessKeyInput(ctx, messageText);
-        return;
-      }
+        const messageText = ctx.message.text;
 
-      // Проверяем доступ пользователя
-      const hasAccess = await this.accessService.checkAccess(ctx);
-      if (!hasAccess) {
-        return;
-      }
+        // Если это команда, пропускаем (команды обрабатываются отдельно)
+        if (messageText.startsWith('/')) {
+          return;
+        }
 
-      // Обработка быстрых ответов
-      if (messageText === '👥 Мои персонажи') {
-        await this.characterService.showUserCharacters(ctx);
-        return;
-      } else if (messageText === '➕ Создать персонажа') {
-        await ctx.reply(
-          'Для создания персонажа используйте команду /create или нажмите на соответствующую кнопку.',
-        );
-        return;
-      } else if (messageText === '❓ Помощь') {
-        await this.messageService.sendHelpMessage(ctx);
-        return;
-      } else if (messageText === '⚙️ Настройки') {
-        await ctx.reply('Функция настроек находится в разработке.');
-        return;
-      }
+        // Определяем текущее состояние
+        const userId = ctx.from?.id;
+        if (!userId) {
+          return;
+        }
 
-      // Обработка общения с персонажем
-      if (currentState === 'chatting') {
-        await this.handleCharacterChat(ctx, messageText);
-        return;
-      }
+        // Простая проверка состояния из сессии
+        const currentState = ctx.session?.state || 'initial';
 
-      // Если ничего не подошло, отправляем подсказку
-      await ctx.reply(
-        'Используйте меню или команды для взаимодействия с ботом:\n' +
-          '/start - Начать работу с ботом\n' +
-          '/characters - Показать ваших персонажей\n' +
-          '/create - Создать нового персонажа\n' +
-          '/help - Показать справку',
-      );
-    } catch (error) {
-      this.logger.error(`Ошибка при обработке сообщения: ${error.message}`);
-      await ctx.reply(
-        'Произошла ошибка при обработке вашего сообщения. Попробуйте позже.',
-      );
-    }
+        // Проверяем, ожидается ли ввод ключа доступа
+        if (currentState === 'waiting_for_access_key') {
+          await this.handleAccessKeyInput(ctx, messageText);
+          return;
+        }
+
+        // Проверяем доступ пользователя
+        if (!this.accessControlService.hasAccess(userId)) {
+          await ctx.reply('У вас нет доступа к этой функции.');
+          return;
+        }
+
+        // Обрабатываем как сообщение персонажу
+        await this.handleCharacterChat(ctx);
+      },
+      'обработке сообщения',
+      this.logService,
+      { userId: ctx.from?.id },
+    );
   }
 
   // Обработка ввода ключа доступа
-  private async handleAccessKeyInput(
-    ctx: Context,
-    keyValue: string,
-  ): Promise<void> {
+  private async handleAccessKeyInput(ctx: Context, keyValue: string): Promise<void> {
     try {
-      await this.accessService.validateAccessKey(ctx, keyValue);
+      // Получаем ключ доступа из конфигурации
+      const validKey = this.configService.get<string>('telegram.accessKey', 'access123');
+      if (keyValue === validKey) {
+        if (ctx.session) {
+          ctx.session.state = 'authenticated';
+        }
+        await ctx.reply('Доступ предоставлен!');
+      } else {
+        await ctx.reply('Неверный ключ доступа. Попробуйте еще раз.');
+      }
     } catch (error) {
-      this.logger.error(`Ошибка при валидации ключа: ${error.message}`);
-      await ctx.reply('Произошла ошибка при проверке ключа. Попробуйте позже.');
+      this.logService.error('Ошибка при валидации ключа', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
     }
   }
 
   // Обработка общения с персонажем
-  private async handleCharacterChat(
-    ctx: Context,
-    userMessage: string,
-  ): Promise<void> {
+  private async handleCharacterChat(ctx: Context): Promise<void> {
     try {
-      // Получаем ID активного персонажа из сессии
-      const characterId = ctx.session.data.activeCharacterId;
+      // Проверяем наличие необходимых данных в контексте
+      if (!ctx.from?.id || !ctx.message || !('text' in ctx.message)) {
+        this.logService.warn('Недостаточно данных в контексте сообщения');
+        return;
+      }
+
       const userId = ctx.from.id;
+      const userMessage = ctx.message.text;
+
+      // Получаем активного персонажа из сессии
+      const characterId = ctx.session?.activeCharacterId;
 
       if (!characterId) {
-        await ctx.reply(
-          'Ошибка: персонаж не выбран. Пожалуйста, выберите персонажа снова.',
-        );
-        this.sessionService.clearSessionForUser(ctx);
+        await ctx.reply('Ошибка: персонаж не выбран. Пожалуйста, выберите персонажа снова.');
+        if (ctx.session) {
+          ctx.session.state = 'initial';
+        }
         return;
       }
 
-      // Проверяем специальные команды
-      if (userMessage === '/stop' || userMessage === '🏁 Завершить общение') {
-        await ctx.reply('Общение с персонажем завершено.');
-        await this.messageService.sendMainMenu(ctx);
-        this.sessionService.updateSessionData(ctx, { activeCharacterId: null });
-        this.sessionService.transitionToState(ctx, 'main');
-        // Удаляем активный разговор
-        this.characterActionService.removeActiveConversation(userId);
-        return;
-      }
-
-      if (userMessage === '📊 Статус персонажа') {
-        const character =
-          await this.characterService.getCharacterById(characterId);
-        await this.messageService.sendCharacterStatus(ctx, character);
-        return;
-      }
-
-      // Регистрируем активный разговор (если еще не зарегистрирован)
-      this.characterActionService.registerActiveConversation(
-        userId,
-        characterId,
-      );
-
-      // Проверяем, может ли персонаж ответить (учитывая его текущее действие)
-      // и обрабатываем сообщение с учетом контекста действия
-      const wasHandled =
-        await this.characterActionService.handleMessageWithActionContext(
-          ctx,
-          userId,
-          characterId,
-          userMessage,
-        );
-
-      // Если сообщение было обработано с учетом действия, прекращаем дальнейшую обработку
-      if (wasHandled) {
-        return;
-      }
-
-      // Получаем данные персонажа
-      const character =
-        await this.characterService.getCharacterById(characterId);
-
+      // Получаем персонажа
+      const character = await this.characterService.findOne(characterId);
       if (!character) {
-        await ctx.reply(
-          'Ошибка: персонаж не найден. Пожалуйста, выберите персонажа снова.',
-        );
-        this.sessionService.clearSessionForUser(ctx);
+        await ctx.reply('Ошибка: персонаж не найден.');
         return;
       }
 
-      // Сохраняем сообщение пользователя в диалог
-      const telegramId = ctx.from.id.toString();
-      const dialogMessage = await this.dialogService.saveUserMessage(
-        telegramId,
-        characterId,
-        userMessage,
-      );
-
-      // Обрабатываем сообщение пользователя через CharacterBehaviorService
-      // Это обновит потребности, сохранит сообщение в памяти и изменит действие при необходимости
-      await this.characterBehaviorService.processUserMessage(
-        characterId,
-        userMessage,
-      );
-
-      // Получаем контекст поведения персонажа для генерации ответа
-      const behaviorContext =
-        await this.characterBehaviorService.getBehaviorContextForResponse(
+      // Получаем или создаем диалог
+      let dialog = await this.dialogRepository.findOne({
+        where: {
+          telegramId: userId.toString(),
           characterId,
-        );
+        },
+      });
 
-      // Генерируем ответ персонажа с учетом контекста поведения
-      const characterResponse = await this.generateCharacterResponse(
+      if (!dialog) {
+        // Создаем новый диалог если не существует
+        dialog = this.dialogRepository.create({
+          telegramId: userId.toString(),
+          characterId,
+          isActive: true,
+          lastInteractionDate: new Date(),
+        });
+        dialog = await this.dialogRepository.save(dialog);
+      }
+
+      // Получаем историю диалога для контекста
+      const recentMessages = await this.dialogService.getDialogHistory(
+        userId.toString(),
+        character.id,
+        5,
+      );
+      const messageTexts = recentMessages.map(msg => msg.content);
+
+      // Отправляем уведомление о печати
+      await ctx.sendChatAction('typing');
+
+      // ЦЕНТРАЛИЗОВАННАЯ ОБРАБОТКА ЧЕРЕЗ КООРДИНАТОР
+      const result = await this.messageProcessingCoordinator.processUserMessage(
         character,
+        userId,
         userMessage,
-        dialogMessage.id,
-        behaviorContext.emotionalState,
-        behaviorContext.motivations,
-        behaviorContext.currentAction
-          ? `${behaviorContext.currentAction.description}`
-          : '',
+        messageTexts,
       );
 
-      // Отправляем ответ персонажа
-      await ctx.reply(characterResponse);
+      // Сохраняем сообщение пользователя
+      const userMessageRecord = await this.dialogService.saveUserMessage(
+        userId.toString(),
+        character.id,
+        userMessage,
+      );
+
+      // Сохраняем ответ персонажа
+      await this.dialogService.saveCharacterMessage(userMessageRecord.id, result.response);
+
+      // Отправляем ответ персонажа пользователю
+      await ctx.reply(result.response);
     } catch (error) {
-      this.logger.error(
-        `Ошибка при обработке сообщения в чате: ${error.message}`,
-      );
-      await ctx.reply(
-        'Произошла ошибка при обработке сообщения. Попробуйте позже.',
-      );
+      this.logService.error('Ошибка обработки текстового сообщения', {
+        error: error instanceof Error ? error.message : String(error),
+        userId: ctx.from?.id,
+        text: 'text' in ctx.message ? ctx.message.text : 'no-text',
+      });
     }
   }
 
-  // Генерация ответа персонажа с учетом эмоционального состояния и мотиваций
-  private async generateCharacterResponse(
-    character: any,
-    userMessage: string,
-    userMessageId: number,
-    emotionalState: any,
-    motivations: any[],
-    actionContext: string,
-  ): Promise<string> {
-    try {
-      // Получаем историю диалога с пользователем в формате для нейросети
-      const telegramId = String(character.userId || '');
-      const formattedHistory =
-        await this.dialogService.getFormattedDialogHistoryForAI(
-          telegramId,
-          character.id,
-          20,
-        );
+  async handleHelpMessage(ctx: Context): Promise<void> {
+    const helpMessage = await this.messageFormatterService.formatHelpMessage();
+    await ctx.reply(helpMessage, { parse_mode: 'Markdown' });
+  }
 
-      // Формируем строку с эмоциональным состоянием
-      let emotionalStateText = '';
-      if (emotionalState) {
-        emotionalStateText = `Твое текущее эмоциональное состояние: ${emotionalState.description || 'нейтральное'}. 
-        Основная эмоция: ${emotionalState.primary || 'нейтральность'}, 
-        интенсивность: ${emotionalState.intensity || '0'}%.`;
-      }
+  async sendNoActiveCharacterMessage(ctx: Context): Promise<void> {
+    await ctx.reply(
+      this.messageFormatterService.formatInfo(
+        'У вас нет активного персонажа. Выберите персонажа из списка или создайте нового.',
+        'Нет активного персонажа',
+      ),
+      { parse_mode: 'Markdown' },
+    );
+  }
 
-      // Формируем строку с потребностями и мотивациями
-      let motivationsText = '';
-      if (motivations && motivations.length > 0) {
-        motivationsText =
-          'Твои текущие мотивации:\n' +
-          motivations
-            .slice(0, 3)
-            .map(
-              (m) =>
-                `- ${m.needType}: ${m.actionImpulse} (приоритет: ${m.priority})`,
-            )
-            .join('\n');
-      }
+  async handleSendErrorMessage(ctx: Context, error: Error): Promise<void> {
+    this.logService.error('Отправка сообщения об ошибке пользователю', {
+      error: error.message,
+      userId: ctx.from?.id,
+    });
 
-      // Составляем системный промпт для OpenAI
-      const systemPrompt = `
-      Ты играешь роль персонажа по имени ${character.name}. 
-      ${character.personality ? `Твоя личность: ${character.personality}` : ''}
-      ${character.biography ? `Твоя биография: ${character.biography}` : ''}
-      ${character.appearance ? `Твоя внешность: ${character.appearance}` : ''}
-      Архетип: ${character.archetype}
-
-      ${emotionalStateText}
-      
-      ${motivationsText}
-      
-      ${actionContext ? `Контекст действия: ${actionContext}` : ''}
-
-      Отвечай от лица персонажа, учитывая его эмоциональное состояние, мотивации и текущие действия.`;
-
-      // Получаем ответ от OpenAI
-      const response = await this.openaiService.createChatCompletion({
-        messages: [
-          {
-            role: 'system',
-            content: systemPrompt,
-          },
-          ...formattedHistory,
-          {
-            role: 'user',
-            content: userMessage,
-          },
-        ],
-      });
-
-      // Получаем текст ответа
-      const responseText = response.choices[0].message.content;
-
-      // Сохраняем ответ в диалог
-      await this.dialogService.saveCharacterMessage(
-        userMessageId,
-        responseText,
-      );
-
-      return responseText;
-    } catch (error) {
-      this.logger.error(
-        `Ошибка при генерации ответа персонажа: ${error.message}`,
-      );
-      return 'Извини, я не могу сейчас ответить. Что-то мешает моим мыслям...';
-    }
+    await ctx.reply(
+      this.messageFormatterService.formatError(
+        'Произошла ошибка при обработке вашего запроса. Пожалуйста, попробуйте позже.',
+        'Ошибка',
+      ),
+      { parse_mode: 'Markdown' },
+    );
   }
 }

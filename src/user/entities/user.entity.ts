@@ -5,6 +5,7 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToMany,
+  Index,
 } from 'typeorm';
 import { Character } from '../../character/entities/character.entity';
 import { Dialog } from '../../dialog/entities/dialog.entity';
@@ -12,15 +13,30 @@ import { PsychologicalTest } from './psychological-test.entity';
 import { AccessKey } from './access-key.entity';
 
 @Entity('users')
+@Index(['telegramId'])
+@Index(['username'])
+@Index(['email'])
+@Index(['isAdmin'])
+@Index(['isActive'])
+@Index(['lastActivity'])
 export class User {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
-  @Column({ unique: true })
-  telegramId: number;
+  @Column({ unique: true, nullable: true })
+  telegramId: string;
+
+  @Column({ unique: true, nullable: true })
+  username: string;
+
+  @Column({ unique: true, nullable: true })
+  email: string;
 
   @Column({ nullable: true })
-  username: string;
+  password: string;
+
+  @Column({ type: 'simple-array', default: () => "'user'" })
+  roles: string[];
 
   @Column({ nullable: true })
   firstName: string;
@@ -40,6 +56,15 @@ export class User {
   @Column({ default: false })
   hasCompletedTest: boolean;
 
+  @Column({ default: false })
+  hasActivatedKey: boolean;
+
+  @Column({ default: 0 })
+  messagesCount: number;
+
+  @Column({ nullable: true })
+  testCompletedAt: Date;
+
   @Column({ type: 'jsonb', nullable: true })
   preferences: Record<string, any>;
 
@@ -55,7 +80,7 @@ export class User {
   @OneToMany(() => PsychologicalTest, test => test.user)
   psychologicalTests: PsychologicalTest[];
 
-  @OneToMany(() => AccessKey, key => key.activatedByUser)
+  @OneToMany(() => AccessKey, key => key.user)
   accessKeys: AccessKey[];
 
   @CreateDateColumn()

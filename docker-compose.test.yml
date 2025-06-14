@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  # Тестовая база данных PostgreSQL
+  postgres-test:
+    image: postgres:15-alpine
+    container_name: nexus-postgres-test
+    environment:
+      POSTGRES_DB: nexus_test
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_password
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U test_user -d nexus_test" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - test-network
+
+  # Redis для тестового кэширования
+  test-redis:
+    image: redis:7-alpine
+    container_name: nexus-test-redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - test_redis_data:/data
+    networks:
+      - test-network
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_test_data:
+  test_redis_data:
+    driver: local
+
+networks:
+  test-network:
+    driver: bridge

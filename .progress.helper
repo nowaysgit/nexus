@@ -1,0 +1,1598 @@
+{
+  "p": {
+    "d": {
+      "p": "/nexus",
+      "t": "d",
+      "c": [
+        {
+          "p": "/lib/tester/mocks",
+          "t": "d",
+          "c": [
+            {
+              "p": "/index.ts",
+              "t": "f",
+              "e": ["MockLogService", "MockRollbarService", "mockConfigService", "MockEventEmitter", "mockLlamaProviderService", "MockMemoryService", "MockNeedsService", "MockUserService", "createMockTelegramService", "mockTelegramService", "MockTelegramModule", "MockLLMProviderManagerService", "MockEmotionalStateService", "TelegrafTokenProvider", "MockProviderFactory"],
+              "d": "Централизованный экспорт всех моков для тестов"
+            },
+            {
+              "p": "/log.service.mock.ts",
+              "t": "f",
+              "e": ["MockLogService"],
+              "d": "Мок для LogService с поддержкой всех методов логирования"
+            },
+            {
+              "p": "/rollbar.service.mock.ts",
+              "t": "f",
+              "e": ["MockRollbarService"],
+              "d": "Мок для RollbarService с поддержкой методов логирования"
+            },
+            {
+              "p": "/config.service.mock.ts",
+              "t": "f",
+              "e": ["mockConfigService", "ConfigServiceProvider"],
+              "d": "Мок для ConfigService и провайдер для внедрения в тесты"
+            },
+            {
+              "p": "/event-emitter.mock.ts",
+              "t": "f",
+              "e": ["MockEventEmitter"],
+              "d": "Мок для EventEmitter2 с поддержкой событий"
+            },
+            {
+              "p": "/llama-provider.mock.ts",
+              "t": "f",
+              "e": ["mockLlamaProviderService"],
+              "d": "Мок для LlamaProviderService"
+            },
+            {
+              "p": "/memory-service.mock.ts",
+              "t": "f",
+              "e": ["MockMemoryService"],
+              "d": "Мок для MemoryService с поддержкой всех методов работы с памятью"
+            },
+            {
+              "p": "/needs-service.mock.ts",
+              "t": "f",
+              "e": ["MockNeedsService"],
+              "d": "Мок для NeedsService с поддержкой методов работы с потребностями"
+            },
+            {
+              "p": "/user-service.mock.ts",
+              "t": "f",
+              "e": ["MockUserService"],
+              "d": "Мок для UserService с поддержкой CRUD операций"
+            },
+            {
+              "p": "/telegram-service.mock.ts",
+              "t": "f",
+              "e": ["createMockTelegramService", "mockTelegramService"],
+              "d": "Мок для TelegramService и фабрика для его создания"
+            },
+            {
+              "p": "/mock-telegram.module.ts",
+              "t": "f",
+              "e": ["MockTelegramModule", "mockTelegramCoreService", "mockAccessControlService", "mockCharacterCreationService", "mockMessageService", "mockMessageFormatterService", "mockKeyboardFormatterService", "mockTelegramUserService", "mockTelegramInitializationService"],
+              "d": "Модуль с моками для Telegram компонентов"
+            },
+            {
+              "p": "/jest.mocks.ts",
+              "t": "f",
+              "e": ["MockLLMProviderManagerService", "MockEmotionalStateService"],
+              "d": "Моки для Jest с использованием jest.fn()"
+            },
+            {
+              "p": "/telegraf-token.provider.ts",
+              "t": "f",
+              "e": ["TelegrafTokenProvider", "mockTelegraf"],
+              "d": "Провайдер токена для Telegraf и мок для Telegraf"
+            },
+            {
+              "p": "/mock-provider.ts",
+              "t": "f",
+              "e": ["MockProviderFactory"],
+              "d": "Фабрика для создания моков провайдеров"
+            }
+          ]
+        },
+        {
+          "p": "/src",
+          "t": "d",
+          "c": [
+            {
+              "p": "/app.module.ts",
+              "t": "f",
+              "e": ["AppModule"],
+              "d": "Корневой модуль приложения NestJS с интеграцией всех модулей системы"
+            },
+            {
+              "p": "/main.ts",
+              "t": "f",
+              "d": "Точка входа в приложение NestJS с настройкой сервера и middleware"
+            },
+            {
+              "p": "/auth",
+              "t": "d",
+              "c": [
+                {
+                  "p": "/auth.module.ts",
+                  "t": "f",
+                  "e": ["AuthModule"],
+                  "d": "Модуль аутентификации с JWT и Passport интеграцией"
+                },
+                {
+                  "p": "/controllers/auth.controller.ts",
+                  "t": "f",
+                  "e": ["AuthController"],
+                  "d": "REST API контроллер для логина, регистрации и профиля пользователя"
+                },
+                {
+                  "p": "/services/auth.service.ts",
+                  "t": "f",
+                  "e": ["AuthService"],
+                  "d": "Основной сервис аутентификации с валидацией и JWT токенами, использует bcrypt и LogService"
+                },
+                {
+                  "p": "/dto/login.dto.ts",
+                  "t": "f",
+                  "e": ["LoginDto"],
+                  "d": "DTO для данных входа в систему с валидацией"
+                },
+                {
+                  "p": "/dto/register.dto.ts",
+                  "t": "f",
+                  "e": ["RegisterDto"],
+                  "d": "DTO для регистрации нового пользователя с валидацией"
+                },
+                {
+                  "p": "/interfaces/jwt-payload.interface.ts",
+                  "t": "f",
+                  "e": ["JwtPayload"],
+                  "d": "Интерфейс для данных JWT токена"
+                },
+                {
+                  "p": "/strategies/jwt.strategy.ts",
+                  "t": "f",
+                  "e": ["JwtStrategy"],
+                  "d": "Passport стратегия для валидации JWT токенов"
+                },
+                {
+                  "p": "/jwt-auth.guard.ts",
+                  "t": "f",
+                  "e": ["JwtAuthGuard"],
+                  "d": "Guard для защиты маршрутов, требующих JWT аутентификации с логированием и обработкой исключений"
+                },
+                {
+                  "p": "/user.decorator.ts",
+                  "t": "f",
+                  "e": ["User"],
+                  "d": "Декоратор для извлечения пользователя из запроса с возможностью получения всего объекта или конкретного свойства"
+                }
+              ]
+            },
+            {
+              "p": "/character",
+              "t": "d",
+              "c": [
+                {
+                  "p": "/character.module.ts",
+                  "t": "f",
+                  "e": ["CharacterModule"],
+                  "d": "Центральный модуль персонажей - интегрирует все сервисы персонажей, LLMModule и PromptTemplateModule"
+                },
+                {
+                  "p": "/services/character-management.service.ts",
+                  "t": "f",
+                  "e": ["CharacterManagementService", "ICharacterAnalysis"],
+                  "d": "Объединенный сервис управления персонажами с анализом характеристик и созданием новых персонажей. Метод createCharacter принимает userId как number и создает персонажа с числовым userId."
+                },
+                {
+                  "p": "/services/character.service.ts",
+                  "t": "f",
+                  "e": ["CharacterService"],
+                  "d": "CRUD сервис для управления персонажами с базовыми операциями создания, поиска, обновления и удаления. Метод findByUserId принимает userId как number для соответствия с другими частями кода."
+                },
+                {
+                  "p": "/services/needs.service.ts",
+                  "t": "f",
+                  "e": ["NeedsService"],
+                  "d": "Сервис управления потребностями персонажей с автоматическими циклами роста, пороговыми значениями и механизмами обратной связи"
+                },
+                {
+                  "p": "/services/motivation.service.ts",
+                  "t": "f",
+                  "e": ["MotivationService"],
+                  "d": "Сервис управления мотивациями персонажей с автоматической генерацией из потребностей и фоновыми процессами обработки. Использует IMotivation вместо устаревшего Motivation и currentValue вместо устаревшего currentLevel."
+                },
+                {
+                  "p": "/services/action.service.ts",
+                  "t": "f",
+                  "e": ["ActionService", "ActionResult", "CharacterAction", "ActionContext", "ActionTriggerContext"],
+                  "d": "Сервис управления действиями персонажей с системой ресурсной стоимости, вероятности успеха и вознаграждений"
+                },
+                {
+                  "p": "/services/emotional-state.service.ts",
+                  "t": "f",
+                  "e": ["EmotionalStateService", "EmotionalContext", "EmotionalImpact", "EmotionalManifestation"],
+                  "d": "Сервис эмоционального состояния персонажей с градуальными воздействиями и контекстно-зависимыми проявлениями эмоций"
+                },
+                {
+                  "p": "/services/character-behavior.service.ts",
+                  "t": "f",
+                  "e": ["CharacterBehaviorService", "FrustrationType", "FrustrationLevel", "FrustrationBehaviorPattern", "ActionTriggerContext"],
+                  "d": "Сервис для управления поведением персонажей, включая проактивные действия и реакции на события. Метод selectActionForMotivation поддерживает работу с мотивациями как с полем priority, так и без него (используя intensity для вычисления приоритета в соотношении intensity/10). При вызове actionService.determineAndPerformAction передает полный контекст ActionTriggerContext со всеми необходимыми полями. Метод processActionTrigger обрабатывает триггеры действий и корректно работает с интерфейсом IMotivation, не требуя наличия поля description."
+                },
+                {
+                  "p": "/services/specialization.service.ts",
+                  "t": "f",
+                  "e": ["SpecializationService", "KnowledgeDomain", "CompetenceLevel", "IgnorancePattern", "KnowledgeContext", "SpecializationProfile", "CompetenceCheck"],
+                  "d": "Сервис управления специализацией персонажей с ограничениями компетенции и естественностью незнания в неподходящих темах"
+                },
+                {
+                  "p": "/services/context-compression.service.ts",
+                  "t": "f",
+                  "e": ["ContextCompressionService", "DataImportanceLevel", "CompressionType", "IContextSegment", "ICompressionResult", "IContextWindow"],
+                  "d": "Сервис интеллектуальной компрессии контекста диалогов с многоуровневой системой сжатия и LLM-анализом важности информации"
+                },
+                {
+                  "p": "/services/story.service.ts",
+                  "t": "f",
+                  "e": ["StoryService"],
+                  "d": "Сервис сюжетных событий с долгосрочным планированием эволюции персонажа и системой трансформации личности"
+                },
+                {
+                  "p": "/services/memory.service.ts",
+                  "t": "f",
+                  "e": ["MemoryService"],
+                  "d": "Сервис воспоминаний персонажей с системой долгосрочной и краткосрочной памяти и эмоциональной значимостью событий"
+                },
+                {
+                  "p": "/services/message-analysis.service.ts",
+                  "t": "f",
+                  "e": ["MessageAnalysisService", "MessageAnalysis"],
+                  "d": "Сервис единоразового анализа сообщений пользователя с комплексной оценкой эмоций, потребностей, манипулятивных техник и специализации"
+                },
+                {
+                  "p": "/services/message-processing-coordinator.service.ts",
+                  "t": "f",
+                  "e": ["MessageProcessingCoordinator"],
+                  "d": "Координатор обработки сообщений как центральная точка взаимодействия между анализом и всеми системами персонажа"
+                },
+                {
+                  "p": "/services/character-response.service.ts",
+                  "t": "f",
+                  "e": ["CharacterResponseService"],
+                  "d": "Сервис генерации ответов персонажей с интеграцией LLM, контекста и психологического профиля персонажа"
+                },
+                {
+                  "p": "/services/manipulation.service.ts",
+                  "t": "f",
+                  "e": ["ManipulationService", "ManipulativeTechniqueType", "TechniqueIntensity", "TechniquePhase", "ITechniqueExecution", "ITechniqueStrategy"],
+                  "d": "Сервис манипулятивных техник согласно ТЗ МАНИПУЛЯТИВНЫЕ ТЕХНИКИ с методами selectTechnique, executeTechnique, updateUserProfile для работы с техниками"
+                },
+                {
+                  "p": "/services/technique-executor.service.ts",
+                  "t": "f",
+                  "e": ["TechniqueExecutorService", "ITechniqueContext", "ITechniqueResult"],
+                  "d": "Сервис для выполнения манипулятивных техник с использованием различных стратегий. Учитывает эмоциональное состояние, личность персонажа и контекст взаимодействия."
+                },
+                {
+                  "p": "/entities/character.entity.ts",
+                  "t": "f",
+                  "e": ["Character", "PersonalityData"],
+                  "d": "Entity персонажа с детализированными психологическими профилями, системой предпочтений и портретом идеального партнера. Поле userId имеет тип number для соответствия с другими частями кода. В тестах часто используется string для userId, что приводит к ошибкам типов."
+                },
+                {
+                  "p": "/entities/need.entity.ts",
+                  "t": "f",
+                  "e": ["Need", "NeedPriority"],
+                  "d": "Entity потребностей персонажа с системой приоритетов, пороговых значений и накопления во времени. Содержит поле currentValue, которое должно использоваться во всем приложении вместо устаревшего currentLevel."
+                },
+                {
+                  "p": "/entities/character-motivation.entity.ts",
+                  "t": "f",
+                  "e": ["CharacterMotivation", "MotivationStatus", "MotivationIntensity"],
+                  "d": "Entity мотиваций персонажа с ресурсной стоимостью, вероятностями успеха и системой интенсивности"
+                },
+                {
+                  "p": "/entities/action.entity.ts",
+                  "t": "f",
+                  "e": ["Action", "ActionStatus"],
+                  "d": "Entity действий персонажа с системой ресурсной стоимости, вероятности успеха и адаптивных модификаторов"
+                },
+                {
+                  "p": "/entities/story-plan.entity.ts",
+                  "t": "f",
+                  "e": ["StoryPlan", "StoryMilestone", "TransformationType", "MilestoneStatus"],
+                  "d": "Entity для долгосрочного планирования эволюции персонажа с системой этапов трансформации личности"
+                },
+                {
+                  "p": "/entities/manipulation-technique.entity.ts",
+                  "t": "f",
+                  "e": ["TechniqueExecution", "UserManipulationProfile", "ManipulativeTechniqueType"],
+                  "d": "Entity для манипулятивных техник и профилей пользователей"
+                },
+                {
+                  "p": "/entities/emotional-state.ts",
+                  "t": "f",
+                  "e": ["EmotionalState", "Motivation", "EmotionCategory", "EmotionalReactionType"],
+                  "d": "Основные интерфейсы эмоционального состояния персонажей с градуальной шкалой интенсивности и категориями реакций"
+                },
+                {
+                  "p": "/controllers/character.controller.ts",
+                  "t": "f",
+                  "e": ["CharacterController"],
+                  "d": "REST API контроллер для управления персонажами с CRUD операциями и анализом характеристик. Метод create преобразует userId из string (параметр URL) в number при вызове createCharacter."
+                },
+                {
+                  "p": "/controllers/story.controller.ts",
+                  "t": "f",
+                  "e": ["StoryController"],
+                  "d": "REST API контроллер для управления сюжетными событиями и долгосрочным планированием персонажей"
+                },
+                {
+                  "p": "/interfaces/character-persona.interface.ts",
+                  "t": "f",
+                  "e": ["PsychologicalProfile", "PreferencesSystem", "IdealPartnerProfile"],
+                  "d": "Интерфейсы персонализации персонажей с детализированными психологическими профилями и системой предпочтений"
+                },
+                {
+                  "p": "/interfaces/analysis.interfaces.ts",
+                  "t": "f",
+                  "e": ["MessageAnalysis", "MessageAnalysisContext"],
+                  "d": "Интерфейсы анализа сообщений для комплексной оценки потребностей, эмоций, манипуляций и специализации"
+                },
+                {
+                  "p": "/interfaces/needs.interfaces.ts",
+                  "t": "f",
+                  "e": ["CharacterNeed", "NeedsUpdateData", "Motivation", "INeed", "INeedUpdate", "INeedsService", "IMotivation", "IMotivationService"],
+                  "d": "Основные интерфейсы системы потребностей и мотиваций персонажей с унифицированными типами и сервисными контрактами. Важно: перечисление CharacterNeedType должно импортироваться из /enums/character-need-type.enum.ts. Интерфейс INeed использует поле currentValue вместо устаревшего currentLevel. Интерфейс IMotivation не содержит поле description, в отличие от сущности CharacterMotivation. NeedsService.getDefaultNeedsConfig создает 10 потребностей по умолчанию, включая CONNECTION (а не SOCIAL_CONNECTION), ATTENTION, COMMUNICATION и другие. Тесты корректно работают с обоими вариантами."
+                },
+                {
+                  "p": "/interfaces/technique.interfaces.ts",
+                  "t": "f",
+                  "e": ["ITechniqueResult", "ITechniqueContext", "IManipulationContext"],
+                  "d": "Интерфейсы для работы с манипулятивными техниками. ITechniqueContext описывает контекст применения техники и содержит поля для идентификации персонажа, пользователя, содержания сообщения, истории разговора, эмоционального состояния и прочих параметров. ITechniqueResult содержит результаты применения техники."
+                },
+                {
+                  "p": "/interfaces/emotional-state.interface.ts",
+                  "t": "f",
+                  "e": ["IEmotionalState", "IEmotionalStateUpdate", "IEmotionalContext", "EmotionalState", "IEmotionalManifestation"],
+                  "d": "Интерфейсы для работы с эмоциональным состоянием персонажа. IEmotionalState описывает базовое эмоциональное состояние с полями primary, secondary, intensity и другими. EmotionalState - тип данных для использования в API."
+                },
+                {
+                  "p": "/src/character/interfaces/behavior.interfaces.ts",
+                  "t": "f",
+                  "e": ["ActionTriggerContext", "IMotivation", "IBehaviorPattern", "ICharacterBehavior"],
+                  "d": "Интерфейсы для работы с поведением персонажа. ActionTriggerContext включает поля для characterId, userId, triggerType, triggerData, timestamp, motivations, needsExpression, emotionalResponse и messagePrompt. Для преобразования в Record требуется использовать as unknown as Record<string, unknown>. В тестах character-behavior-action-trigger.test.ts правильно используется IMotivation без поля description, что соответствует определению интерфейса в needs.interfaces.ts."
+                },
+                {
+                  "p": "/enums/technique.enums.ts",
+                  "t": "f",
+                  "e": ["ManipulativeTechniqueType", "TechniqueIntensity", "TechniquePhase"],
+                  "d": "Перечисления для манипулятивных техник (PUSH_PULL, GRADUAL_INVOLVEMENT, EXCLUSIVITY_ILLUSION, EMOTIONAL_BLACKMAIL, ISOLATION, CONSTANT_VALIDATION, TROJAN_HORSE, GASLIGHTING, SNOWBALL, TRIANGULATION, LOVE_BOMBING, VALIDATION), интенсивности (SUBTLE, MODERATE, MEDIUM, AGGRESSIVE) и фаз техник (PREPARATION, EXECUTION, DEVELOPMENT, MONITORING, COMPLETION, COOLDOWN)"
+                },
+                {
+                  "p": "/enums/character-need-type.enum.ts",
+                  "t": "f",
+                  "e": ["CharacterNeedType"],
+                  "d": "Перечисление типов потребностей персонажа. Основной источник типов потребностей, должен использоваться для всех импортов CharacterNeedType. Включает все необходимые типы потребностей: физиологические, безопасности, социальные, признания, самоактуализации, эмоциональные, когнитивные, а также системные (FUN, USER_COMMAND, USER_REQUEST, SYSTEM)."
+                },
+                {
+                  "p": "/enums/character-archetype.enum.ts",
+                  "t": "f",
+                  "e": ["CharacterArchetype"],
+                  "d": "Перечисление архетипов персонажа. Включает классические архетипы Юнга (HERO, MENTOR, CAREGIVER, REBEL, LOVER, EXPLORER, CREATOR, RULER, JESTER, SAGE, INNOCENT, MAGICIAN) и дополнительные архетипы (ORPHAN, WARRIOR, SEDUCTRESS, TRICKSTER, SHADOW, GUARDIAN, ARTIST, INTELLECTUAL, COMPANION, FEMME_FATALE, ANTIHERO). Этот файл является основным источником для импорта CharacterArchetype и должен использоваться во всех частях приложения вместо устаревшего импорта из entities/character.entity."
+                }
+              ]
+            },
+            {
+              "p": "/common",
+              "t": "d",
+              "c": [
+                {
+                  "p": "/common.module.ts",
+                  "t": "f",
+                  "e": ["CommonModule"],
+                  "d": "Общий модуль с утилитами и сервисами общего назначения"
+                },
+                {
+                  "p": "/controllers/api.controller.ts",
+                  "t": "f",
+                  "e": ["ApiController"],
+                  "d": "Основной API контроллер с эндпоинтами health и admin/check"
+                },
+                {
+                  "p": "/interfaces/llm-provider.interface.ts",
+                  "t": "f",
+                  "e": ["LLMProviderType", "ILLMProvider", "ILLMProviderManager"],
+                  "d": "Общие интерфейсы для взаимодействия с LLM провайдерами"
+                },
+                {
+                  "p": "/utils/error-handling/error-handling.service.ts",
+                  "t": "f",
+                  "e": ["ErrorHandlingService"],
+                  "d": "Централизованный сервис обработки ошибок с логированием, мониторингом и безопасным форматированием исключений"
+                },
+                {
+                  "p": "/utils/error-handling/error-handling.utils.ts",
+                  "t": "f",
+                  "e": ["withErrorHandling", "logError", "measureExecutionTime"],
+                  "d": "Утилитарные функции для обработки ошибок с декораторами try-catch и измерением времени выполнения"
+                },
+                {
+                  "p": "/utils/db/db-connection-handler.service.ts",
+                  "t": "f",
+                  "e": ["DbConnectionHandlerService", "DatabaseConnectionEvent", "DatabaseConnectionEventData"],
+                  "d": "Сервис обработки подключений к БД с мониторингом состояния, переподключением и событийной системой"
+                },
+                {
+                  "p": "/utils/query/query.utils.ts",
+                  "t": "f",
+                  "e": ["executeOptimizedQuery", "findOneOptimized", "findRelatedOptimized", "OptimizedQueryOptions", "OptimizedQueryResult"],
+                  "d": "Утилиты для оптимизированных запросов к базе данных с кэшированием и performance мониторингом"
+                },
+                {
+                  "p": "/constants/injection-tokens.ts",
+                  "t": "f",
+                  "e": ["CHARACTER_SERVICE", "NEEDS_SERVICE", "другие токены инъекции"],
+                  "d": "Константы для инъекции зависимостей в NestJS, используемые как токены для Provider.provide"
+                }
+              ]
+            },
+            {
+              "p": "/llm",
+              "t": "d",
+              "c": [
+                {
+                  "p": "/llm.module.ts",
+                  "t": "f",
+                  "e": ["LLMModule"],
+                  "d": "Модуль интеграции с различными LLM провайдерами с системой fallback и менеджером провайдеров"
+                },
+                {
+                  "p": "/services/llm.service.ts",
+                  "t": "f",
+                  "e": ["LLMService", "ILLMMessage", "LLMProviderType", "LLMMessageRole"],
+                  "d": "Сервис для работы с моделями языка (LLM). Реэкспортирует интерфейсы ILLMMessage, LLMProviderType и LLMMessageRole из llm-provider.interface.ts для использования в других модулях и тестах."
+                },
+                {
+                  "p": "/services/llm-provider-manager.service.ts",
+                  "t": "f",
+                  "e": ["LLMProviderManagerService"],
+                  "d": "Менеджер провайдеров LLM с автоматическим выбором и fallback логикой"
+                },
+                {
+                  "p": "/providers/openai.provider.ts",
+                  "t": "f",
+                  "e": ["OpenAIProviderService"],
+                  "d": "OpenAI провайдер для работы с GPT моделями - реализует ILLMProvider, интегрирован с OpenAICoreService"
+                },
+                {
+                  "p": "/providers/openai-core.service.ts",
+                  "t": "f",
+                  "e": ["OpenAICoreService"],
+                  "d": "Базовый сервис OpenAI с интеграцией CacheService и MessageQueueService для обработки запросов к GPT API"
+                },
+                {
+                  "p": "/providers/llama-provider.service.ts",
+                  "t": "f",
+                  "e": ["LlamaProviderService"],
+                  "d": "Llama провайдер для работы с Llama моделями через локальные или удаленные API endpoints"
+                }
+              ]
+            },
+            {
+              "p": "/prompt-template",
+              "t": "d",
+              "c": [
+                {
+                  "p": "/prompt-template.module.ts",
+                  "t": "f",
+                  "e": ["PromptTemplateModule"],
+                  "d": "Модуль для централизованного управления шаблонами промптов"
+                },
+                {
+                  "p": "/prompt-template.service.ts",
+                  "t": "f",
+                  "e": ["PromptTemplateService"],
+                  "d": "Централизованная система управления промптами с версионированием, статистикой использования, оптимизацией токенов"
+                }
+              ]
+            },
+            {
+              "p": "/telegram",
+              "t": "d",
+              "c": [
+                {
+                  "p": "/telegram.module.ts",
+                  "t": "f",
+                  "e": ["TelegramModule"],
+                  "d": "Модуль Telegram с AccessControlService и CharacterCreationService"
+                },
+                {
+                  "p": "/entities/character-settings.entity.ts",
+                  "t": "f",
+                  "e": ["TelegramCharacterSettings"],
+                  "d": "Entity для хранения настроек персонажей в Telegram с конфигурацией автоматических действий и уведомлений"
+                },
+                {
+                  "p": "/telegram.service.ts",
+                  "t": "f",
+                  "e": ["TelegramService"],
+                  "d": "Основной сервис Telegram для управления ботом и обработки webhook событий с проверкой на существование bot.telegram перед вызовом методов"
+                },
+                {
+                  "p": "/services/character-creation.service.ts",
+                  "t": "f",
+                  "e": ["CharacterCreationService"],
+                  "d": "Специализированный сервис для создания персонажей через Telegram с предустановленными архетипами и валидацией"
+                },
+                {
+                  "p": "/services/access-control.service.ts",
+                  "t": "f",
+                  "e": ["AccessControlService"],
+                  "d": "Сервис контроля доступа для Telegram бота с различными режимами авторизации пользователей"
+                },
+                {
+                  "p": "/handlers/command.handler.ts",
+                  "t": "f",
+                  "e": ["CommandHandler"],
+                  "d": "Обработчик Telegram команд с интеграцией контроля доступа и создания персонажей"
+                },
+                {
+                  "p": "/handlers/message.handler.ts",
+                  "t": "f",
+                  "e": ["MessageHandler"],
+                  "d": "Обработчик Telegram сообщений с интеграцией контроля доступа и координатором обработки сообщений"
+                },
+                {
+                  "p": "/services/message.service.ts",
+                  "t": "f",
+                  "e": ["MessageService"],
+                  "d": "Сервис отправки сообщений в Telegram"
+                }
+              ]
+            },
+            {
+              "p": "/validation",
+              "t": "d",
+              "c": [
+                {
+                  "p": "/validation.module.ts",
+                  "t": "f",
+                  "e": ["ValidationModule"],
+                  "d": "Объединенный модуль валидации - включает валидацию сообщений, обработку ошибок, API валидацию"
+                },
+                {
+                  "p": "/services/validation.service.ts",
+                  "t": "f",
+                  "e": ["ValidationService"],
+                  "d": "Сервис валидации входящих данных с комплексными правилами проверки и трансформации. Содержит методы: validate, validateMany, validateWithFn, validateMessage, validateCharacterData, validateUserInput, sanitizeInput, validateApiRequest, validateConfiguration, getValidationRules, validateRequest."
+                },
+                {
+                  "p": "/services/validation-error-handler.service.ts",
+                  "t": "f",
+                  "e": ["ValidationErrorHandlerService"],
+                  "d": "Сервис для обработки ошибок валидации, который форматирует и логирует ошибки валидации для различных типов данных."
+                }
+              ]
+            },
+            {
+              "p": "/monitoring",
+              "t": "d",
+              "c": [
+                {
+                  "p": "/monitoring.module.ts",
+                  "t": "f",
+                  "e": ["MonitoringModule"],
+                  "d": "Модуль мониторинга с поддержкой метрик, алертов и оптимизации"
+                },
+                {
+                  "p": "/monitoring.service.ts",
+                  "t": "f",
+                  "e": ["MonitoringService"],
+                  "d": "Объединенный сервис мониторинга системы с поддержкой метрик базы данных и Prometheus интеграцией"
+                },
+                {
+                  "p": "/services/alert.service.ts",
+                  "t": "f",
+                  "e": ["AlertService"],
+                  "d": "Сервис управления системными алертами и уведомлениями с многоканальной доставкой"
+                },
+                {
+                  "p": "/services/optimization.service.ts",
+                  "t": "f",
+                  "e": ["OptimizationService", "DatabaseOptimizationResult", "ScalingResult"],
+                  "d": "Сервис оптимизации производительности базы данных и автоматического масштабирования ресурсов"
+                },
+                {
+                  "p": "/controllers/unified-monitoring.controller.ts",
+                  "t": "f",
+                  "e": ["UnifiedMonitoringController"],
+                  "d": "REST API контроллер для мониторинга системы с эндпоинтами метрик и состояния здоровья"
+                }
+              ]
+            },
+            {
+              "p": "/dialog",
+              "t": "d",
+              "c": [
+                {
+                  "p": "/dialog.module.ts",
+                  "t": "f",
+                  "e": ["DialogModule"],
+                  "d": "Модуль диалогов - активно используется в системе"
+                },
+                {
+                  "p": "/services/dialog.service.ts",
+                  "t": "f",
+                  "e": ["DialogService", "DialogMessageType"],
+                  "d": "Сервис для работы с диалогами. Поддерживает тестовый режим, при котором не требуется UserService. В интеграционных тестах рекомендуется использовать mockUserService из getDialogTestConfig(). Метод getDialogMessages возвращает массив в тестовом режиме и объект с пагинацией в продакшене."
+                }
+              ]
+            },
+            {
+              "p": "/user",
+              "t": "d",
+              "c": [
+                {
+                  "p": "/user.module.ts",
+                  "t": "f",
+                  "e": ["UserModule"],
+                  "d": "Модуль пользователей"
+                },
+                {
+                  "p": "/services/user.service.ts",
+                  "t": "f",
+                  "e": ["UserService"],
+                  "d": "Сервис управления пользователями с CRUD операциями, системой аутентификации, кэшированием и прямым доступом к БД для актуализации данных после обновлений"
+                }
+              ]
+            },
+            {
+              "p": "/cache",
+              "t": "d",
+              "c": [
+                {
+                  "p": "/cache.module.ts",
+                  "t": "f",
+                  "e": ["CacheModule"],
+                  "d": "Модуль кеширования для всего приложения"
+                },
+                {
+                  "p": "/cache.service.ts",
+                  "t": "f",
+                  "e": ["CacheService"],
+                  "d": "Сервис кэширования данных с поддержкой TTL и автоматической инвалидации"
+                }
+              ]
+            },
+            {
+              "p": "/message-queue",
+              "t": "d",
+              "c": [
+                {
+                  "p": "/message-queue.module.ts",
+                  "t": "f",
+                  "e": ["MessageQueueModule"],
+                  "d": "Модуль очереди сообщений для всего приложения"
+                },
+                {
+                  "p": "/message-queue.service.ts",
+                  "t": "f",
+                  "e": ["MessageQueueService"],
+                  "d": "Сервис очереди сообщений для асинхронной обработки задач и межсервисной коммуникации"
+                }
+              ]
+            },
+            {
+              "p": "/infrastructure",
+              "t": "d",
+              "c": [
+                {
+                  "p": "/infrastructure.module.ts",
+                  "t": "f",
+                  "e": ["InfrastructureModule"],
+                  "d": "Модуль инфраструктурных сервисов - шифрование, API ключи"
+                },
+                {
+                  "p": "/encryption.service.ts",
+                  "t": "f",
+                  "e": ["EncryptionService"],
+                  "d": "Сервис криптографического шифрования данных с поддержкой AES и RSA алгоритмов"
+                },
+                {
+                  "p": "/api-key.service.ts",
+                  "t": "f",
+                  "e": ["ApiKeyService"],
+                  "d": "Сервис управления API ключами с генерацией, валидацией и ротацией ключей доступа"
+                }
+              ]
+            },
+            {
+              "p": "/logging",
+              "t": "d",
+              "c": [
+                {
+                  "p": "/log.service.ts",
+                  "t": "f",
+                  "e": ["LogService"],
+                  "d": "Централизованный сервис логирования с поддержкой различных уровней и форматов вывода"
+                },
+                {
+                  "p": "/logging.module.ts",
+                  "t": "f",
+                  "e": ["LoggingModule"],
+                  "d": "Модуль логирования с глобальными фильтрами исключений и HTTP middleware для трассировки запросов"
+                },
+                {
+                  "p": "/src/logging/rollbar.service.ts",
+                  "t": "f",
+                  "e": ["RollbarService"],
+                  "d": "Сервис для отправки логов и ошибок в Rollbar. Требует правильно настроенный ConfigService, который должен возвращать полный объект конфигурации по ключу 'logging.rollbar' со свойствами enabled, accessToken, environment, captureUncaught и captureUnhandledRejections. В тестах нужно создавать соответствующий мок ConfigService с этой структурой."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "p": "/lib",
+          "t": "d",
+          "c": [
+            {
+              "p": "/tester",
+              "t": "d",
+              "c": [
+                {
+                  "p": "/index.ts",
+                  "t": "f",
+                  "e": ["createTestSuite", "createTest", "createBasicTest", "TestConfigType", "Tester"],
+                  "d": "Основной файл тестера с классами и функциями для создания тестов. Метод get в TestContext имеет перегрузку (get(token): unknown и get<T>(token): T) для обратной совместимости со старыми тестами и предотвращения ошибки TS2347 (Untyped function calls may not accept type arguments)."
+                },
+                {
+                  "p": "/entities.ts",
+                  "t": "f",
+                  "e": ["ALL_TEST_ENTITIES"],
+                  "d": "Централизованный список всех сущностей TypeORM для использования в тестовом окружении."
+                },
+                {
+                  "p": "/fixtures",
+                  "t": "d",
+                  "c": [
+                    {
+                      "p": "/fixture-manager.ts",
+                      "t": "f",
+                      "e": ["FixtureManager", "ITestData", "IFixtureOptions"],
+                      "d": "Менеджер тестовых фикстур с методами для создания тестовых пользователей, персонажей, диалогов и других сущностей. Поддерживает работу с числовыми ID и UUID, обеспечивая совместимость в тестах. Имеет методы numericToUuid, uuidToNumeric и ensureIdFormat для конвертации ID."
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "p": "/test",
+          "t": "d",
+          "c": [
+            {
+              "p": "/mocks",
+              "t": "d",
+              "c": [
+                {
+                  "p": "/index.ts",
+                  "t": "f",
+                  "e": ["MockLogService", "MockRollbarService", "createMockConfigService", "MockUserService", "MockNeedsService", "MockLlamaProviderService", "MockLLMProviderManagerService", "MockEmotionalStateService", "MockTelegramService", "MockMemoryService", "MockEventEmitter"],
+                  "d": "Централизованный файл с моками для тестов, содержащий моки различных сервисов и классов для использования в интеграционных тестах."
+                }
+              ]
+            },
+            {
+              "p": "/character",
+              "t": "d",
+              "c": [
+                {
+                  "p": "/manipulation-full-cycle.integration.test.ts",
+                  "t": "f",
+                  "d": "Полный интеграционный тест для сервиса манипулятивных техник, проверяющий весь цикл от создания профиля до выполнения техники и сохранения результатов."
+                },
+                {
+                  "p": "/manipulation.service.integration.test.ts",
+                  "t": "f",
+                  "d": "Интеграционный тест для базовых операций сервиса манипулятивных техник."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "p": "/scripts",
+          "t": "d",
+          "c": [
+            {
+              "p": "/run-manipulation-full-cycle-test.js",
+              "t": "f",
+              "d": "Скрипт для запуска полного цикла интеграционного теста манипулятивных техник."
+            },
+            {
+              "p": "/run-manipulation-test.js",
+              "t": "f",
+              "d": "Скрипт для запуска базового интеграционного теста манипулятивных техник."
+            },
+            {
+              "p": "/convert-tests-to-nestjs.js",
+              "t": "f",
+              "d": "Скрипт для конвертации тестов на прямое использование NestJS TestingModule."
+            },
+            {
+              "p": "/fix-converted-tests.js",
+              "t": "f",
+              "d": "Скрипт для исправления ошибок в конвертированных тестах."
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "ks": [
+    {
+      "n": "TestConfigurations",
+      "p": "/lib/tester/test-configurations/index.ts",
+      "d": "Центральный модуль для управления тестовыми конфигурациями. Содержит унифицированную функцию requiredMocksAdder для автоматического добавления всех необходимых моков (включая ConfigService, LogService, RollbarService, Telegraf-токен и другие) на основе импортируемых в тест модулей. Это устранило дублирование и упростило настройку тестов.",
+      "u": ["test/dialog", "test/integration", "test/telegram", "test/character"]
+    },
+    {
+      "n": "ActionService",
+      "p": "/src/character/services/action.service.ts",
+      "d": "Сервис управления действиями персонажей с системой ресурсной стоимости, вероятности успеха и вознаграждений. Использует CharacterNeedType.REST вместо строкового значения 'ENERGY' для проверки ресурсов. Метод determineActionFromTrigger должен возвращать полный объект CharacterAction с полями description, status, startTime, duration и relatedNeeds. Преобразует ActionTriggerContext в Record<string, unknown> для actionContext.metadata. Использует метод getActiveNeeds из NeedsService для получения активных потребностей персонажа.",
+      "u": ["CharacterModule", "CharacterBehaviorService", "MotivationService", "NeedsService"]
+    },
+    {
+      "n": "NeedsService",
+      "p": "/src/character/services/needs.service.ts",
+      "d": "Сервис для управления потребностями персонажей, поддерживает создание потребностей, обновление, отслеживание динамики, и совместимость с мотивациями. Поддерживает работу с типами потребностей CharacterNeedType. Предоставляет методы getActiveNeeds и getNeedsByCharacter для получения активных потребностей персонажа. Метод getNeeds является алиасом для getNeedsByCharacter.",
+      "u": ["CharacterModule", "CharacterBehaviorService", "ActionService"]
+    },
+    {
+      "n": "MessageAnalysisService",
+      "p": "/src/character/services/message-analysis.service.ts",
+      "d": "Сервис единоразового анализа сообщений пользователя с комплексной оценкой эмоций, потребностей, манипулятивных техник и специализации",
+      "u": ["CharacterModule", "MessageProcessingCoordinator"]
+    },
+    {
+      "n": "ManipulationService",
+      "p": "/src/character/services/manipulation.service.ts",
+      "d": "Сервис манипулятивных техник согласно ТЗ МАНИПУЛЯТИВНЫЕ ТЕХНИКИ с методами selectTechnique, executeTechnique, updateUserProfile для работы с техниками",
+      "u": ["CharacterModule", "TelegramModule"]
+    },
+    {
+      "n": "TechniqueExecutorService",
+      "p": "/src/character/services/technique-executor.service.ts",
+      "d": "Сервис для выполнения манипулятивных техник с использованием различных стратегий. Учитывает эмоциональное состояние, личность персонажа и контекст взаимодействия. Требует зависимости: CharacterRepository, LLMService, PromptTemplateService, LogService, EventEmitter2, NeedsService и EmotionalStateService.",
+      "u": ["CharacterService", "DialogService", "EmotionalStateService", "NeedsService", "ManipulationService"]
+    },
+    {
+      "n": "LLMService",
+      "p": "/src/llm/services/llm.service.ts",
+      "d": "Сервис для работы с моделями языка (LLM). Реэкспортирует интерфейсы ILLMMessage, LLMProviderType и LLMMessageRole из llm-provider.interface.ts для использования в других модулях и тестах. ВАЖНО: при ручном создании экземпляра в тестах необходимо вызывать onModuleInit() для корректной инициализации.",
+      "u": ["ManipulationService", "MessageAnalysisService", "CharacterServices"]
+    },
+    {
+      "n": "ErrorHandlingService",
+      "p": "/src/common/utils/error-handling/error-handling.service.ts",
+      "d": "Централизованный сервис обработки ошибок с логированием, мониторингом и безопасным форматированием исключений",
+      "u": ["Все модули", "LogService", "ValidationService"]
+    },
+    {
+      "n": "MessageProcessingCoordinator",
+      "p": "/src/character/services/message-processing-coordinator.service.ts",
+      "d": "Координатор обработки сообщений как центральная точка взаимодействия между анализом и всеми системами персонажа. Метод processUserMessage принимает userId типа number | string и преобразует строковые значения в числовые для внутреннего использования. Возвращает анализ сообщения, ответ персонажа и ID сообщения пользователя.",
+      "u": ["CharacterModule", "TelegramModule", "MessageAnalysisService", "NeedsService", "CharacterBehaviorService", "CharacterResponseService", "EmotionalStateService", "ManipulationService"]
+    },
+    {
+      "n": "LLMProviderManagerService",
+      "p": "/src/llm/services/llm-provider-manager.service.ts",
+      "d": "Менеджер провайдеров LLM с автоматическим выбором и fallback логикой",
+      "u": ["LLMModule", "LLMService"]
+    },
+    {
+      "n": "LogService",
+      "p": "/src/logging/log.service.ts",
+      "d": "Централизованный сервис логирования с поддержкой различных уровней и форматов вывода",
+      "u": ["Все модули"]
+    },
+    {
+      "n": "CacheService",
+      "p": "/src/cache/cache.service.ts",
+      "d": "Сервис кэширования данных с поддержкой TTL и автоматической инвалидации",
+      "u": ["Все модули"]
+    },
+    {
+      "n": "MessageQueueService",
+      "p": "/src/message-queue/message-queue.service.ts",
+      "d": "Сервис очереди сообщений для асинхронной обработки задач и межсервисной коммуникации",
+      "u": ["Все модули"]
+    },
+    {
+      "n": "PromptTemplateService",
+      "p": "/src/prompt-template/prompt-template.service.ts",
+      "d": "Централизованная система управления промптами с версионированием, статистикой использования, оптимизацией токенов",
+      "u": ["CharacterModule", "LLMModule"]
+    },
+    {
+      "n": "ValidationService",
+      "p": "/src/validation/services/validation.service.ts",
+      "d": "Сервис валидации входящих данных с комплексными правилами проверки и трансформации. Содержит методы: validate, validateMany, validateWithFn, validateMessage, validateCharacterData, validateUserInput, sanitizeInput, validateApiRequest, validateConfiguration, getValidationRules, validateRequest.",
+      "u": ["Все модули"]
+    },
+    {
+      "n": "ValidationErrorHandlerService",
+      "p": "/src/validation/services/validation-error-handler.service.ts",
+      "d": "Сервис для обработки ошибок валидации, который форматирует и логирует ошибки валидации для различных типов данных. Поддерживает обработку ошибок API, базы данных, формата данных, сообщений, пользовательского ввода и конфигурации. Имеет методы: handleValidationResult, handleBatchValidationResults, handleValidationError, handleApiValidationError, handleFormatValidationError, handleDatabaseValidationError, handleMessageValidationError, handleUserInputValidationError, handleConfigValidationError и createCustomValidationError.",
+      "u": ["ValidationService", "ErrorHandlingService", "LogService"]
+    },
+    {
+      "n": "DialogService",
+      "p": "/src/dialog/services/dialog.service.ts",
+      "d": "Сервис для работы с диалогами. Поддерживает тестовый режим, при котором не требуется UserService. В интеграционных тестах рекомендуется использовать mockUserService из getDialogTestConfig(). Метод getDialogMessages возвращает массив в тестовом режиме и объект с пагинацией в продакшене. Метод getOrCreateDialog принимает telegramId типа string | number и преобразует числовые значения в строки для совместимости с БД.",
+      "u": ["TelegramService", "UserService", "CharacterService"]
+    },
+    {
+      "n": "CharacterBehaviorService",
+      "p": "/src/character/services/character-behavior.service.ts",
+      "d": "Сервис для управления поведением персонажей, включая проактивные действия и реакции на события. Метод selectActionForMotivation поддерживает работу с мотивациями как с полем priority, так и без него (используя intensity для вычисления приоритета в соотношении intensity/10). При вызове actionService.determineAndPerformAction передает полный контекст ActionTriggerContext со всеми необходимыми полями. Метод processActionTrigger обрабатывает триггеры действий и корректно работает с интерфейсом IMotivation, не требуя наличия поля description.",
+      "u": ["CharacterService", "NeedsService", "ActionService", "EmotionalStateService"]
+    },
+    {
+      "n": "CommandHandler",
+      "p": "/src/telegram/handlers/command.handler.ts",
+      "d": "Обработчик Telegram команд с интеграцией контроля доступа и создания персонажей. Преобразует строковые userId в числовые при необходимости для передачи в сервисы, требующие числовые идентификаторы (например, characterService.findByUserId).",
+      "u": ["TelegramModule", "CharacterModule", "UserModule", "DialogModule"]
+    },
+    {
+      "n": "FixtureManager",
+      "p": "/lib/tester/fixtures/fixture-manager.ts",
+      "d": "Менеджер тестовых фикстур с методами для создания тестовых пользователей, персонажей, диалогов и других сущностей. Поддерживает работу с числовыми ID и UUID через встроенные методы конвертации (uuidToNumeric, numericToUuid). ВАЖНО: если требуется доступ к character.user.id или создание связанных сущностей, рекомендуется явно создавать пользователя через createUser() и передавать его в createCharacter({ user }).",
+      "u": ["test/integration/telegram-workflow.integration.test.ts", "test/character/character.service.test.ts", "test/character/manipulation-full-cycle.integration.test.ts", "test/character/manipulation.service.integration.test.ts"]
+    },
+    {
+      "n": "CharacterMemory",
+      "p": "/src/character/entities/character-memory.entity.ts",
+      "d": "Сущность памяти персонажа. ВАЖНО: включена в массив ALL_TEST_ENTITIES (в файле /lib/tester/entities.ts) и поддерживается во всех интеграционных и юнит-тестах. Для тестирования рекомендуется использовать отдельный метод createCharacterMemory в FixtureManager.",
+      "u": ["Character", "MemoryService", "CharacterBehaviorService"]
+    }
+  ],
+  "al": [
+    {
+      "s": "ManipulationService",
+      "t": "TechniqueExecutorService",
+      "di": "ManipulationService → TechniqueExecutorService",
+      "d": "Делегирование выполнения техник"
+    },
+    {
+      "s": "MessageAnalysisService",
+      "t": "LLMService",
+      "di": "MessageAnalysisService → LLMService",
+      "d": "Использование LLM для анализа сообщений"
+    },
+    {
+      "s": "TechniqueExecutorService",
+      "t": "LLMService",
+      "di": "TechniqueExecutorService → LLMService",
+      "d": "Генерация манипулятивных ответов через LLM"
+    },
+    {
+      "s": "CharacterModule",
+      "t": "LLMModule",
+      "di": "CharacterModule → LLMModule",
+      "d": "Интеграция персонажей с LLM провайдерами"
+    },
+    {
+      "s": "MessageAnalysisService",
+      "t": "ValidationMethods",
+      "di": "MessageAnalysisService → Internal Validation",
+      "d": "Строгая валидация enum типов через внутренние методы валидации"
+    },
+    {
+      "s": "MessageProcessingCoordinator",
+      "t": "MessageAnalysisService",
+      "di": "MessageProcessingCoordinator → MessageAnalysisService",
+      "d": "Единоразовый анализ сообщений пользователя"
+    },
+    {
+      "s": "MessageHandler",
+      "t": "MessageProcessingCoordinator",
+      "di": "MessageHandler → MessageProcessingCoordinator",
+      "d": "Централизованная обработка Telegram сообщений"
+    },
+    {
+      "s": "TelegramModule",
+      "t": "CharacterModule",
+      "di": "TelegramModule → CharacterModule",
+      "d": "Интеграция Telegram с системой персонажей"
+    },
+    {
+      "s": "AllModules",
+      "t": "LogService",
+      "di": "AllModules → LogService",
+      "d": "Единое логирование"
+    },
+    {
+      "s": "AllModules",
+      "t": "CacheService",
+      "di": "AllModules → CacheService",
+      "d": "Единое кеширование"
+    },
+    {
+      "s": "AllModules",
+      "t": "MessageQueueService",
+      "di": "AllModules → MessageQueueService",
+      "d": "Единая очередь сообщений"
+    },
+    {
+      "s": "AllModules",
+      "t": "ErrorHandlingService",
+      "di": "AllModules → ErrorHandlingService",
+      "d": "Единая обработка ошибок"
+    },
+    {
+      "s": "TechniqueExecutorService",
+      "t": "NeedsService",
+      "d": "Использует для получения актуальных потребностей персонажа и их учета при выполнении техник"
+    },
+    {
+      "s": "TechniqueExecutorService",
+      "t": "EmotionalStateService",
+      "d": "Использует для получения и учета эмоционального состояния персонажа при выполнении техник"
+    }
+  ],
+  "mh": {
+    "AppModule": {
+      "p": "/src",
+      "i": ["AuthModule", "CharacterModule", "CommonModule", "ValidationModule", "CacheModule", "MessageQueueModule", "InfrastructureModule", "LLMModule", "PromptTemplateModule", "DialogModule", "TelegramModule", "UserModule", "MonitoringModule", "LoggingModule"]
+    },
+    "AuthModule": {
+      "p": "/src/auth",
+      "c": ["AuthController"],
+      "s": ["AuthService"],
+      "st": ["JwtStrategy"],
+      "dto": ["LoginDto", "RegisterDto"],
+      "if": ["JwtPayload"],
+      "dec": ["User"]
+    },
+    "CharacterModule": {
+      "p": "/src/character",
+      "c": ["CharacterController", "TelegramCharacterController"],
+      "s": [
+        "CharacterService", 
+        "ActionService", 
+        "ContextCompressionService", 
+        "EmotionalStateService", 
+        "ManipulationService", 
+        "MemoryService", 
+        "MessageAnalysisService", 
+        "MessageProcessingCoordinator", 
+        "MotivationService", 
+        "NeedsService", 
+        "SpecializationService", 
+        "TechniqueExecutorService",
+        "CharacterManagementService",
+        "CharacterBehaviorService", 
+        "CharacterResponseService", 
+        "StoryService"
+      ],
+      "i": ["DialogModule", "LLMModule", "PromptTemplateModule", "UserModule", "ValidationModule", "CacheModule", "LoggingModule", "MessageQueueModule"],
+      "if": [
+        "ICharacterService",
+        "IActionContext",
+        "IMessageProcessingResult",
+        "ITechniqueContext",
+        "ITechniqueResult",
+        "INeed",
+        "IEmotionalState",
+        "IManipulationContext",
+        "PsychologicalProfile", 
+        "PreferencesSystem", 
+        "IdealPartnerProfile", 
+        "MessageAnalysis", 
+        "MessageAnalysisContext", 
+        "CharacterNeed", 
+        "NeedsUpdateData", 
+        "CharacterNeedType", 
+        "Motivation", 
+        "INeedUpdate", 
+        "INeedsService", 
+        "IMotivation", 
+        "IMotivationService"
+      ],
+      "ent": [
+        "Character",
+        "Action",
+        "CharacterMotivation", 
+        "EmotionalState", 
+        "Need", 
+        "TechniqueExecution",
+        "UserManipulationProfile",
+        "StoryPlan"
+      ],
+      "en": [
+        "CharacterGender",
+        "CharacterArchetype",
+        "ActionType",
+        "CharacterNeedType",
+        "EmotionType",
+        "ManipulativeTechniqueType",
+        "TechniqueIntensity",
+        "TechniquePhase",
+        "PersonalityData", 
+        "NeedPriority", 
+        "MotivationStatus", 
+        "MotivationIntensity", 
+        "ActionStatus", 
+        "StoryMilestone", 
+        "TransformationType", 
+        "MilestoneStatus", 
+        "EmotionCategory", 
+        "EmotionalReactionType"
+      ]
+    },
+    "LLMModule": {
+      "p": "/src/llm",
+      "s": ["LLMService", "LLMProviderManagerService", "OpenAIProviderService", "OpenAICoreService", "LlamaProviderService"]
+    },
+    "PromptTemplateModule": {
+      "p": "/src/prompt-template",
+      "s": ["PromptTemplateService"]
+    },
+    "TelegramModule": {
+      "p": "/src/telegram",
+      "c": ["CommandHandler", "MessageHandler"],
+      "s": ["TelegramService", "CharacterCreationService", "AccessControlService", "MessageService"],
+      "i": ["CharacterModule"],
+      "ent": ["TelegramCharacterSettings"],
+      "dec": ["InjectBot", "AccessCheck", "MeasureExecution", "ErrorHandling"]
+    },
+    "CommonModule": {
+      "p": "/src/common",
+      "c": ["ApiController"],
+      "s": ["ErrorHandlingService", "DbConnectionHandlerService"],
+      "if": ["LLMProviderType", "ILLMProvider", "ILLMProviderManager"],
+      "u": ["withErrorHandling", "logError", "measureExecutionTime", "executeOptimizedQuery", "findOneOptimized", "findRelatedOptimized"],
+      "dec": ["Retry", "TrimAndSanitize", "Sanitize", "PublicEndpoint"]
+    },
+    "ValidationModule": {
+      "p": "/src/validation",
+      "s": ["ValidationService", "ValidationErrorHandlerService"],
+      "en": ["ValidationErrorType"]
+    },
+    "MonitoringModule": {
+      "p": "/src/monitoring",
+      "c": ["UnifiedMonitoringController"],
+      "s": ["MonitoringService", "AlertService", "OptimizationService"]
+    },
+    "DialogModule": {
+      "p": "/src/dialog",
+      "c": ["DialogController"],
+      "s": ["DialogService"],
+      "ent": ["Dialog", "Message"],
+      "if": ["IDialogService"],
+      "en": ["DialogMessageType"]
+    },
+    "UserModule": {
+      "p": "/src/user",
+      "s": ["UserService"]
+    },
+    "CacheModule": {
+      "p": "/src/cache",
+      "s": ["CacheService"]
+    },
+    "MessageQueueModule": {
+      "p": "/src/message-queue",
+      "s": ["MessageQueueService"]
+    },
+    "InfrastructureModule": {
+      "p": "/src/infrastructure",
+      "s": ["EncryptionService", "ApiKeyService"]
+    },
+    "LoggingModule": {
+      "p": "/src/logging",
+      "s": ["LogService"]
+    }
+  },
+  "testFixtureManager": {
+    "methods": [
+      {
+        "name": "createUser",
+        "description": "Создает тестового пользователя",
+        "params": "частичный объект User с поддержкой как string, так и number для id",
+        "returns": "Promise<User>"
+      },
+      {
+        "name": "createCharacter",
+        "description": "Создает тестового персонажа. ВАЖНО: если требуется доступ к character.user.id или создание связанных сущностей, рекомендуется явно создавать пользователя через createUser() и передавать его в createCharacter({ user }) для предсказуемости связей.",
+        "params": "частичный объект Character с обязательным указанием personality.musicTaste при необходимости и опциональным user (User)",
+        "returns": "Promise<Character>"
+      },
+      {
+        "name": "createDialog",
+        "description": "Создает тестовый диалог",
+        "params": "частичный объект Dialog",
+        "returns": "Promise<Dialog>"
+      },
+      {
+        "name": "createMessage",
+        "description": "Создает тестовое сообщение",
+        "params": "частичный объект Message",
+        "returns": "Promise<Message>"
+      },
+      {
+        "name": "createNeed",
+        "description": "Создает тестовую потребность",
+        "params": "частичный объект Need с полем currentValue вместо устаревшего currentLevel",
+        "returns": "Promise<Need>"
+      },
+      {
+        "name": "createMotivation",
+        "description": "Создает тестовую мотивацию",
+        "params": "частичный объект CharacterMotivation с полем intensity для указания уровня мотивации",
+        "returns": "Promise<CharacterMotivation>"
+      },
+      {
+        "name": "createEmotionalState",
+        "description": "Создает тестовое эмоциональное состояние",
+        "params": "частичный объект EmotionalState с полем current для совместимости с тестами technique-executor.service.test.ts",
+        "returns": "Promise<EmotionalState>"
+      },
+      {
+        "name": "createCharacterMemory",
+        "description": "Создает тестовую память персонажа (CharacterMemory) с привязкой к персонажу. Позволяет явно тестировать работу памяти персонажа и связанные сценарии.",
+        "params": "частичный объект CharacterMemory с обязательным указанием characterId или character",
+        "returns": "Promise<CharacterMemory>"
+      },
+      {
+        "name": "createTechniqueExecution",
+        "description": "Создает тестовое исполнение манипулятивной техники",
+        "params": "частичный объект TechniqueExecution с обязательным преобразованием characterId и userId в Number",
+        "returns": "Promise<TechniqueExecution>"
+      },
+      {
+        "name": "createUserManipulationProfile",
+        "description": "Создает тестовый профиль манипуляции пользователя",
+        "params": "частичный объект UserManipulationProfile с обязательным преобразованием userId и characterId в Number",
+        "returns": "Promise<UserManipulationProfile>"
+      },
+      {
+        "name": "cleanDatabase",
+        "description": "Очищает тестовую базу данных",
+        "params": "нет",
+        "returns": "Promise<void>"
+      },
+      {
+        "name": "getRepository",
+        "description": "Получает репозиторий для указанной сущности",
+        "params": "класс сущности (Entity)",
+        "returns": "Repository<Entity>"
+      },
+      {
+        "name": "getTestData",
+        "description": "Получает данные тестов по ID",
+        "params": "ID тестовых данных",
+        "returns": "ITestData"
+      },
+      {
+        "name": "ensureIdFormat",
+        "description": "Обеспечивает совместимость ID между строковым (UUID) и числовым форматом",
+        "params": "id: string | number, targetType: 'string' | 'number'",
+        "returns": "string | number в требуемом формате"
+      },
+      {
+        "name": "numericToUuid",
+        "description": "Преобразует числовой ID в UUID строку",
+        "params": "numericId: number | string",
+        "returns": "UUID строка"
+      },
+      {
+        "name": "uuidToNumeric",
+        "description": "Преобразует UUID в числовой ID",
+        "params": "uuid: string",
+        "returns": "number | null"
+      }
+    ]
+  },
+  "mockServices": {
+    "mockUserService": {
+      "methods": [
+        "findById",
+        "findByEmail",
+        "create",
+        "update",
+        "delete"
+      ],
+      "usageInTests": [
+        "Используется во всех тестах с DialogService",
+        "Автоматически добавляется при наличии DialogModule в импортах теста"
+      ]
+    },
+    "mockConfigService": {
+      "methods": [
+        "get"
+      ],
+      "usageInTests": [
+        "Используется для предоставления конфигурации тестам",
+        "Автоматически добавляется в провайдеры через addConfigServiceProvider",
+        "Предоставляет конфигурацию для Telegram, Rollbar, LLM и других сервисов"
+      ]
+    },
+    "mockNeedsService": {
+      "methods": [
+        "getActiveNeeds",
+        "updateNeeds",
+        "calculatePriority",
+        "getNeedsByCharacterId"
+      ],
+      "usageInTests": [
+        "Используется в тестах TechniqueExecutorService",
+        "Используется в тестах telegram-workflow.integration.test.ts",
+        "Должен быть вручную добавлен в providers теста"
+      ]
+    },
+    "mockMemoryService": {
+      "methods": [
+        "createMemory",
+        "createActionMemory",
+        "createEventMemory",
+        "createMessageMemory",
+        "getRecentMemories",
+        "getImportantMemories",
+        "searchMemoriesByKeywords",
+        "limitMemoriesCount",
+        "updateMemoryImportance",
+        "markMemoryAsRecalled"
+      ],
+      "usageInTests": [
+        "Используется в тестах telegram-workflow.integration.test.ts",
+        "Должен быть вручную добавлен в providers теста для MessageProcessingCoordinator"
+      ]
+    },
+    "mockTelegramService": {
+      "methods": [
+        "sendMessage",
+        "getMe",
+        "onModuleInit",
+        "onApplicationShutdown"
+      ],
+      "usageInTests": [
+        "Используется в тестах telegram-workflow.integration.test.ts",
+        "Используется в тестах telegram.service.test.ts"
+      ]
+    },
+    "mockEmotionalStateService": {
+      "methods": [
+        "getEmotionalState",
+        "updateEmotionalState",
+        "getEmotionalManifestations"
+      ],
+      "usageInTests": [
+        "Используется в тестах TechniqueExecutorService",
+        "Должен быть вручную добавлен в providers теста"
+      ]
+    },
+    "mockLogService": {
+      "methods": [
+        "log",
+        "error",
+        "warn",
+        "debug",
+        "verbose",
+        "critical",
+        "info",
+        "setContext",
+        "getContext",
+        "forContext",
+        "onModuleDestroy"
+      ],
+      "usageInTests": [
+        "Используется во всех интеграционных тестах",
+        "Предотвращает ошибки с отсутствующим WINSTON_MODULE_PROVIDER",
+        "Заменяет реальный LogService в тестовом окружении",
+        "Автоматически добавляется через TestConfigurations.addLoggingMocks или requiredMocksAdder"
+      ],
+      "implementation": [
+        "Класс-мок в lib/tester/mocks/log.service.mock.ts",
+        "Объект-мок с jest.fn() в test/mocks/index.ts"
+      ],
+      "features": [
+        "Выводит логи в консоль с префиксами [MOCK LOG], [MOCK INFO] и т.д.",
+        "Поддерживает контекст через методы setContext, getContext и forContext",
+        "Возвращает 'TestContext' по умолчанию, если контекст не задан"
+      ]
+    },
+    "mockRollbarService": {
+      "methods": [
+        "info",
+        "debug",
+        "warn",
+        "error",
+        "critical",
+        "onModuleInit"
+      ],
+      "usageInTests": [
+        "Используется во всех интеграционных тестах",
+        "Предотвращает ошибки с отсутствующей конфигурацией Rollbar",
+        "Заменяет реальный RollbarService в тестовом окружении",
+        "Автоматически добавляется через TestConfigurations.addLoggingMocks или requiredMocksAdder"
+      ],
+      "implementation": [
+        "Класс-мок в lib/tester/mocks/rollbar.service.mock.ts",
+        "Объект-мок с jest.fn() в test/mocks/index.ts"
+      ],
+      "features": [
+        "Имеет свойство enabled = false, отключающее вывод логов",
+        "Выводит логи в консоль с префиксами [MOCK ROLLBAR] при enabled = true",
+        "Совместим с жизненным циклом NestJS через onModuleInit",
+        "ВАЖНО: Конструктор не принимает аргументов, что может вызывать ошибки при неправильном использовании в других моках (например, в MockLogService)."
+      ]
+    }
+  },
+  "testDirectories": {
+    "test/integration": {
+      "description": "Интеграционные тесты для проверки взаимодействия компонентов системы",
+      "tests": [
+        "telegram-workflow.integration.test.ts",
+        "technique-executor.service.integration.test.ts",
+        "llm.service.integration.test.ts"
+      ]
+    },
+    "test/auth": {
+      "description": "Модульные тесты для компонентов аутентификации",
+      "tests": [
+        "auth.service.test.ts",
+        "jwt.strategy.test.ts"
+      ]
+    },
+    "test/cache": {
+      "description": "Тесты для сервиса кэширования",
+      "tests": [
+        "cache.service.integration.test.ts"
+      ]
+    },
+    "test/monitoring": {
+      "description": "Тесты для сервиса мониторинга",
+      "tests": [
+        "monitoring.service.integration.test.ts"
+      ]
+    },
+    "test/character": {
+      "description": "Тесты для модуля персонажей",
+      "tests": [
+        "character.service.test.ts",
+        "manipulation.service.test.ts",
+        "manipulation.service.integration.test.ts",
+        "memory.service.test.ts",
+        "technique-executor.service.test.ts",
+        "character-behavior-action-trigger.test.ts",
+        "context-compression.service.test.ts",
+        "message-processing-coordinator.service.test.ts"
+      ]
+    },
+    "test/telegram": {
+      "description": "Тесты для модуля Telegram",
+      "tests": [
+        "telegram.service.test.ts",
+        "telegram-core.service.integration.test.ts"
+      ]
+    },
+    "test/user": {
+      "description": "Тесты для модуля пользователей",
+      "tests": [
+        "user.service.integration.test.ts"
+      ]
+    }
+  },
+  "scripts": {
+    "run-all-tests": {
+      "p": "/scripts",
+      "c": [
+        {
+          "p": "/run-all-tests.js",
+          "t": "f",
+          "d": "Скрипт для запуска всех тестов проекта с отчетом о покрытии. Выполняет проверку типов TypeScript, запускает юнит-тесты и интеграционные тесты, генерирует объединенный отчет о покрытии."
+        }
+      ]
+    },
+    "send-telegram-message": {
+      "p": "/scripts",
+      "c": [
+        {
+          "p": "/send_telegram_message.sh",
+          "t": "f",
+          "d": "Скрипт для отправки уведомлений в Telegram. Используется для информирования о завершении работы или возникновении проблем."
+        }
+      ]
+    },
+    "init-test-db": {
+      "p": "/scripts",
+      "c": [
+        {
+          "p": "/init-test-db.sql",
+          "t": "f",
+          "d": "SQL-скрипт для инициализации тестовой базы данных PostgreSQL. Используется для настройки тестового окружения."
+        }
+      ]
+    },
+    "example-tests": {
+      "p": "/test/examples",
+      "c": [
+        {
+          "p": "/logging-mocks-example.test.ts",
+          "t": "f",
+          "d": "Пример использования моков для LogService и RollbarService в тестах. Демонстрирует три способа добавления моков: прямое использование классов-моков, использование TestConfigurations.addLoggingMocks и использование TestConfigurations.requiredMocksAdder в интеграционных тестах."
+        }
+      ]
+    },
+    "docs": {
+      "p": "/lib/tester/docs",
+      "c": [
+        {
+          "p": "/logging-mocks.md",
+          "t": "f",
+          "d": "Документация по использованию моков для LogService и RollbarService в тестах. Описывает доступные моки, способы их использования, особенности и решение проблем."
+        }
+      ]
+    }
+  },
+  "decorators": {
+    "common": [
+      {
+        "name": "Retry",
+        "path": "/src/common/decorators/retry.decorator.ts",
+        "description": "Декоратор для повторного выполнения метода при ошибке с заданным количеством попыток и задержкой"
+      },
+      {
+        "name": "TrimAndSanitize",
+        "path": "/src/common/decorators/sanitize.decorator.ts",
+        "description": "Декоратор для обрезки пробелов и санитизации строковых полей"
+      },
+      {
+        "name": "Sanitize",
+        "path": "/src/common/decorators/sanitize.decorator.ts",
+        "description": "Декоратор для санитизации строковых полей без обрезки пробелов"
+      },
+      {
+        "name": "PublicEndpoint",
+        "path": "/src/common/guards/public.decorator.ts",
+        "description": "Декоратор для пометки эндпоинтов как публичных, не требующих аутентификации"
+      }
+    ],
+    "telegram": [
+      {
+        "name": "InjectBot",
+        "path": "/src/telegram/decorators/inject-bot.decorator.ts",
+        "description": "Декоратор для инъекции экземпляра Telegraf бота"
+      },
+      {
+        "name": "AccessCheck",
+        "path": "/src/telegram/decorators/access-check.decorator.ts",
+        "description": "Декоратор для проверки доступа к обработчикам Telegram"
+      },
+      {
+        "name": "MeasureExecution",
+        "path": "/src/telegram/decorators/measure-execution.decorator.ts",
+        "description": "Декоратор для измерения времени выполнения методов обработчиков Telegram"
+      },
+      {
+        "name": "ErrorHandling",
+        "path": "/src/telegram/decorators/error-handling.decorator.ts",
+        "description": "Декоратор для обработки ошибок в методах обработчиков Telegram"
+      }
+    ],
+    "auth": [
+      {
+        "name": "User",
+        "path": "/src/auth/user.decorator.ts",
+        "description": "Декоратор для извлечения пользователя из запроса с возможностью получения всего объекта или конкретного свойства"
+      }
+    ]
+  }
+}
+

@@ -1,0 +1,139 @@
+groups:
+  - name: redis_cache_alerts
+    rules:
+      - alert: RedisConnectionLost
+        expr: redis_connected == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Потеряно соединение с Redis ({{ $labels.cache_name }})'
+          description: 'Потеряно соединение с Redis для кэша {{ $labels.cache_name }}. Проверьте доступность сервера Redis и сетевые соединения.'
+
+      - alert: RedisCacheMemoryHigh
+        expr: redis_memory_usage_bytes{type="used"} / redis_memory_usage_bytes{type="total"} > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Высокое использование памяти Redis ({{ $labels.cache_name }})'
+          description: 'Использование памяти Redis для кэша {{ $labels.cache_name }} превышает 85% от доступной. Текущее использование: {{ $value | humanizePercentage }}.'
+
+      - alert: CacheHitRateLow
+        expr: cache_hit_rate < 0.5
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Низкий процент попаданий в кэш ({{ $labels.cache_name }})'
+          description: 'Процент попаданий в кэш {{ $labels.cache_name }} ниже 50% в течение 15 минут. Текущее значение: {{ $value | humanizePercentage }}.'
+
+      - alert: CacheOperationsHigh
+        expr: rate(cache_operations_total[5m]) > 1000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Высокая частота операций с кэшем ({{ $labels.cache_name }})'
+          description: 'Частота операций с кэшем {{ $labels.cache_name }} превышает 1000 операций в секунду в течение 5 минут. Текущее значение: {{ $value | humanize }} операций/сек.'
+
+  - name: system_performance_alerts
+    rules:
+      - alert: HighCpuUsage
+        expr: system_cpu_usage > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Высокое использование CPU'
+          description: 'Использование CPU превышает 80% в течение 5 минут. Текущее значение: {{ $value | humanizePercentage }}.'
+
+      - alert: HighMemoryUsage
+        expr: system_memory_usage / system_memory_total > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Высокое использование памяти'
+          description: 'Использование памяти превышает 85% от доступной в течение 5 минут. Текущее значение: {{ $value | humanizePercentage }}.'
+
+      - alert: SlowHttpResponses
+        expr: http_request_duration_milliseconds{quantile="0.95"} > 2000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Медленные HTTP ответы для {{ $labels.path }}'
+          description: '95-й процентиль времени ответа для {{ $labels.method }} {{ $labels.path }} превышает 2 секунды в течение 5 минут. Текущее значение: {{ $value | humanizeDuration }}.'
+
+      - alert: HighHttpErrorRate
+        expr: sum(rate(http_requests_total{status=~"5.."}[5m])) / sum(rate(http_requests_total[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Высокий процент ошибок HTTP'
+          description: 'Процент ошибок HTTP (5xx) превышает 5% в течение 5 минут. Текущее значение: {{ $value | humanizePercentage }}.'
+
+      - alert: SlowDialogGeneration
+        expr: dialog_generation_time_milliseconds{quantile="0.95"} > 10000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Медленная генерация диалогов'
+          description: '95-й процентиль времени генерации диалогов превышает 10 секунд в течение 5 минут. Текущее значение: {{ $value | humanizeDuration }}.'
+
+  - name: database_alerts
+    rules:
+      - alert: HighDatabaseConnections
+        expr: database_connections_usage_percent > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Высокое использование пула соединений'
+          description: 'Использование пула соединений БД составляет {{ $value }}%, что превышает пороговое значение 85% в течение 5 минут'
+
+      - alert: DatabaseConnectionsFull
+        expr: database_connections_usage_percent > 95
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Критически высокое использование пула соединений'
+          description: 'Использование пула соединений БД составляет {{ $value }}%, что превышает критический порог 95%'
+
+      - alert: DatabaseQueryTime
+        expr: database_query_time_milliseconds > 150
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Повышенное время выполнения запросов'
+          description: 'Среднее время выполнения запросов составляет {{ $value }}мс, что превышает пороговое значение 150мс в течение 5 минут'
+
+      - alert: DatabaseDeadlocks
+        expr: increase(database_deadlocks_total[1h]) > 2
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Обнаружены взаимные блокировки в базе данных'
+          description: 'Обнаружено {{ $value }} взаимных блокировок (deadlocks) за последний час'
+
+      - alert: LowIndexUsage
+        expr: database_table_index_usage_percent{table=~"users|characters|dialogs|messages"} < 60
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Низкое использование индексов'
+          description: 'Использование индексов для таблицы {{ $labels.table }} составляет {{ $value }}%, что ниже порогового значения 60%'
+
+      - alert: DatabaseSizeWarning
+        expr: (database_table_size_bytes > 1073741824) and (rate(database_table_size_bytes[1d]) > 0.2 * database_table_size_bytes offset 1d)
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Быстрый рост размера таблицы'
+          description: 'Размер таблицы {{ $labels.table }} вырос более чем на 20% за последние 24 часа'
