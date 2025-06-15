@@ -39,6 +39,30 @@ export interface ICreateTestParams {
 }
 
 /**
+ * Очищает базу данных для теста
+ * @param module Тестовый модуль
+ */
+async function cleanupDatabase(module: TestingModule): Promise<void> {
+  try {
+    // Получаем DataSource из модуля
+    const dataSource = module.get(DataSource);
+    if (!dataSource || !dataSource.isInitialized) {
+      console.warn('DataSource не инициализирован, пропускаем очистку базы данных');
+      return;
+    }
+
+    // Создаем экземпляр FixtureManager для очистки базы
+    const fixtureManager = new FixtureManager(dataSource);
+
+    // Очищаем базу данных
+    await fixtureManager.cleanDatabase();
+    console.log('База данных очищена перед тестом');
+  } catch (error) {
+    console.error('Ошибка при очистке базы данных:', error);
+  }
+}
+
+/**
  * Создает отдельный тест с указанным именем и типом конфигурации
  * @param params Параметры теста (имя, тип конфигурации, импорты, провайдеры)
  * @param testFn Функция теста
@@ -65,7 +89,19 @@ export function createTest(
     // Если тест не требует базы данных, используем BASIC конфигурацию
     const finalConfigType = requiresDatabase ? actualConfigType : TestConfigType.BASIC;
 
-    const context = await tester.init(finalConfigType, { imports, providers });
+    const module = await tester.init(finalConfigType, { imports, providers });
+
+    // Оборачиваем get чтобы сохранить корректный this при деструктуризации
+    const boundGet = <T>(token: any, options?: any): T => module.get<T>(token, options);
+    const context = Object.assign(Object.create(module), {
+      get: boundGet,
+    }) as TestingModule & { get: typeof boundGet };
+
+    // Если тест требует базу данных, выполняем очистку непосредственно перед запуском теста
+    if (requiresDatabase) {
+      await cleanupDatabase(module);
+    }
+
     await testFn(context);
   };
 
