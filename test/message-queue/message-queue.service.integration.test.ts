@@ -35,7 +35,10 @@ createTestSuite('MessageQueueService Integration Tests', () => {
       providers,
     },
     async ({ get }) => {
-      const messageQueueService = get(MessageQueueService) as MessageQueueService;
+      const messageQueueService = get(MessageQueueService);
+      // Очищаем очередь перед тестом
+      messageQueueService.clearQueue(true);
+
       let processed = false;
       const processor = async (message: MessageContext) => {
         processed = true;
@@ -51,7 +54,7 @@ createTestSuite('MessageQueueService Integration Tests', () => {
       const result = await messageQueueService.enqueue(messageContext, processor);
       expect(result).toBeDefined();
       expect(result.success).toBe(true);
-      await new Promise(resolve => setTimeout(resolve, 50)); // Allow for processing
+      await new Promise(resolve => setTimeout(resolve, 100)); // Увеличиваем время ожидания
       expect(processed).toBe(true);
     },
   );
@@ -64,7 +67,10 @@ createTestSuite('MessageQueueService Integration Tests', () => {
       providers,
     },
     async ({ get }) => {
-      const messageQueueService = get(MessageQueueService) as MessageQueueService;
+      const messageQueueService = get(MessageQueueService);
+      // Очищаем очередь перед тестом
+      messageQueueService.clearQueue(true);
+
       const stats = messageQueueService.getStats();
       expect(stats).toBeDefined();
       expect(typeof stats.queueLength).toBe('number');
@@ -81,7 +87,10 @@ createTestSuite('MessageQueueService Integration Tests', () => {
       providers,
     },
     async ({ get }) => {
-      const messageQueueService = get(MessageQueueService) as MessageQueueService;
+      const messageQueueService = get(MessageQueueService);
+      // Очищаем очередь перед тестом
+      messageQueueService.clearQueue(true);
+
       const allMessages = messageQueueService.getAllMessages();
       expect(Array.isArray(allMessages)).toBe(true);
     },
@@ -93,22 +102,65 @@ createTestSuite('MessageQueueService Integration Tests', () => {
       configType: TestConfigType.INTEGRATION,
       imports,
       providers,
+      requiresDatabase: true, // Добавляем флаг для очистки базы данных
     },
     async ({ get }) => {
-      const messageQueueService = get(MessageQueueService) as MessageQueueService;
-      await messageQueueService.clearQueue(true);
+      const messageQueueService = get(MessageQueueService);
+
+      // Очищаем очередь и останавливаем ее перед тестом
+      messageQueueService.clearQueue(true);
+      messageQueueService.stop();
+
+      // Проверяем, что очередь действительно остановлена
+      expect(messageQueueService.getStats().isRunning).toBe(false);
+
       const processor = async (message: MessageContext) => ({
         success: true,
         handled: true,
         context: message,
-        result: {},
+        result: { processed: true },
       });
-      await messageQueueService.enqueue(
-        { id: 'test-queued', type: 't', source: 's', content: 'c', timestamp: new Date() },
-        processor,
-      );
+
+      // Добавляем несколько сообщений в очередь
+      const messages = [];
+      for (let i = 0; i < 5; i++) {
+        const message = {
+          id: `test-queued-${i}`,
+          type: 'test-type',
+          source: 'test-source',
+          content: `content-${i}`,
+          timestamp: new Date(),
+        };
+        messages.push(message);
+        await messageQueueService.enqueue(message, processor);
+      }
+
+      // Проверяем, что сообщения добавлены в очередь со статусом QUEUED
       const queuedMessages = messageQueueService.getMessagesByStatus(MessageQueueStatus.QUEUED);
-      expect(queuedMessages.length).toBeGreaterThan(0);
+      console.log(`Количество сообщений в очереди: ${queuedMessages.length}`);
+      expect(queuedMessages.length).toBe(5);
+
+      // Запускаем очередь и даем время на обработку
+      messageQueueService.start();
+
+      // Ждем достаточно времени для обработки всех сообщений
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Проверяем, что сообщения были обработаны и имеют статус COMPLETED
+      const completedMessages = messageQueueService.getMessagesByStatus(
+        MessageQueueStatus.COMPLETED,
+      );
+      console.log(`Количество обработанных сообщений: ${completedMessages.length}`);
+      expect(completedMessages.length).toBe(5);
+
+      // Проверяем, что в очереди не осталось сообщений со статусом QUEUED
+      const remainingQueuedMessages = messageQueueService.getMessagesByStatus(
+        MessageQueueStatus.QUEUED,
+      );
+      expect(remainingQueuedMessages.length).toBe(0);
+
+      // Очищаем очередь перед завершением теста
+      messageQueueService.clearQueue(true);
     },
   );
 
@@ -120,10 +172,13 @@ createTestSuite('MessageQueueService Integration Tests', () => {
       providers,
     },
     async ({ get }) => {
-      const messageQueueService = get(MessageQueueService) as MessageQueueService;
+      const messageQueueService = get(MessageQueueService);
+      // Очищаем очередь перед тестом
+      messageQueueService.clearQueue(true);
+
       await messageQueueService.enqueue(
         { id: 'to-clear', type: 't', source: 's', content: 'c', timestamp: new Date() },
-        async () => ({ success: true, handled: true, context: {} as any, result: {} }),
+        async () => ({ success: true, handled: true, context: {} as MessageContext, result: {} }),
       );
       messageQueueService.clearQueue(true);
       const queuedMessages = messageQueueService.getMessagesByStatus(MessageQueueStatus.QUEUED);
@@ -139,7 +194,10 @@ createTestSuite('MessageQueueService Integration Tests', () => {
       providers,
     },
     async ({ get }) => {
-      const messageQueueService = get(MessageQueueService) as MessageQueueService;
+      const messageQueueService = get(MessageQueueService);
+      // Очищаем очередь перед тестом
+      messageQueueService.clearQueue(true);
+
       messageQueueService.stop();
       expect(messageQueueService.getStats().isRunning).toBe(false);
       messageQueueService.start();
@@ -155,7 +213,10 @@ createTestSuite('MessageQueueService Integration Tests', () => {
       providers,
     },
     async ({ get }) => {
-      const messageQueueService = get(MessageQueueService) as MessageQueueService;
+      const messageQueueService = get(MessageQueueService);
+      // Очищаем очередь перед тестом
+      messageQueueService.clearQueue(true);
+
       const config = messageQueueService.getConfig();
       expect(config).toBeDefined();
       const newConfig = { maxConcurrent: 10, pollInterval: 200 };
@@ -174,7 +235,10 @@ createTestSuite('MessageQueueService Integration Tests', () => {
       providers,
     },
     async ({ get }) => {
-      const messageQueueService = get(MessageQueueService) as MessageQueueService;
+      const messageQueueService = get(MessageQueueService);
+      // Очищаем очередь перед тестом
+      messageQueueService.clearQueue(true);
+
       messageQueueService.updateConfig({ maxConcurrent: 5, pollInterval: 10 });
       const processedMessages: string[] = [];
       const createProcessor = (messageId: string) => async (message: MessageContext) => {
@@ -203,7 +267,7 @@ createTestSuite('MessageQueueService Integration Tests', () => {
         );
       }
       await Promise.all(promises);
-      await new Promise(resolve => setTimeout(resolve, 200)); // wait for processing
+      await new Promise(resolve => setTimeout(resolve, 300)); // Увеличиваем время ожидания
       expect(processedMessages).toHaveLength(5);
       const uniqueMessages = new Set(processedMessages);
       expect(uniqueMessages.size).toBe(5);

@@ -9,11 +9,27 @@ import { Message } from '../../../src/dialog/entities/message.entity';
 import { CharacterNeedType } from '../../../src/character/enums/character-need-type.enum';
 import { Action, ActionStatus } from '../../../src/character/entities/action.entity';
 import { EmotionalState, EmotionCategory } from '../../../src/character/entities/emotional-state';
-import { TechniqueExecution, UserManipulationProfile } from '../../../src/character/entities/manipulation-technique.entity'; 
-import { StoryPlan, StoryMilestone, MilestoneStatus, TransformationType } from '../../../src/character/entities/story-plan.entity';
-import { ManipulativeTechniqueType, TechniqueIntensity, TechniquePhase } from '../../../src/character/enums/technique.enums';
+import {
+  TechniqueExecution,
+  UserManipulationProfile,
+} from '../../../src/character/entities/manipulation-technique.entity';
+import {
+  StoryPlan,
+  StoryMilestone,
+  MilestoneStatus,
+  TransformationType,
+} from '../../../src/character/entities/story-plan.entity';
+import {
+  ManipulativeTechniqueType,
+  TechniqueIntensity,
+  TechniquePhase,
+} from '../../../src/character/enums/technique.enums';
 import { ActionType } from '../../../src/character/enums/action-type.enum';
-import { CharacterMemory, MemoryImportance, MemoryImportanceLevel } from '../../../src/character/entities/character-memory.entity';
+import {
+  CharacterMemory,
+  MemoryImportance,
+  MemoryImportanceLevel,
+} from '../../../src/character/entities/character-memory.entity';
 import { MemoryType } from '../../../src/character/interfaces/memory.interfaces';
 
 /**
@@ -126,13 +142,13 @@ export class FixtureManager {
     if (!uuidRegex.test(uuid)) {
       return null;
     }
-    
+
     // Удаляем дефисы и проверяем, содержит ли строка только нули
     const cleanUuid = uuid.replace(/-/g, '');
     if (cleanUuid.match(/^0+$/)) {
       return 0;
     }
-    
+
     // Пытаемся получить числовой ID из UUID, игнорируя ведущие нули
     try {
       // Ищем первый ненулевой символ
@@ -140,20 +156,20 @@ export class FixtureManager {
       while (startIndex < cleanUuid.length && cleanUuid[startIndex] === '0') {
         startIndex++;
       }
-      
+
       // Если все символы - нули, возвращаем 0
       if (startIndex === cleanUuid.length) {
         return 0;
       }
-      
+
       // Получаем часть строки, начиная с первого ненулевого символа
       const numericPart = cleanUuid.substring(startIndex);
-      
+
       // Если строка слишком длинная для числа, возвращаем только первые 9 символов
       if (numericPart.length > 9) {
         return parseInt(numericPart.substring(0, 9));
       }
-      
+
       return parseInt(numericPart);
     } catch (error) {
       console.warn('Не удалось преобразовать UUID в числовой ID:', error.message);
@@ -168,7 +184,10 @@ export class FixtureManager {
    * @returns ID в требуемом формате
    * @public для использования в тестах
    */
-  public ensureIdFormat(id: string | number, targetType: 'string' | 'number' = 'number'): string | number {
+  public ensureIdFormat(
+    id: string | number,
+    targetType: 'string' | 'number' = 'number',
+  ): string | number {
     if (targetType === 'number') {
       if (typeof id === 'number') {
         return id;
@@ -177,7 +196,8 @@ export class FixtureManager {
         const uuidNumber = this.uuidToNumeric(id);
         return uuidNumber !== null ? uuidNumber : parseInt(id);
       }
-    } else { // targetType === 'string'
+    } else {
+      // targetType === 'string'
       if (typeof id === 'string') {
         // Проверяем, является ли строка UUID
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -195,28 +215,39 @@ export class FixtureManager {
    */
   public async createUser(userData: Partial<User> = {}): Promise<User> {
     const userRepository = this.getRepository(User);
-    
+
+    // Ensure unique fields to avoid duplication errors in parallel tests
+    const uniqueSuffix = `${Date.now()}_${Math.round(Math.random() * 1e6)}`;
+
+    const generatedCredentials = {
+      telegramId: `tg_${uniqueSuffix}`,
+      username: `test_user_${uniqueSuffix}`,
+      email: `user_${uniqueSuffix}@example.com`,
+    };
+
+    // Если пользователь передал email/username/telegramId вручную, сохраняем их без изменений.
+    // Для остальных полей используем автоматически сгенерированные уникальные значения.
+
     const defaultUser = {
-      telegramId: `${Date.now()}${Math.floor(Math.random() * 1000)}`,
-      username: `test_user_${Date.now()}`,
+      ...generatedCredentials,
       firstName: 'Тестовый',
       lastName: 'Пользователь',
       isActive: true,
-      ...userData
-    };
-    
+      ...userData,
+    } as Partial<User>;
+
     // Если указан числовой ID и требуются UUID, преобразуем
     if (defaultUser.id && typeof defaultUser.id === 'number' && !this.options.useNumericIds) {
       // Используем явное преобразование типа
       (defaultUser as any).id = this.numericToUuid(defaultUser.id);
     }
-    
+
     const user = userRepository.create(defaultUser);
     await userRepository.save(user);
-    
+
     if (!this.testData.users) this.testData.users = [];
     this.testData.users.push(user);
-    
+
     return user;
   }
 
@@ -234,19 +265,19 @@ export class FixtureManager {
     } else if (characterData.userId && !characterData.user) {
       // Если указан только userId, обрабатываем его соответствующим образом
       const userId = characterData.userId;
-      
+
       if (typeof userId === 'number') {
         // Создаем пользователя с числовым ID
         const idValue = this.options.useNumericIds ? userId : this.numericToUuid(userId);
-        const user = await this.createUser({ 
-          id: idValue as any // Используем any для обхода проверки типов
+        const user = await this.createUser({
+          id: idValue as any, // Используем any для обхода проверки типов
         });
         characterData.user = user;
         delete characterData.userId; // Удаляем, чтобы избежать конфликта
       } else if (typeof userId === 'string') {
         // Проверяем, является ли строка UUID
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-        
+
         if (uuidRegex.test(userId)) {
           // Если это UUID, используем как есть
           const user = await this.createUser({ id: userId });
@@ -255,16 +286,16 @@ export class FixtureManager {
           // Если это не UUID, преобразуем в числовой ID или UUID в зависимости от настроек
           const numericId = parseInt(userId);
           const idValue = this.options.useNumericIds ? numericId : this.numericToUuid(numericId);
-          const user = await this.createUser({ 
-            id: idValue as any // Используем any для обхода проверки типов
+          const user = await this.createUser({
+            id: idValue as any, // Используем any для обхода проверки типов
           });
           characterData.user = user;
         }
-        
+
         delete characterData.userId; // Удаляем, чтобы избежать конфликта
       }
     }
-    
+
     // Подготавливаем personality в зависимости от типа
     let personalityData: any = {
       traits: ['умный', 'добрый'],
@@ -275,26 +306,39 @@ export class FixtureManager {
       strengths: ['логика', 'терпение'],
       weaknesses: ['нетерпеливость', 'перфекционизм'],
     };
-    
+
     if (characterData.personality) {
       if (typeof characterData.personality === 'string') {
         try {
           // Если personality передан как строка, парсим его как JSON
           personalityData = JSON.parse(characterData.personality as string);
         } catch (error) {
-          console.warn('Не удалось распарсить personality как JSON, используем значение по умолчанию:', error.message);
+          console.warn(
+            'Не удалось распарсить personality как JSON, используем значение по умолчанию:',
+            error.message,
+          );
         }
       } else if (typeof characterData.personality === 'object') {
         // Если personality - объект, проверяем наличие всех необходимых полей
-        const requiredFields = ['traits', 'hobbies', 'fears', 'values', 'musicTaste', 'strengths', 'weaknesses'];
-        const hasAllFields = requiredFields.every(field => 
-          Array.isArray((characterData.personality as any)[field])
+        const requiredFields = [
+          'traits',
+          'hobbies',
+          'fears',
+          'values',
+          'musicTaste',
+          'strengths',
+          'weaknesses',
+        ];
+        const hasAllFields = requiredFields.every(field =>
+          Array.isArray((characterData.personality as any)[field]),
         );
-        
+
         if (hasAllFields) {
           personalityData = characterData.personality;
         } else {
-          console.warn('Объект personality не содержит все необходимые поля, дополняем значениями по умолчанию');
+          console.warn(
+            'Объект personality не содержит все необходимые поля, дополняем значениями по умолчанию',
+          );
           // Объединяем переданные данные с дефолтными, чтобы обеспечить наличие всех полей
           personalityData = {
             traits: ['умный', 'добрый'],
@@ -304,7 +348,7 @@ export class FixtureManager {
             musicTaste: ['классика', 'электроника'],
             strengths: ['логика', 'терпение'],
             weaknesses: ['нетерпеливость', 'перфекционизм'],
-            ...(characterData.personality as any)
+            ...(characterData.personality as any),
           };
         }
       }
@@ -329,10 +373,10 @@ export class FixtureManager {
     });
 
     const savedCharacter = await this.characterRepository.save(character);
-    
+
     if (!this.testData.characters) this.testData.characters = [];
     this.testData.characters.push(savedCharacter);
-    
+
     return savedCharacter;
   }
 
@@ -343,15 +387,15 @@ export class FixtureManager {
    */
   public async createNeed(needData: Partial<Need> = {}): Promise<Need> {
     const needRepository = this.getRepository(Need);
-    
+
     if (!needData.character && this.testData.characters && this.testData.characters.length > 0) {
       needData.character = this.testData.characters[0];
     }
-    
+
     if (!needData.character) {
       throw new Error('Необходимо указать персонажа для потребности или создать его заранее');
     }
-    
+
     const defaultNeed = {
       type: CharacterNeedType.COMMUNICATION,
       priority: 5,
@@ -360,15 +404,15 @@ export class FixtureManager {
       growthRate: 1.0,
       decayRate: 0.5,
       threshold: 80,
-      ...needData
+      ...needData,
     };
-    
+
     const need = needRepository.create(defaultNeed);
     await needRepository.save(need);
-    
+
     if (!this.testData.needs) this.testData.needs = [];
     this.testData.needs.push(need);
-    
+
     return need;
   }
 
@@ -388,10 +432,10 @@ export class FixtureManager {
       // Если указан только объект user, добавляем числовое значение userId
       dialogData.userId = parseInt(dialogData.user.id.toString());
     }
-    
+
     // Создаем персонажа, если не указан
     if (!dialogData.character && !dialogData.characterId) {
-      const user = dialogData.user || await this.createUser();
+      const user = dialogData.user || (await this.createUser());
       const character = await this.createCharacter({ user });
       dialogData.character = character;
     }
@@ -408,12 +452,12 @@ export class FixtureManager {
       ...defaultData,
       ...dialogData,
     });
-    
+
     const savedDialog = await this.dialogRepository.save(dialog);
-    
+
     if (!this.testData.dialogs) this.testData.dialogs = [];
     this.testData.dialogs.push(savedDialog);
-    
+
     return savedDialog;
   }
 
@@ -428,14 +472,14 @@ export class FixtureManager {
       const dialog = await this.createDialog();
       messageData.dialogId = dialog.id;
     }
-    
+
     // Если указан диалог, но не указаны пользователь и персонаж
     if (messageData.dialogId && !messageData.userId && !messageData.characterId) {
       const dialog = await this.dialogRepository.findOne({
         where: { id: messageData.dialogId },
-        relations: ['user', 'character']
+        relations: ['user', 'character'],
       });
-      
+
       if (dialog) {
         if (messageData.isFromUser !== false) {
           messageData.userId = dialog.userId;
@@ -457,12 +501,12 @@ export class FixtureManager {
       ...defaultData,
       ...messageData,
     });
-    
+
     const savedMessage = await this.messageRepository.save(message);
-    
+
     if (!this.testData.messages) this.testData.messages = [];
     this.testData.messages.push(savedMessage);
-    
+
     return savedMessage;
   }
 
@@ -504,7 +548,7 @@ export class FixtureManager {
       // Отключаем проверку внешних ключей перед очисткой
       await this.dataSource.query('SET session_replication_role = replica;');
 
-    const entities = this.dataSource.entityMetadatas;
+      const entities = this.dataSource.entityMetadatas;
 
       // Сначала удаляем зависимые таблицы, потом основные
       for (const entity of entities.reverse()) {
@@ -551,19 +595,21 @@ export class FixtureManager {
    */
   public async createEmotionalState(emotionalStateData: any = {}): Promise<any> {
     const emotionalStateRepository = this.dataSource.getTreeRepository('emotional_state');
-    
+
     // Создаем персонажа, если он не указан
     let character;
     if (!emotionalStateData.character && !emotionalStateData.characterId) {
       character = await this.createCharacter();
       emotionalStateData.characterId = character.id;
     } else if (emotionalStateData.characterId && !emotionalStateData.character) {
-      const characterId = this.ensureIdFormat(emotionalStateData.characterId, 
-        this.options.useNumericIds ? 'number' : 'string');
+      const characterId = this.ensureIdFormat(
+        emotionalStateData.characterId,
+        this.options.useNumericIds ? 'number' : 'string',
+      );
       character = await this.createCharacter({ id: characterId as any });
       emotionalStateData.characterId = character.id;
     }
-    
+
     const defaultEmotionalState = {
       primary: 'happy',
       secondary: 'calm',
@@ -574,15 +620,15 @@ export class FixtureManager {
       current: true,
       createdAt: new Date(),
       updatedAt: new Date(),
-      ...emotionalStateData
+      ...emotionalStateData,
     };
-    
+
     const emotionalState = emotionalStateRepository.create(defaultEmotionalState);
     await emotionalStateRepository.save(emotionalState);
-    
+
     if (!this.testData.emotionalStates) this.testData.emotionalStates = [];
     this.testData.emotionalStates.push(emotionalState);
-    
+
     return emotionalState;
   }
 
@@ -599,7 +645,10 @@ export class FixtureManager {
       actionData.character = character;
       actionData.characterId = Number(character.id);
     } else if (actionData.characterId && !actionData.character) {
-      const characterId = this.ensureIdFormat(actionData.characterId, this.options.useNumericIds ? 'number' : 'string');
+      const characterId = this.ensureIdFormat(
+        actionData.characterId,
+        this.options.useNumericIds ? 'number' : 'string',
+      );
       const character = await this.createCharacter({ id: characterId as any });
       actionData.character = character;
       actionData.characterId = Number(character.id);
@@ -614,7 +663,7 @@ export class FixtureManager {
       resourceCost: 10,
       relatedNeed: CharacterNeedType.COMMUNICATION,
       metadata: JSON.stringify({}),
-      ...actionData
+      ...actionData,
     };
     const action = actionRepository.create(defaultAction);
     await actionRepository.save(action);
@@ -628,7 +677,9 @@ export class FixtureManager {
    * @param executionData Данные исполнения техники
    * @returns Созданное исполнение техники
    */
-  public async createTechniqueExecution(executionData: Partial<TechniqueExecution> = {}): Promise<TechniqueExecution> {
+  public async createTechniqueExecution(
+    executionData: Partial<TechniqueExecution> = {},
+  ): Promise<TechniqueExecution> {
     const executionRepository = this.getRepository(TechniqueExecution);
     // Если не указан персонаж, создаем его
     if (!executionData.character && !executionData.characterId) {
@@ -641,7 +692,10 @@ export class FixtureManager {
         executionData.userId = Number(character.user.id);
       }
     } else if (executionData.characterId && !executionData.character) {
-      const characterId = this.ensureIdFormat(executionData.characterId, this.options.useNumericIds ? 'number' : 'string');
+      const characterId = this.ensureIdFormat(
+        executionData.characterId,
+        this.options.useNumericIds ? 'number' : 'string',
+      );
       const character = await this.createCharacter({ id: characterId as any });
       executionData.characterId = Number(character.id);
       if (!character.user) {
@@ -672,9 +726,10 @@ export class FixtureManager {
       generatedResponse: 'Тестовый ответ с использованием техники',
       effectiveness: 75,
       ethicalScore: 60,
-      ...executionData
+      ...executionData,
     };
-    if (defaultExecution.characterId) defaultExecution.characterId = Number(defaultExecution.characterId);
+    if (defaultExecution.characterId)
+      defaultExecution.characterId = Number(defaultExecution.characterId);
     if (defaultExecution.userId) defaultExecution.userId = Number(defaultExecution.userId);
     const execution = executionRepository.create(defaultExecution);
     await executionRepository.save(execution);
@@ -688,7 +743,9 @@ export class FixtureManager {
    * @param profileData Данные профиля
    * @returns Созданный профиль
    */
-  public async createUserManipulationProfile(profileData: Partial<UserManipulationProfile> = {}): Promise<UserManipulationProfile> {
+  public async createUserManipulationProfile(
+    profileData: Partial<UserManipulationProfile> = {},
+  ): Promise<UserManipulationProfile> {
     const profileRepository = this.getRepository(UserManipulationProfile);
     if (!profileData.userId) {
       const user = await this.createUser();
@@ -718,10 +775,10 @@ export class FixtureManager {
       susceptibilityRatings: {
         [ManipulativeTechniqueType.PUSH_PULL]: 75,
         [ManipulativeTechniqueType.EXCLUSIVITY_ILLUSION]: 80,
-        [ManipulativeTechniqueType.EMOTIONAL_BLACKMAIL]: 45
+        [ManipulativeTechniqueType.EMOTIONAL_BLACKMAIL]: 45,
       },
       lastUpdate: new Date(),
-      ...profileData
+      ...profileData,
     };
     if (defaultProfile.userId) defaultProfile.userId = Number(defaultProfile.userId);
     if (defaultProfile.characterId) defaultProfile.characterId = Number(defaultProfile.characterId);
@@ -739,18 +796,20 @@ export class FixtureManager {
    */
   public async createStoryPlan(planData: Partial<StoryPlan> = {}): Promise<StoryPlan> {
     const planRepository = this.getRepository(StoryPlan);
-    
+
     // Если не указан персонаж, создаем его
     if (!planData.character && !planData.characterId) {
       const character = await this.createCharacter();
       planData.characterId = character.id;
     } else if (planData.characterId && !planData.character) {
-      const characterId = this.ensureIdFormat(planData.characterId, 
-        this.options.useNumericIds ? 'number' : 'string');
+      const characterId = this.ensureIdFormat(
+        planData.characterId,
+        this.options.useNumericIds ? 'number' : 'string',
+      );
       const character = await this.createCharacter({ id: characterId as any });
       planData.characterId = character.id;
     }
-    
+
     const defaultPlan = {
       title: 'Тестовый сюжетный план',
       description: 'План для эволюции персонажа в тестовом окружении',
@@ -760,7 +819,7 @@ export class FixtureManager {
         startingState: { confidence: 'low', openness: 'medium' },
         endingState: { confidence: 'high', openness: 'high' },
         majorThemes: ['самореализация', 'преодоление страхов'],
-        evolutionDirection: 'growth'
+        evolutionDirection: 'growth',
       },
       retrospectivePlanning: {
         preExistingTraits: { introversion: 'high', sensitivity: 'medium' },
@@ -768,27 +827,27 @@ export class FixtureManager {
           {
             description: 'Первый успешный проект',
             timeframe: '2 года назад',
-            impact: { confidence: '+10%', skills: '+15%' }
-          }
+            impact: { confidence: '+10%', skills: '+15%' },
+          },
         ],
         characterHistory: 'Базовая история персонажа для тестирования',
-        pastInfluences: ['наставник', 'книги']
+        pastInfluences: ['наставник', 'книги'],
       },
       adaptabilitySettings: {
         coreEventsRigidity: 8, // 1-10
         detailsFlexibility: 7, // 1-10
         userInfluenceWeight: 6, // 1-10
-        emergentEventTolerance: 5 // 1-10
+        emergentEventTolerance: 5, // 1-10
       },
-      ...planData
+      ...planData,
     };
-    
+
     const plan = planRepository.create(defaultPlan);
     await planRepository.save(plan);
-    
+
     if (!this.testData.storyPlans) this.testData.storyPlans = [];
     this.testData.storyPlans.push(plan);
-    
+
     return plan;
   }
 
@@ -797,37 +856,41 @@ export class FixtureManager {
    * @param milestoneData Данные этапа
    * @returns Созданный этап
    */
-  public async createStoryMilestone(milestoneData: Partial<StoryMilestone> = {}): Promise<StoryMilestone> {
+  public async createStoryMilestone(
+    milestoneData: Partial<StoryMilestone> = {},
+  ): Promise<StoryMilestone> {
     const milestoneRepository = this.getRepository(StoryMilestone);
-    
+
     // Если не указан план, создаем его
     if (!milestoneData.storyPlan && !milestoneData.storyPlanId) {
       const storyPlan = await this.createStoryPlan();
       milestoneData.storyPlanId = storyPlan.id;
     } else if (milestoneData.storyPlanId && !milestoneData.storyPlan) {
-      const storyPlanId = this.ensureIdFormat(milestoneData.storyPlanId, 
-        this.options.useNumericIds ? 'number' : 'string');
+      const storyPlanId = this.ensureIdFormat(
+        milestoneData.storyPlanId,
+        this.options.useNumericIds ? 'number' : 'string',
+      );
       const storyPlan = await this.createStoryPlan({ id: storyPlanId as any });
       milestoneData.storyPlanId = storyPlan.id;
     }
-    
+
     // Если не указан персонаж, берем из плана или создаем новый
     if (!milestoneData.characterId) {
       if (milestoneData.storyPlanId) {
         const storyPlan = await this.getRepository(StoryPlan).findOne({
-          where: { id: milestoneData.storyPlanId as any }
+          where: { id: milestoneData.storyPlanId as any },
         });
         if (storyPlan) {
           milestoneData.characterId = storyPlan.characterId;
         }
       }
-      
+
       if (!milestoneData.characterId) {
         const character = await this.createCharacter();
         milestoneData.characterId = character.id;
       }
     }
-    
+
     const defaultMilestone = {
       title: 'Тестовый этап сюжета',
       description: 'Описание тестового этапа сюжетной линии',
@@ -840,27 +903,27 @@ export class FixtureManager {
         targetState: { trait: 'общительность', level: 'средний' },
         progressIndicators: ['инициирует диалоги', 'делится личной информацией'],
         prerequisiteEvents: [],
-        transitionMethod: 'gradual' as const
+        transitionMethod: 'gradual' as const,
       },
       causalConnections: {
         triggeringConditions: ['достижение определенного уровня доверия'],
         consequenceEvents: [],
         timelineConstraints: {
           minimumDaysBefore: 3,
-          maximumDaysBefore: 14
-        }
+          maximumDaysBefore: 14,
+        },
       },
       rigidityLevel: 5,
       isKeyMilestone: false,
-      ...milestoneData
+      ...milestoneData,
     };
-    
+
     const milestone = milestoneRepository.create(defaultMilestone);
     await milestoneRepository.save(milestone);
-    
+
     if (!this.testData.storyMilestones) this.testData.storyMilestones = [];
     this.testData.storyMilestones.push(milestone);
-    
+
     return milestone;
   }
 
@@ -869,9 +932,11 @@ export class FixtureManager {
    * @param memoryData Данные памяти персонажа
    * @returns Созданная память персонажа
    */
-  public async createCharacterMemory(memoryData: Partial<CharacterMemory> = {}): Promise<CharacterMemory> {
+  public async createCharacterMemory(
+    memoryData: Partial<CharacterMemory> = {},
+  ): Promise<CharacterMemory> {
     const memoryRepository = this.getRepository(CharacterMemory);
-    
+
     // Если не указан персонаж, создаем нового
     if (!memoryData.character && !memoryData.characterId) {
       const character = await this.createCharacter();
@@ -879,12 +944,12 @@ export class FixtureManager {
     } else if (memoryData.character && !memoryData.characterId) {
       memoryData.characterId = memoryData.character.id;
     }
-    
+
     // Преобразуем characterId в числовой формат, если используются числовые ID
     if (this.options.useNumericIds && memoryData.characterId) {
       memoryData.characterId = this.ensureIdFormat(memoryData.characterId, 'number') as number;
     }
-    
+
     const defaultMemory = {
       content: `Тестовое воспоминание ${Date.now()}`,
       type: MemoryType.CONVERSATION,
@@ -896,20 +961,20 @@ export class FixtureManager {
       summary: 'Краткое описание тестового воспоминания',
       metadata: { testKey: 'testValue', source: 'fixture-manager' },
     };
-    
+
     const memory = memoryRepository.create({
       ...defaultMemory,
       ...memoryData,
     });
-    
+
     const savedMemory = await memoryRepository.save(memory);
-    
+
     // Сохраняем в тестовые данные
     if (!this.testData.characterMemories) {
       this.testData.characterMemories = [];
     }
     this.testData.characterMemories.push(savedMemory);
-    
+
     return savedMemory;
   }
-} 
+}

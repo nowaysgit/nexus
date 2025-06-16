@@ -64,12 +64,12 @@ export class CharacterManagementService {
   /**
    * Создание нового персонажа с базовыми настройками
    */
-  async createCharacter(dto: CreateCharacterDto, userId: number): Promise<Character> {
+  async createCharacter(dto: CreateCharacterDto, userId: number | string): Promise<Character> {
     try {
       // Создание персонажа
       const character = this.characterRepository.create({
         ...dto,
-        userId: userId, // userId уже является числом
+        userId: typeof userId === 'number' ? String(userId) : userId,
         isActive: true,
         createdAt: new Date(),
       });
@@ -222,7 +222,7 @@ export class CharacterManagementService {
         decayRate: 0.5,
         threshold: 50,
         priority: 5, // Базовый приоритет
-        isActive: true
+        isActive: true,
       });
 
       await this.needRepository.save(need);
@@ -257,7 +257,9 @@ export class CharacterManagementService {
     );
 
     const averageValue =
-      needs.length > 0 ? needs.reduce((sum, need) => sum + need.currentValue, 0) / needs.length : 50;
+      needs.length > 0
+        ? needs.reduce((sum, need) => sum + need.currentValue, 0) / needs.length
+        : 50;
 
     const criticalNeeds = needs.filter(need => need.currentValue < 25);
 

@@ -9,14 +9,13 @@ export const mockConfigService = {
     if (key === 'telegram') {
       return {
         token: 'test-telegram-token',
-        webhook: {
-          enabled: false,
-          domain: 'test.domain',
-          path: '/webhook',
-        },
+        launchMode: 'polling',
+        webhookUrl: 'https://example.com/webhook',
+        webhookPath: '/webhook',
+        maxMessageLength: 20,
       };
     }
-    
+
     // Конфигурация для Rollbar
     if (key === 'logging.rollbar') {
       return {
@@ -27,7 +26,7 @@ export const mockConfigService = {
         captureUnhandledRejections: false,
       };
     }
-    
+
     // Конфигурация для LLM
     if (key === 'llm') {
       return {
@@ -41,7 +40,7 @@ export const mockConfigService = {
         },
       };
     }
-    
+
     // Общая конфигурация
     if (key === 'app') {
       return {
@@ -51,7 +50,7 @@ export const mockConfigService = {
         debug: true,
       };
     }
-    
+
     // Для JWT
     if (key === 'jwt') {
       return {
@@ -59,7 +58,24 @@ export const mockConfigService = {
         expiresIn: '1h',
       };
     }
-    
+
+    // API ключи для ApiKeyService
+    if (key === 'api.key') {
+      console.log('[MockConfigService] get api.key');
+
+      return 'client-test-api-key';
+    }
+
+    if (key === 'admin.apiKey') {
+      console.log('[MockConfigService] get admin.apiKey');
+      return 'admin-test-api-key';
+    }
+
+    if (key === 'security.apiKey') {
+      console.log('[MockConfigService] get security.apiKey');
+      return 'test-api-key';
+    }
+
     // Возвращаем null для неизвестных ключей
     return null;
   }),
@@ -71,4 +87,4 @@ export const mockConfigService = {
 export const ConfigServiceProvider: Provider = {
   provide: 'ConfigService',
   useValue: mockConfigService,
-}; 
+};

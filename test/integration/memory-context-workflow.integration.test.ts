@@ -1,5 +1,9 @@
-import { createTestSuite, createTest, TestConfigType } from '../../lib/tester';
+import { createTestSuite, createTest, TestConfigType, TestModuleBuilder } from '../../lib/tester';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { TestConfigurations } from '../../lib/tester/test-configurations';
+import { TestingModule } from '@nestjs/testing';
+import { DataSource } from 'typeorm';
+import { FixtureManager } from '../../lib/tester/fixtures/fixture-manager';
 
 import { MemoryService } from '../../src/character/services/memory.service';
 import { ContextCompressionService } from '../../src/character/services/context-compression.service';
@@ -25,33 +29,63 @@ import { MonitoringModule } from '../../src/monitoring/monitoring.module';
 import { PromptTemplateModule } from '../../src/prompt-template/prompt-template.module';
 
 createTestSuite('Memory and Context Workflow Integration Tests', () => {
+  let moduleRef: TestingModule;
+  let fixtureManager: FixtureManager;
+  let dataSource: DataSource;
+
+  beforeAll(async () => {
+    const rawImports = [
+      CharacterModule,
+      ContextCompressionModule,
+      UserModule,
+      DialogModule,
+      LLMModule,
+      CacheModule,
+      LoggingModule,
+      MessageQueueModule,
+      ValidationModule,
+      MonitoringModule,
+      PromptTemplateModule,
+    ];
+
+    const imports = TestConfigurations.prepareImportsForTesting(rawImports);
+    const providers = TestConfigurations.requiredMocksAdder(imports);
+
+    moduleRef = await TestModuleBuilder.create()
+      .withImports(imports as any)
+      .withProviders(providers as any)
+      .withRequiredMocks()
+      .compile();
+
+    dataSource = moduleRef.get<DataSource>('DataSource');
+    fixtureManager = new FixtureManager(dataSource);
+  });
+
+  beforeEach(async () => {
+    await fixtureManager.cleanDatabase();
+  });
+
+  afterAll(async () => {
+    if (moduleRef) {
+      await moduleRef.close();
+    }
+  });
+
   createTest(
     {
       name: 'should create character and test memory service',
       configType: TestConfigType.INTEGRATION,
-      imports: [
-        CharacterModule,
-        ContextCompressionModule,
-        UserModule,
-        DialogModule,
-        LLMModule,
-        CacheModule,
-        LoggingModule,
-        MessageQueueModule,
-        ValidationModule,
-        MonitoringModule,
-        PromptTemplateModule,
-      ],
-      providers: [],
     },
-    async context => {
-      const characterService = context.get(CharacterService);
-      const userService = context.get(UserService);
-      const memoryService = context.get(MemoryService);
+    async () => {
+      const characterService = moduleRef.get(CharacterService);
+      const userService = moduleRef.get(UserService);
+      const memoryService = moduleRef.get(MemoryService);
 
-      const characterRepository = context.get<Repository<Character>>(getRepositoryToken(Character));
-      const userRepository = context.get<Repository<User>>(getRepositoryToken(User));
-      const memoryRepository = context.get<Repository<CharacterMemory>>(
+      const characterRepository = moduleRef.get<Repository<Character>>(
+        getRepositoryToken(Character),
+      );
+      const userRepository = moduleRef.get<Repository<User>>(getRepositoryToken(User));
+      const memoryRepository = moduleRef.get<Repository<CharacterMemory>>(
         getRepositoryToken(CharacterMemory),
       );
 
@@ -125,26 +159,14 @@ createTestSuite('Memory and Context Workflow Integration Tests', () => {
     {
       name: 'should handle context compression service',
       configType: TestConfigType.INTEGRATION,
-      imports: [
-        CharacterModule,
-        ContextCompressionModule,
-        UserModule,
-        DialogModule,
-        LLMModule,
-        CacheModule,
-        LoggingModule,
-        MessageQueueModule,
-        ValidationModule,
-        MonitoringModule,
-        PromptTemplateModule,
-      ],
-      providers: [],
     },
-    async context => {
-      const characterService = context.get(CharacterService);
-      const contextCompressionService = context.get(ContextCompressionService);
-      const userRepository = context.get<Repository<User>>(getRepositoryToken(User));
-      const characterRepository = context.get<Repository<Character>>(getRepositoryToken(Character));
+    async () => {
+      const characterService = moduleRef.get(CharacterService);
+      const contextCompressionService = moduleRef.get(ContextCompressionService);
+      const userRepository = moduleRef.get<Repository<User>>(getRepositoryToken(User));
+      const characterRepository = moduleRef.get<Repository<Character>>(
+        getRepositoryToken(Character),
+      );
 
       const user = await userRepository.save(new User());
 

@@ -17,7 +17,7 @@ export const MockLogService = {
   setContext: jest.fn().mockReturnThis(),
   getContext: jest.fn().mockReturnValue('TestContext'),
   forContext: jest.fn().mockReturnThis(),
-  onModuleDestroy: jest.fn()
+  onModuleDestroy: jest.fn(),
 };
 
 // Мок для RollbarService
@@ -28,12 +28,12 @@ export const MockRollbarService = {
   error: jest.fn(),
   critical: jest.fn(),
   onModuleInit: jest.fn(),
-  enabled: false
+  enabled: false,
 };
 
 // Мок для ConfigService
 export const createMockConfigService = () => ({
-  get: jest.fn().mockImplementation((key) => {
+  get: jest.fn().mockImplementation(key => {
     if (key === 'database') {
       return {
         host: 'localhost',
@@ -47,13 +47,14 @@ export const createMockConfigService = () => ({
     if (key === 'telegram.webhook') return 'fake-webhook';
     if (key === 'telegram.secret') return 'fake-secret';
     if (key === 'llm.provider') return 'llama';
-    if (key === 'logging.rollbar') return { 
-      enabled: false, 
-      accessToken: 'fake-token',
-      environment: 'test',
-      captureUncaught: false,
-      captureUnhandledRejections: false
-    };
+    if (key === 'logging.rollbar')
+      return {
+        enabled: false,
+        accessToken: 'fake-token',
+        environment: 'test',
+        captureUncaught: false,
+        captureUnhandledRejections: false,
+      };
     if (key === 'logging.rollbar.enabled') return false;
     if (key === 'logging.logger.level') return 'info';
     return null;
@@ -65,7 +66,7 @@ export const MockUserService = {
   findByEmail: jest.fn(),
   create: jest.fn(),
   update: jest.fn(),
-  delete: jest.fn()
+  delete: jest.fn(),
 };
 
 // Мок для NeedsService
@@ -74,7 +75,7 @@ export const MockNeedsService = {
   updateNeeds: jest.fn(),
   calculatePriority: jest.fn(),
   getNeedsByCharacterId: jest.fn(),
-  getNeeds: jest.fn()
+  getNeeds: jest.fn(),
 };
 
 // Мок для LLMProviderManagerService
@@ -83,13 +84,14 @@ export const MockLLMProviderManagerService = {
   getAvailableProviders: jest.fn().mockImplementation(() => [mockLlamaProviderService]),
   isProviderAvailable: jest.fn().mockImplementation(() => true),
   onModuleInit: jest.fn(),
+  generateJSON: jest.fn().mockImplementation(async () => ({})),
 };
 
 // Мок для EmotionalStateService
 export const MockEmotionalStateService = {
   getEmotionalState: jest.fn(),
   updateEmotionalState: jest.fn(),
-  getEmotionalManifestations: jest.fn()
+  getEmotionalManifestations: jest.fn(),
 };
 
 // Мок для TelegramService
@@ -97,7 +99,7 @@ export const MockTelegramService = {
   sendMessage: jest.fn(),
   getMe: jest.fn(),
   onModuleInit: jest.fn(),
-  onApplicationShutdown: jest.fn()
+  onApplicationShutdown: jest.fn(),
 };
 
 // Мок для MemoryService
@@ -111,7 +113,7 @@ export const MockMemoryService = {
   searchMemoriesByKeywords: jest.fn(),
   limitMemoriesCount: jest.fn(),
   updateMemoryImportance: jest.fn(),
-  markMemoryAsRecalled: jest.fn()
+  markMemoryAsRecalled: jest.fn(),
 };
 
 // Мок для EventEmitter
@@ -121,4 +123,4 @@ export class MockEventEmitter {
   once = jest.fn();
   removeListener = jest.fn();
   removeAllListeners = jest.fn();
-} 
+}

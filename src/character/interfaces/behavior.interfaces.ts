@@ -103,28 +103,28 @@ export interface ActionResult {
 export interface ActionTriggerContext {
   /** ID персонажа */
   characterId: number;
-  
-  /** ID пользователя */
-  userId: number;
-  
+
+  /** ID пользователя (может быть числовым или UUID строкой) */
+  userId: string | number;
+
   /** Тип триггера */
   triggerType: string;
-  
+
   /** Данные триггера */
   triggerData?: Record<string, unknown>;
-  
+
   /** Время создания триггера */
   timestamp?: Date;
-  
+
   /** Мотивации персонажа */
   motivations?: IMotivation[];
-  
+
   /** Выражение потребности персонажа */
   needsExpression?: string;
-  
+
   /** Эмоциональный ответ персонажа */
   emotionalResponse?: string;
-  
+
   /** Промпт для сообщения персонажа */
   messagePrompt?: string;
 }

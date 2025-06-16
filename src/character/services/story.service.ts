@@ -36,6 +36,8 @@ export class StoryService {
     private readonly dialogService: DialogService,
     private readonly logService: LogService,
   ) {
+    // Устанавливаем контекст логгера для упрощения поиска сообщений в логах
+    this.logService.setContext(StoryService.name);
     this.logService.log('Расширенный сервис сюжетных событий и планирования инициализирован');
   }
 

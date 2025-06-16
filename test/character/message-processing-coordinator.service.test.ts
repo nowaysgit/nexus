@@ -1,4 +1,5 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { TestModuleBuilder } from '../../lib/tester/utils/test-module-builder';
+import { createTestSuite, createTest } from '../../lib/tester';
 import { MessageProcessingCoordinator } from '../../src/character/services/message-processing-coordinator.service';
 import { MessageAnalysisService } from '../../src/character/services/message-analysis.service';
 import { NeedsService } from '../../src/character/services/needs.service';
@@ -18,7 +19,7 @@ interface ProcessUserMessageResult {
   error?: Error;
 }
 
-describe('MessageProcessingCoordinator Tests', () => {
+createTestSuite('MessageProcessingCoordinator Tests', () => {
   let service: MessageProcessingCoordinator;
   let mockMessageAnalysisService: Partial<MessageAnalysisService>;
   let mockNeedsService: Partial<NeedsService>;
@@ -27,6 +28,7 @@ describe('MessageProcessingCoordinator Tests', () => {
   let mockEmotionalStateService: Partial<EmotionalStateService>;
   let mockManipulationService: Partial<ManipulationService>;
   let mockLogService: Partial<LogService>;
+  let moduleRef: import('@nestjs/testing').TestingModule | null = null;
 
   beforeEach(async () => {
     // Создаем моки для зависимостей
@@ -64,8 +66,8 @@ describe('MessageProcessingCoordinator Tests', () => {
       verbose: jest.fn(),
     };
 
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
+    moduleRef = await TestModuleBuilder.create()
+      .withProviders([
         MessageProcessingCoordinator,
         { provide: MessageAnalysisService, useValue: mockMessageAnalysisService },
         { provide: NeedsService, useValue: mockNeedsService },
@@ -74,17 +76,25 @@ describe('MessageProcessingCoordinator Tests', () => {
         { provide: EmotionalStateService, useValue: mockEmotionalStateService },
         { provide: ManipulationService, useValue: mockManipulationService },
         { provide: LogService, useValue: mockLogService },
-      ],
-    }).compile();
+      ])
+      .withRequiredMocks()
+      .compile();
 
-    service = module.get<MessageProcessingCoordinator>(MessageProcessingCoordinator);
+    service = moduleRef.get<MessageProcessingCoordinator>(MessageProcessingCoordinator);
   });
 
-  it('should be defined', () => {
+  afterEach(async () => {
+    if (moduleRef) {
+      await moduleRef.close();
+    }
+    jest.clearAllMocks();
+  });
+
+  createTest({ name: 'should be defined' }, async () => {
     expect(service).toBeDefined();
   });
 
-  it('should process user message successfully', async () => {
+  createTest({ name: 'should process user message successfully' }, async () => {
     const mockCharacter: Character = {
       id: 1,
       name: 'Тест Персонаж',
@@ -179,7 +189,7 @@ describe('MessageProcessingCoordinator Tests', () => {
     expect(mockCharacterResponseService.generateResponse).toHaveBeenCalled();
   });
 
-  it('should handle analysis service error gracefully', async () => {
+  createTest({ name: 'should handle analysis service error gracefully' }, async () => {
     const mockCharacter: Character = {
       id: 1,
       name: 'Тест Персонаж',
@@ -200,7 +210,7 @@ describe('MessageProcessingCoordinator Tests', () => {
     expect(mockLogService.error).toHaveBeenCalled();
   });
 
-  it('should handle needs service error gracefully', async () => {
+  createTest({ name: 'should handle needs service error gracefully' }, async () => {
     const mockCharacter: Character = {
       id: 1,
       name: 'Тест Персонаж',

@@ -18,6 +18,7 @@ import { OptimizationService } from '../services/optimization.service';
 import { Alert, AlertType, AlertSeverity, AlertStatus } from '../entities/alert.entity';
 import { MessageQueueService } from '../../message-queue/message-queue.service';
 import { LogService } from '../../logging/log.service';
+import * as client from 'prom-client';
 
 /**
  * Упрощенный контроллер мониторинга
@@ -33,6 +34,10 @@ export class MonitoringController {
     private readonly logService: LogService,
   ) {
     this.logService.setContext(MonitoringController.name);
+    // Инициализируем prom-client при первом создании контроллера
+    if (!client.register.getSingleMetric('process_start_time_seconds')) {
+      client.collectDefaultMetrics();
+    }
   }
 
   /**
@@ -113,8 +118,7 @@ export class MonitoringController {
   @ApiOperation({ summary: 'Получить метрики в формате Prometheus' })
   async getMetrics(): Promise<string> {
     try {
-      // Заглушка для Prometheus метрик
-      return '# Prometheus metrics not available\n';
+      return await client.register.metrics();
     } catch (error) {
       this.logService.error('Ошибка при получении Prometheus метрик', this.formatError(error));
       throw new InternalServerErrorException('Не удалось получить метрики');

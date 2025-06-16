@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { DialogModule } from '../../src/dialog/dialog.module';
 import { DialogService } from '../../src/dialog/services/dialog.service';
 import { UserService } from '../../src/user/services/user.service';
+import { TestConfigurations } from '../../lib/tester/test-configurations';
 
 createTestSuite('DialogService Integration с автоматическим моком', () => {
   let service: DialogService;
@@ -10,9 +11,17 @@ createTestSuite('DialogService Integration с автоматическим мо�
 
   beforeAll(async () => {
     const mockUserService = { findById: jest.fn() };
+
+    const rawImports = [DialogModule];
+    const imports = TestConfigurations.prepareImportsForTesting(rawImports);
+
+    const baseProviders = [{ provide: UserService, useValue: mockUserService }];
+
+    const providers = TestConfigurations.requiredMocksAdder(imports, baseProviders);
+
     moduleRef = await Test.createTestingModule({
-      imports: [DialogModule],
-      providers: [{ provide: UserService, useValue: mockUserService }],
+      imports,
+      providers,
     }).compile();
 
     service = moduleRef.get<DialogService>(DialogService);

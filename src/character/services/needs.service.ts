@@ -6,11 +6,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { LogService } from '../../logging/log.service';
 import { Need } from '../entities/need.entity';
 import { Character } from '../entities/character.entity';
-import {
-  INeedsService,
-  INeed,
-  INeedUpdate,
-} from '../interfaces/needs.interfaces';
+import { INeedsService, INeed, INeedUpdate } from '../interfaces/needs.interfaces';
 import { CharacterNeedType } from '../enums/character-need-type.enum';
 
 @Injectable()
@@ -56,7 +52,7 @@ export class NeedsService implements INeedsService {
       this.logService.log(
         `Обновлена потребность ${update.type} для персонажа ${characterId}: ${oldValue} -> ${need.currentValue} (${update.reason})`,
       );
-      
+
       return this.mapToInterface(need);
     } catch (error) {
       this.logService.error('Ошибка обновления потребности', {
@@ -298,7 +294,7 @@ export class NeedsService implements INeedsService {
       { type: CharacterNeedType.ATTENTION, threshold: 60, priority: 7, growthRate: 1.5 },
       { type: CharacterNeedType.VALIDATION, threshold: 80, priority: 6, growthRate: 1.0 },
       { type: CharacterNeedType.GROWTH, threshold: 50, priority: 5, growthRate: 0.8 },
-      { type: CharacterNeedType.GROWTH, threshold: 40, priority: 4, growthRate: 0.5 },
+      { type: CharacterNeedType.REST, threshold: 40, priority: 4, growthRate: 0.5 },
       { type: CharacterNeedType.ENTERTAINMENT, threshold: 60, priority: 6, growthRate: 1.2 },
       { type: CharacterNeedType.AFFECTION, threshold: 75, priority: 7, growthRate: 1.3 },
       { type: CharacterNeedType.FREEDOM, threshold: 65, priority: 5, growthRate: 0.7 },

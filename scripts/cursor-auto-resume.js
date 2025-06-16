@@ -119,7 +119,7 @@
                     document.execCommand('delete', false, null);
 
                     // Вставляем текст сообщения
-                    const message = 'Проанализируй .progress.helper, актуализируй его, продолжай попытки решать проблему';
+                    const message = 'Продолжай попытки решать проблемы из "pending", после этого проанализируй .progress.helper, актуализируй его.';
                     document.execCommand('insertText', false, message);
 
                     // Создаем событие ввода текста для обновления состояния

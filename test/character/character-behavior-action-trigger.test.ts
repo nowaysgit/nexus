@@ -1,5 +1,7 @@
-import { createTestSuite, createTest, TestConfigType, Tester } from '../../lib/tester';
-import { FixtureManager } from '../../lib/tester/fixtures';
+import { createTestSuite, createTest } from '../../lib/tester';
+import { FixtureManager } from '../../lib/tester/fixtures/fixture-manager';
+import { TestModuleBuilder } from '../../lib/tester/utils/test-module-builder';
+import { CharacterModule } from '../../src/character/character.module';
 import { CharacterBehaviorService } from '../../src/character/services/character-behavior.service';
 import { ActionService } from '../../src/character/services/action.service';
 import { EmotionalStateService } from '../../src/character/services/emotional-state.service';
@@ -14,28 +16,48 @@ import {
 } from '../../src/character/interfaces/behavior.interfaces';
 
 createTestSuite('CharacterBehaviorService.processActionTrigger tests', () => {
-  let tester: Tester;
-  let fixtureManager: FixtureManager;
+  let moduleRef: import('@nestjs/testing').TestingModule | null = null;
   let dataSource: DataSource;
+  let fixtureManager: FixtureManager;
+  let behaviorService: CharacterBehaviorService;
+  let emotionalStateService: EmotionalStateService;
+  let needsService: NeedsService;
+  let actionService: ActionService;
 
-  beforeAll(async () => {
-    tester = Tester.getInstance();
-    dataSource = await tester.setupTestEnvironment(TestConfigType.DATABASE);
-    fixtureManager = new FixtureManager(dataSource);
-  });
-  afterAll(async () => {
-    await tester.forceCleanup();
-  });
   beforeEach(async () => {
+    moduleRef = await TestModuleBuilder.create()
+      .withImports([
+        // TypeOrmModule.forRoot удалён – используется MockTypeOrmModule singleton
+        CharacterModule,
+      ])
+      .withRequiredMocks()
+      .compile();
+
+    dataSource = moduleRef.get<DataSource>(DataSource);
+    fixtureManager = new FixtureManager(dataSource);
+    behaviorService = moduleRef.get<CharacterBehaviorService>(CharacterBehaviorService);
+    emotionalStateService = moduleRef.get<EmotionalStateService>(EmotionalStateService);
+    needsService = moduleRef.get<NeedsService>(NeedsService);
+    actionService = moduleRef.get<ActionService>(ActionService);
+
     await fixtureManager.cleanDatabase();
+    jest.clearAllMocks();
   });
+
+  afterEach(async () => {
+    if (dataSource?.isInitialized) {
+      await dataSource.destroy();
+    }
+    if (moduleRef) {
+      await moduleRef.close();
+    }
+  });
+
   createTest(
     {
       name: 'should correctly process an action trigger with motivations',
-      configType: TestConfigType.DATABASE,
     },
-    async context => {
-      const behaviorService = context.get(CharacterBehaviorService);
+    async () => {
       const user = await fixtureManager.createUser();
       const character = await fixtureManager.createCharacter({ user });
       await fixtureManager.createNeed({
@@ -81,11 +103,8 @@ createTestSuite('CharacterBehaviorService.processActionTrigger tests', () => {
   createTest(
     {
       name: 'should correctly process an action trigger with emotional context',
-      configType: TestConfigType.DATABASE,
     },
-    async context => {
-      const behaviorService = context.get(CharacterBehaviorService);
-      const emotionalStateService = context.get(EmotionalStateService);
+    async () => {
       const user = await fixtureManager.createUser();
       const character = await fixtureManager.createCharacter({ user });
       await emotionalStateService.updateEmotionalState(character.id, {
@@ -137,11 +156,8 @@ createTestSuite('CharacterBehaviorService.processActionTrigger tests', () => {
   createTest(
     {
       name: 'should update needs after action execution',
-      configType: TestConfigType.DATABASE,
     },
-    async context => {
-      const behaviorService = context.get(CharacterBehaviorService);
-      const needsService = context.get(NeedsService);
+    async () => {
       const user = await fixtureManager.createUser();
       const character = await fixtureManager.createCharacter({ user });
       await fixtureManager.createNeed({
@@ -184,11 +200,8 @@ createTestSuite('CharacterBehaviorService.processActionTrigger tests', () => {
   createTest(
     {
       name: 'должен корректно обрабатывать триггеры действий',
-      configType: TestConfigType.DATABASE,
     },
-    async context => {
-      const characterBehaviorService = context.get(CharacterBehaviorService);
-      const actionService = context.get(ActionService);
+    async () => {
       const user = await fixtureManager.createUser();
       const character = await fixtureManager.createCharacter({ user });
 
@@ -215,7 +228,7 @@ createTestSuite('CharacterBehaviorService.processActionTrigger tests', () => {
         } as CharacterAction);
 
       // Use the actionTriggerContext in the processActionTrigger call
-      await characterBehaviorService.processActionTrigger(
+      await behaviorService.processActionTrigger(
         actionTriggerContext.characterId,
         actionTriggerContext.triggerType,
         actionTriggerContext.motivations,

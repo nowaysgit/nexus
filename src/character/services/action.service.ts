@@ -26,7 +26,7 @@ export interface ActionContext {
  */
 export interface ActionTriggerContext {
   characterId: number;
-  userId: number;
+  userId: string | number;
   triggerType: string;
   triggerData: Record<string, unknown>;
   timestamp: Date;
@@ -680,7 +680,7 @@ export class ActionService implements ActionHandler, OnModuleInit {
 
     // Получаем текущую потребность
     const needs = await this.needsService.getActiveNeeds(context.character.id);
-    const targetNeed = needs.find((need) => need.type === needType);
+    const targetNeed = needs.find(need => need.type === needType);
 
     if (!targetNeed) {
       return { success: false, message: `Потребность типа ${needType} не найдена` };
@@ -778,11 +778,13 @@ export class ActionService implements ActionHandler, OnModuleInit {
     }
 
     const action = context.action;
-    const resourceCost = action.resourceCost || this.getDefaultResourceCost(action.type);
+    // Получаем стоимость ресурсов из metadata или из типа действия
+    const resourceCost =
+      (action.metadata?.resourceCost as number) || this.getDefaultResourceCost(action.type);
 
     // Для простоты проверяем энергию как ресурс, но в продакшене можно усложнить
     const needs = await this.needsService.getActiveNeeds(context.character.id);
-    const energyNeed = needs.find((need) => need.type === CharacterNeedType.REST);
+    const energyNeed = needs.find(need => need.type === CharacterNeedType.REST);
 
     if (energyNeed && energyNeed.currentValue < resourceCost) {
       this.logService.debug(`Недостаточно энергии для выполнения действия: ${action.type}`, {
@@ -1173,15 +1175,17 @@ export class ActionService implements ActionHandler, OnModuleInit {
         if (currentAction && !this.canInterruptAction(currentAction, context.action)) {
           this.logService.debug(
             `Персонаж ${context.character.id} занят действием ${currentAction.type}, 
-             которое нельзя прервать для ${context.action.type}`
+             которое нельзя прервать для ${context.action.type}`,
           );
           return false;
         }
 
         // Проверка ресурсов
-        const hasResources = await this.checkActionResources(context);
+        const hasResources = await this.checkResourceAvailability(context);
         if (!hasResources) {
-          this.logService.debug(`Недостаточно ресурсов для выполнения действия ${context.action.type}`);
+          this.logService.debug(
+            `Недостаточно ресурсов для выполнения действия ${context.action.type}`,
+          );
           return false;
         }
 
@@ -1195,7 +1199,7 @@ export class ActionService implements ActionHandler, OnModuleInit {
       'проверке возможности выполнения действия',
       this.logService,
       { characterId: context.character?.id, actionType: context.action?.type },
-      false
+      false,
     );
   }
 
@@ -1208,9 +1212,9 @@ export class ActionService implements ActionHandler, OnModuleInit {
         // Проверка возможности выполнения
         const canExecute = await this.canExecuteAction(context);
         if (!canExecute) {
-          return { 
-            success: false, 
-            message: `Невозможно выполнить действие ${context.action.type}` 
+          return {
+            success: false,
+            message: `Невозможно выполнить действие ${context.action.type}`,
           };
         }
 
@@ -1242,7 +1246,7 @@ export class ActionService implements ActionHandler, OnModuleInit {
       'выполнении действия персонажа',
       this.logService,
       { characterId: context.character?.id, actionType: context.action?.type },
-      { success: false, message: 'Ошибка при выполнении действия' }
+      { success: false, message: 'Ошибка при выполнении действия' },
     );
   }
 
@@ -1253,24 +1257,24 @@ export class ActionService implements ActionHandler, OnModuleInit {
     return withErrorHandling(
       async () => {
         // Получение персонажа
-        const character = await this.repository.findOne({ 
-          where: { id: context.characterId } 
+        const character = await this.repository.findOne({
+          where: { id: context.characterId },
         });
-        
+
         if (!character) {
-          return { 
-            success: false, 
-            message: `Персонаж с ID ${context.characterId} не найден` 
+          return {
+            success: false,
+            message: `Персонаж с ID ${context.characterId} не найден`,
           };
         }
 
         // Определение подходящего действия на основе триггера
         const action = await this.determineActionFromTrigger(context, character);
-        
+
         if (!action) {
-          return { 
-            success: false, 
-            message: `Для триггера ${context.triggerType} не найдено подходящее действие` 
+          return {
+            success: false,
+            message: `Для триггера ${context.triggerType} не найдено подходящее действие`,
           };
         }
 
@@ -1281,35 +1285,30 @@ export class ActionService implements ActionHandler, OnModuleInit {
           metadata: {
             triggeredBy: context.triggerType,
             triggerData: context.triggerData,
-            userId: context.userId
-          }
+            userId: context.userId,
+          },
         });
       },
       'обработке триггера действия',
       this.logService,
-      { 
-        characterId: context.characterId, 
+      {
+        characterId: context.characterId,
         triggerType: context.triggerType,
-        userId: context.userId 
+        userId: context.userId,
       },
-      { success: false, message: 'Ошибка при обработке триггера действия' }
+      { success: false, message: 'Ошибка при обработке триггера действия' },
     );
   }
 
   // Вспомогательные методы
 
-  /**
-   * Проверяет, достаточно ли ресурсов для выполнения действия
-   */
-  private async checkActionResources(context: ActionContext): Promise<boolean> {
-    // Реализация проверки ресурсов
-    return true; // Пока возвращаем true, в будущем тут будет реальная проверка
-  }
+  // Метод checkActionResources удален, так как его функциональность
+  // теперь выполняется методом checkResourceAvailability
 
   /**
    * Обновляет состояние персонажа после выполнения действия
    */
-  private async updateCharacterStateAfterAction(context: ActionContext): Promise<void> {
+  private async updateCharacterStateAfterAction(_context: ActionContext): Promise<void> {
     // Обновление состояния персонажа
     // Здесь могут быть вызовы других сервисов
   }
@@ -1318,8 +1317,8 @@ export class ActionService implements ActionHandler, OnModuleInit {
    * Определяет подходящее действие на основе триггера
    */
   private async determineActionFromTrigger(
-    context: ActionTriggerContext, 
-    character: Character
+    context: ActionTriggerContext,
+    character: Character,
   ): Promise<CharacterAction | null> {
     // Логика определения действия на основе триггера
     // Пример простой реализации:
@@ -1333,8 +1332,8 @@ export class ActionService implements ActionHandler, OnModuleInit {
       metadata: {
         characterId: character.id,
         timestamp: new Date(),
-        targetUserId: context.userId
-      }
+        targetUserId: context.userId,
+      },
     };
 
     // Настройка действия в зависимости от типа триггера
@@ -1357,18 +1356,18 @@ export class ActionService implements ActionHandler, OnModuleInit {
   /**
    * Проверяет, можно ли прервать текущее действие для выполнения нового
    */
-  private canInterruptAction(current: CharacterAction, newAction: CharacterAction): boolean {
+  private canInterruptAction(_current: CharacterAction, newAction: CharacterAction): boolean {
     // Логика проверки возможности прерывания
     // Некоторые действия могут иметь высокий приоритет и прерывать текущие
-    
+
     // Действия с высоким приоритетом (например, реакция на сообщение пользователя)
     const highPriorityActions = [
       ActionType.EMOTIONAL_RESPONSE,
       ActionType.EXPRESS_EMOTION,
       ActionType.SEND_MESSAGE,
-      ActionType.ASK_QUESTION
+      ActionType.ASK_QUESTION,
     ];
-    
+
     // Проверяем, является ли новое действие высокоприоритетным
     return highPriorityActions.includes(newAction.type);
   }
@@ -1387,50 +1386,50 @@ export class ActionService implements ActionHandler, OnModuleInit {
         'Мне нужно чувствовать себя в безопасности',
         'Я испытываю беспокойство',
         'Мне тревожно, я нуждаюсь в защите',
-        'Я в панике, мне срочно нужна безопасность!'
+        'Я в панике, мне срочно нужна безопасность!',
       ],
       COMMUNICATION: [
         'Хотелось бы немного пообщаться',
         'Я бы с удовольствием поговорил',
         'Мне не хватает общения',
         'Я чувствую сильную потребность в разговоре',
-        'Мне срочно нужно с кем-то поговорить!'
+        'Мне срочно нужно с кем-то поговорить!',
       ],
       ATTENTION: [
         'Надеюсь, я не отвлекаю',
         'Ты обращаешь на меня внимание?',
         'Мне кажется, ты меня не замечаешь',
         'Я действительно нуждаюсь в твоем внимании сейчас',
-        'Пожалуйста, обрати на меня внимание!'
+        'Пожалуйста, обрати на меня внимание!',
       ],
       SOCIAL_CONNECTION: [
         'Приятно быть рядом',
         'Я ценю наше общение',
         'Мне важна наша связь',
         'Я чувствую сильную потребность в близости',
-        'Мне необходимо чувствовать нашу связь прямо сейчас!'
+        'Мне необходимо чувствовать нашу связь прямо сейчас!',
       ],
       VALIDATION: [
         'Надеюсь, я всё делаю правильно',
         'Тебе нравится общаться со мной?',
         'Мне важно знать твоё мнение обо мне',
         'Мне очень нужно твоё одобрение',
-        'Пожалуйста, скажи, что я важен для тебя!'
+        'Пожалуйста, скажи, что я важен для тебя!',
       ],
       AFFECTION: [
         'Ты мне симпатичен',
         'Мне приятно наше общение',
         'Я испытываю к тебе теплые чувства',
         'Я очень привязан к тебе',
-        'Я не могу без твоей привязанности!'
+        'Я не могу без твоей привязанности!',
       ],
       FUN: [
         'Хотелось бы немного развлечься',
         'Давай сделаем что-нибудь весёлое',
         'Мне скучно, хочу повеселиться',
         'Я очень нуждаюсь в развлечении',
-        'Я умираю со скуки, спаси меня!'
-      ]
+        'Я умираю со скуки, спаси меня!',
+      ],
     };
 
     // Для потребностей, которых нет в словаре, используем общие выражения
@@ -1439,15 +1438,15 @@ export class ActionService implements ActionHandler, OnModuleInit {
       'Я чувствую, что мне что-то нужно',
       'Мне не хватает чего-то важного',
       'У меня сильная потребность',
-      'Я испытываю острую необходимость!'
+      'Я испытываю острую необходимость!',
     ];
 
     // Нормализуем интенсивность к индексу массива (0-4)
     const index = Math.min(4, Math.max(0, Math.floor(intensity)));
-    
+
     // Получаем массив выражений для данного типа потребности или используем общие
     const expressions = expressionsByType[needType] || defaultExpressions;
-    
+
     // Возвращаем выражение соответствующей интенсивности
     return expressions[index];
   }

@@ -72,7 +72,7 @@
               "p": "/mock-telegram.module.ts",
               "t": "f",
               "e": ["MockTelegramModule", "mockTelegramCoreService", "mockAccessControlService", "mockCharacterCreationService", "mockMessageService", "mockMessageFormatterService", "mockKeyboardFormatterService", "mockTelegramUserService", "mockTelegramInitializationService"],
-              "d": "Модуль с моками для Telegram компонентов"
+              "d": "Модуль с моками для Telegram компонентов. Предоставляет MockTelegramModule.forRoot() для замены TelegrafModule в тестах."
             },
             {
               "p": "/jest.mocks.ts",
@@ -84,13 +84,67 @@
               "p": "/telegraf-token.provider.ts",
               "t": "f",
               "e": ["TelegrafTokenProvider", "mockTelegraf"],
-              "d": "Провайдер токена для Telegraf и мок для Telegraf"
+              "d": "Провайдер токена для Telegraf и мок для Telegraf. Решает проблему 'Bot Token is required' в тестах."
             },
             {
               "p": "/mock-provider.ts",
               "t": "f",
               "e": ["MockProviderFactory"],
               "d": "Фабрика для создания моков провайдеров"
+            },
+            {
+              "p": "/mock-logging.module.ts",
+              "t": "f",
+              "e": ["MockLoggingModule"],
+              "d": "Глобальный модуль-заглушка, замещающий LoggingModule в тестах. Метод forRoot() экспортирует: 1) LogService (мок – MockLogService); 2) WINSTON_MODULE_PROVIDER (заглушка с jest.fn()). Используется prepareImportsForTesting и может импортироваться напрямую, гарантируя наличие LogService без зависимостей Winston/FS."
+            },
+            {
+              "p": "/lib/tester/mocks/mock-typeorm.module.ts",
+              "t": "f",
+              "e": ["MockTypeOrmModule"],
+              "d": "Глобальный модуль-заглушка TypeORM для тестов. Экспортирует DATA_SOURCE и алиас DataSource; автоматически подключается через TestConfigurations.prepareImportsForTesting. Использует singleton DataSource для всех тестов, поддерживает автоматическое определение requiresDatabase из контекста теста и возвращает мок при отсутствии базы данных."
+            },
+            {
+              "p": "/lib/tester/mocks/mock-infrastructure.module.ts",
+              "t": "f",
+              "e": ["MockInfrastructureModule"],
+              "d": "Глобальный модуль-заглушка, заменяющий InfrastructureModule в тестах. Экспортирует моки EncryptionService и ApiKeyService (MockEncryptionService, MockApiKeyService). Подключается автоматически через prepareImportsForTesting." 
+            }
+          ]
+        },
+        {
+          "p": "/lib/tester/test-configurations",
+          "t": "d",
+          "c": [
+            {
+              "p": "/index.ts",
+              "t": "f",
+              "e": ["TestConfigurations", "requiredMocksAdder", "addConfigServiceProvider", "addDataSourceProvider", "addTelegrafTokenProvider", "prepareImportsForTesting"],
+              "d": "Центральный модуль для управления тестовыми конфигурациями. requiredMocksAdder автоматически добавляет все необходимые моки (включая ConfigService, LogService, RollbarService, Telegraf-токен и другие) на основе импортируемых в тест модулей. Функция prepareImportsForTesting автоматически заменяет TelegrafModule на MockTelegramModule.forRoot(), а LoggingModule — на MockLoggingModule.forRoot() в импортах, устраняя дублирование и упрощая настройку тестов. С версии шага 335 дополнительно помечает использование ALL_TEST_ENTITIES как deprecated и выводит предупреждение, побуждая отказаться от импорта сущностей вручную. Важно: для тестов, работающих с базой данных, необходимо добавлять параметр requiresDatabase: true в конфигурацию теста."
+            },
+            {
+              "p": "/telegram-test.configuration.ts",
+              "t": "f",
+              "e": ["containsTelegramModule", "addMockTelegramServiceToProviders", "addTelegrafTokenToProviders", "replaceTelegrafModule", "containsTelegrafModule"],
+              "d": "Конфигурация для тестирования Telegram модулей. Содержит функции для проверки наличия TelegramModule и TelegrafModule в импортах, добавления моков и замены TelegrafModule на MockTelegramModule.forRoot()."
+            }
+          ]
+        },
+        {
+          "p": "/lib/tester/utils",
+          "t": "d",
+          "c": [
+            {
+              "p": "/test-module-builder.ts",
+              "t": "f",
+              "e": ["TestModuleBuilder", "TestModuleConfig"],
+              "d": "Утилита для построения тестовых модулей с автоматическими моками. Предоставляет удобный интерфейс для создания тестовых модулей с автоматическим добавлением всех необходимых моков и заменой TelegrafModule на MockTelegramModule.forRoot(). Решает проблемы с зависимостями в тестах, такие как отсутствие ConfigService для RollbarService и токена для Telegraf. Начиная с шага 335 автоматически заменяет также LoggingModule на MockLoggingModule.forRoot() даже если prepareImportsForTesting не был вызван вручную, и безусловно добавляет TelegrafTokenProvider."
+            },
+            {
+              "p": "/test-functions.ts",
+              "t": "f",
+              "e": ["createTest", "createTestSuite", "TestConfigType"],
+              "d": "Основные функции для создания тестов и тестовых наборов с поддержкой различных типов конфигурации (BASIC, INTEGRATION, E2E). Для тестов, работающих с базой данных, необходимо добавлять параметр requiresDatabase: true."
             }
           ]
         },
@@ -201,13 +255,13 @@
                   "p": "/services/motivation.service.ts",
                   "t": "f",
                   "e": ["MotivationService"],
-                  "d": "Сервис управления мотивациями персонажей с автоматической генерацией из потребностей и фоновыми процессами обработки. Использует IMotivation вместо устаревшего Motivation и currentValue вместо устаревшего currentLevel."
+                  "d": "Сервис управления мотивациями персонажей с автоматической генерацией из потребностей и фоновыми процессами обработки. Использует IMotivation вместо устаревшего Motivation и currentValue вместо устаревшего currentLevel. ВАЖНО: В методе createMotivation параметр successProbability должен быть целым числом (например, 80), а не дробным (0.8)."
                 },
                 {
                   "p": "/services/action.service.ts",
                   "t": "f",
                   "e": ["ActionService", "ActionResult", "CharacterAction", "ActionContext", "ActionTriggerContext"],
-                  "d": "Сервис управления действиями персонажей с системой ресурсной стоимости, вероятности успеха и вознаграждений"
+                  "d": "Сервис управления действиями персонажей с системой ресурсной стоимости, вероятности успеха и вознаграждений. ВАЖНО: В методе createActionWithResources параметр successProbability должен быть целым числом (например, 90), а не дробным (0.9)."
                 },
                 {
                   "p": "/services/emotional-state.service.ts",
@@ -243,7 +297,7 @@
                   "p": "/services/memory.service.ts",
                   "t": "f",
                   "e": ["MemoryService"],
-                  "d": "Сервис воспоминаний персонажей с системой долгосрочной и краткосрочной памяти и эмоциональной значимостью событий"
+                  "d": "Сервис воспоминаний персонажей с системой долгосрочной и краткосрочной памяти и эмоциональной значимостью событий. ВАЖНО: При использовании MemoryService в тестах необходимо добавить CharacterMemory в TypeOrmModule.forFeature и установить параметр requiresDatabase: true для тестов."
                 },
                 {
                   "p": "/services/message-analysis.service.ts",
@@ -279,13 +333,13 @@
                   "p": "/entities/character.entity.ts",
                   "t": "f",
                   "e": ["Character", "PersonalityData"],
-                  "d": "Entity персонажа с детализированными психологическими профилями, системой предпочтений и портретом идеального партнера. Поле userId имеет тип number для соответствия с другими частями кода. В тестах часто используется string для userId, что приводит к ошибкам типов."
+                  "d": "Entity персонажа с детализированными психологическими профилями, системой предпочтений и портретом идеального партнера. Поле userId теперь uuid (string) для соответствия User.id, устранена предыдущая несогласованность с numeric id."
                 },
                 {
                   "p": "/entities/need.entity.ts",
                   "t": "f",
                   "e": ["Need", "NeedPriority"],
-                  "d": "Entity потребностей персонажа с системой приоритетов, пороговых значений и накопления во времени. Содержит поле currentValue, которое должно использоваться во всем приложении вместо устаревшего currentLevel."
+                  "d": "Entity потребностей персонажа (character_needs), связь ManyToOne с Character теперь имеет onDelete:'CASCADE', поэтому потребности автоматически удаляются при удалении персонажа. Хранит текущий уровень, порог, приоритет и методы grow/reset/updateLevel."
                 },
                 {
                   "p": "/entities/character-motivation.entity.ts",
@@ -591,7 +645,7 @@
                   "p": "/monitoring.service.ts",
                   "t": "f",
                   "e": ["MonitoringService"],
-                  "d": "Объединенный сервис мониторинга системы с поддержкой метрик базы данных и Prometheus интеграцией"
+                  "d": "Объединенный сервис мониторинга системы с поддержкой метрик базы данных и Prometheus интеграцией. Метрики экспортируются через prom-client (endpoint /monitoring/metrics)."
                 },
                 {
                   "p": "/services/alert.service.ts",
@@ -627,7 +681,8 @@
                   "p": "/services/dialog.service.ts",
                   "t": "f",
                   "e": ["DialogService", "DialogMessageType"],
-                  "d": "Сервис для работы с диалогами. Поддерживает тестовый режим, при котором не требуется UserService. В интеграционных тестах рекомендуется использовать mockUserService из getDialogTestConfig(). Метод getDialogMessages возвращает массив в тестовом режиме и объект с пагинацией в продакшене."
+                  "d": "Сервис для работы с диалогами. Поддерживает тестовый режим, при котором не требуется UserService. В интеграционных тестах рекомендуется использовать mockUserService из getDialogTestConfig(). Метод getDialogMessages возвращает массив в тестовом режиме и объект с пагинацией в продакшене. Метод getOrCreateDialog принимает telegramId типа string | number и преобразует строковые значения в числовые для внутреннего использования. Возвращает анализ сообщения, ответ персонажа и ID сообщения пользователя.",
+                  "u": ["TelegramService", "UserService", "CharacterService"]
                 }
               ]
             },
@@ -705,7 +760,7 @@
                   "p": "/api-key.service.ts",
                   "t": "f",
                   "e": ["ApiKeyService"],
-                  "d": "Сервис управления API ключами с генерацией, валидацией и ротацией ключей доступа"
+                  "d": "Сервис управления API ключами с генерацией, валидацией и ротацией ключей доступа. Метод extractApiKey поддерживает извлечение ключа из заголовка x-api-key и query-параметров apiKey и api_key."
                 }
               ]
             },
@@ -736,36 +791,30 @@
           ]
         },
         {
-          "p": "/lib",
+          "p": "/tester",
           "t": "d",
           "c": [
             {
-              "p": "/tester",
+              "p": "/index.ts",
+              "t": "f",
+              "e": ["createTestSuite", "createTest", "createBasicTest", "TestConfigType", "Tester"],
+              "d": "Основной файл тестера. Начиная с шага 336 не подключает напрямую TypeOrmModule.forRoot/WinstonModule. С шага 338 полностью убрано глобальное переопределение ConfigService — конфигурация берётся из ConfigModule, а мок добавляется только при необходимости. Tester использует TestConfigurations.prepareImportsForTesting для автоматической подмены модулей (LoggingModule → MockLoggingModule, TelegrafModule → MockTelegramModule), подключения MockTypeOrmModule.forRoot и гарантированного наличия базового ConfigModule.forRoot(). requiredMocksAdder добавляет TelegrafTokenProvider и моки Log/Rollbar, поэтому тесты больше не требуют ручного указания этих провайдеров. Метод get сохраняет перегрузку для совместимости со старыми тестами."
+            },
+            {
+              "p": "/entities.ts",
+              "t": "f",
+              "e": ["ALL_TEST_ENTITIES"],
+              "d": "Централизованный список всех сущностей TypeORM для использования в тестовом окружении."
+            },
+            {
+              "p": "/fixtures",
               "t": "d",
               "c": [
                 {
-                  "p": "/index.ts",
+                  "p": "/fixture-manager.ts",
                   "t": "f",
-                  "e": ["createTestSuite", "createTest", "createBasicTest", "TestConfigType", "Tester"],
-                  "d": "Основной файл тестера с классами и функциями для создания тестов. Метод get в TestContext имеет перегрузку (get(token): unknown и get<T>(token): T) для обратной совместимости со старыми тестами и предотвращения ошибки TS2347 (Untyped function calls may not accept type arguments)."
-                },
-                {
-                  "p": "/entities.ts",
-                  "t": "f",
-                  "e": ["ALL_TEST_ENTITIES"],
-                  "d": "Централизованный список всех сущностей TypeORM для использования в тестовом окружении."
-                },
-                {
-                  "p": "/fixtures",
-                  "t": "d",
-                  "c": [
-                    {
-                      "p": "/fixture-manager.ts",
-                      "t": "f",
-                      "e": ["FixtureManager", "ITestData", "IFixtureOptions"],
-                      "d": "Менеджер тестовых фикстур с методами для создания тестовых пользователей, персонажей, диалогов и других сущностей. Поддерживает работу с числовыми ID и UUID, обеспечивая совместимость в тестах. Имеет методы numericToUuid, uuidToNumeric и ensureIdFormat для конвертации ID."
-                    }
-                  ]
+                  "e": ["FixtureManager", "ITestData", "IFixtureOptions"],
+                  "d": "Менеджер тестовых фикстур с методами для создания тестовых пользователей, персонажей, диалогов и других сущностей. Поддерживает работу с числовыми ID и UUID, обеспечивая совместимость в тестах. Имеет методы numericToUuid, uuidToNumeric и ensureIdFormat для конвертации ID."
                 }
               ]
             }
@@ -800,6 +849,49 @@
                   "p": "/manipulation.service.integration.test.ts",
                   "t": "f",
                   "d": "Интеграционный тест для базовых операций сервиса манипулятивных техник."
+                }
+              ]
+            },
+            {
+              "p": "/integration",
+              "t": "d",
+              "c": [
+                {
+                  "p": "/action-service.integration.test.ts",
+                  "t": "f",
+                  "d": "Интеграционные тесты для ActionService. Исправлен вызов метода checkActionResources на checkResourceAvailability в методе canExecuteAction для корректной проверки ресурсов."
+                },
+                {
+                  "p": "/character-workflow.integration.test.ts",
+                  "t": "f",
+                  "d": "Интеграционные тесты для полного рабочего процесса взаимодействия персонажа. Добавлен параметр requiresDatabase: true и проверки на существование объектов перед обращением к их свойствам."
+                },
+                {
+                  "p": "/specialization-workflow.integration.test.ts",
+                  "t": "f",
+                  "d": "Интеграционные тесты для SpecializationService. Добавлен параметр requiresDatabase: true, использован TestModuleBuilder вместо прямого создания модуля, добавлены проверки на существование объектов."
+                }
+              ]
+            },
+            {
+              "p": "/message-queue",
+              "t": "d",
+              "c": [
+                {
+                  "p": "/message-queue.service.integration.test.ts",
+                  "t": "f",
+                  "d": "Интеграционные тесты для MessageQueueService. Исправлен тест getMessagesByStatus: добавлена остановка очереди перед добавлением сообщений, добавление нескольких сообщений, задержка для обработки и проверка статуса COMPLETED вместо PROCESSED."
+                }
+              ]
+            },
+            {
+              "p": "/logging",
+              "t": "d",
+              "c": [
+                {
+                  "p": "/log.service.integration.test.ts",
+                  "t": "f",
+                  "d": "Интеграционные тесты для LogService. Добавлены задержки после вызова методов логирования, проверка корректной настройки моков, более подробное логирование для отладки."
                 }
               ]
             }
@@ -838,8 +930,32 @@
     {
       "n": "TestConfigurations",
       "p": "/lib/tester/test-configurations/index.ts",
-      "d": "Центральный модуль для управления тестовыми конфигурациями. Содержит унифицированную функцию requiredMocksAdder для автоматического добавления всех необходимых моков (включая ConfigService, LogService, RollbarService, Telegraf-токен и другие) на основе импортируемых в тест модулей. Это устранило дублирование и упростило настройку тестов.",
-      "u": ["test/dialog", "test/integration", "test/telegram", "test/character"]
+      "d": "Центральный модуль для управления тестовыми конфигурациями. Содержит унифицированную функцию requiredMocksAdder для автоматического добавления всех необходимых моков (включая ConfigService, LogService, RollbarService, Telegraf-токен и другие) на основе импортируемых в тест модулей. Функция prepareImportsForTesting автоматически заменяет TelegrafModule на MockTelegramModule.forRoot(), а LoggingModule — на MockLoggingModule.forRoot() в импортах, устраняя дублирование и упрощая настройку тестов. С версии шага 335 дополнительно помечает использование ALL_TEST_ENTITIES как deprecated и выводит предупреждение, побуждая отказаться от импорта сущностей вручную.",
+      "u": ["test/dialog", "test/integration", "test/telegram", "test/character", "test/common", "test/llm"]
+    },
+    {
+      "n": "TestModuleBuilder",
+      "p": "/lib/tester/utils/test-module-builder.ts",
+      "d": "Утилита для построения тестовых модулей с автоматическими моками. Предоставляет удобный интерфейс для создания тестовых модулей с автоматическим добавлением всех необходимых моков и заменой TelegrafModule на MockTelegramModule.forRoot(). Решает проблемы с зависимостями в тестах, такие как отсутствие ConfigService для RollbarService и токена для Telegraf. Начиная с шага 335 автоматически заменяет также LoggingModule на MockLoggingModule.forRoot() даже если prepareImportsForTesting не был вызван вручную, и безусловно добавляет TelegrafTokenProvider.",
+      "u": ["test/validation", "test/integration", "test/telegram", "test/character", "test/common", "test/llm"]
+    },
+    {
+      "n": "MockTelegramModule",
+      "p": "/lib/tester/mocks/mock-telegram.module.ts",
+      "d": "Модуль с моками для Telegram компонентов. Предоставляет MockTelegramModule.forRoot() для замены TelegrafModule в тестах. Решает проблему 'Bot Token is required' в тестах с Telegram интеграцией.",
+      "u": ["test/integration/telegram-test.integration.test.ts", "test/telegram"]
+    },
+    {
+      "n": "TelegrafTokenProvider",
+      "p": "/lib/tester/mocks/telegraf-token.provider.ts",
+      "d": "Глобальный провайдер TELEGRAF_TOKEN: возвращает мок Telegraf и одновременно автоматически добавляется строковый токен 'test-telegram-token'. requiredMocksAdder всегда включает его во все тесты, устраняя ошибки Nest 'can't resolve TELEGRAF_TOKEN'.",
+      "u": ["test/integration/telegram-test.integration.test.ts", "test/telegram", "MockTelegramModule"]
+    },
+    {
+      "n": "TelegrafTokenMockModule",
+      "p": "/lib/tester/mocks/telegraf-token.module.ts",
+      "d": "Глобальный модуль (Global) предоставляющий TelegrafTokenProvider со строковым токеном 'test-telegram-token' и мок-объектом Telegraf. Импортируется в prepareImportsForTesting, благодаря чему TELEGRAF_TOKEN доступен во всех модулях, даже если TelegramModule глубоко вложен.",
+      "u": ["TestConfigurations", "Все интеграционные тесты"]
     },
     {
       "n": "ActionService",
@@ -850,7 +966,7 @@
     {
       "n": "NeedsService",
       "p": "/src/character/services/needs.service.ts",
-      "d": "Сервис для управления потребностями персонажей, поддерживает создание потребностей, обновление, отслеживание динамики, и совместимость с мотивациями. Поддерживает работу с типами потребностей CharacterNeedType. Предоставляет методы getActiveNeeds и getNeedsByCharacter для получения активных потребностей персонажа. Метод getNeeds является алиасом для getNeedsByCharacter.",
+      "d": "Сервис для управления потребностями персонажей. Метод getDefaultNeedsConfig включает REST вместо дублирующего GROWTH. createDefaultNeeds создаёт 10 базовых потребностей.",
       "u": ["CharacterModule", "CharacterBehaviorService", "ActionService"]
     },
     {
@@ -916,7 +1032,7 @@
     {
       "n": "PromptTemplateService",
       "p": "/src/prompt-template/prompt-template.service.ts",
-      "d": "Централизованная система управления промптами с версионированием, статистикой использования, оптимизацией токенов",
+      "d": "Централизованная система управления промптами с версионированием, статистикой использования, оптимизацией токенов. ВАЖНО: Для тестирования необходимо импортировать PromptTemplateModule и использовать TestModuleBuilder вместо Tester для создания тестового модуля.",
       "u": ["CharacterModule", "LLMModule"]
     },
     {
@@ -934,7 +1050,7 @@
     {
       "n": "DialogService",
       "p": "/src/dialog/services/dialog.service.ts",
-      "d": "Сервис для работы с диалогами. Поддерживает тестовый режим, при котором не требуется UserService. В интеграционных тестах рекомендуется использовать mockUserService из getDialogTestConfig(). Метод getDialogMessages возвращает массив в тестовом режиме и объект с пагинацией в продакшене. Метод getOrCreateDialog принимает telegramId типа string | number и преобразует числовые значения в строки для совместимости с БД.",
+      "d": "Сервис для работы с диалогами. Поддерживает тестовый режим, при котором не требуется UserService. В интеграционных тестах рекомендуется использовать mockUserService из getDialogTestConfig(). Метод getDialogMessages возвращает массив в тестовом режиме и объект с пагинацией в продакшене. Метод getOrCreateDialog принимает telegramId типа string | number и преобразует строковые значения в числовые для внутреннего использования. Возвращает анализ сообщения, ответ персонажа и ID сообщения пользователя.",
       "u": ["TelegramService", "UserService", "CharacterService"]
     },
     {
@@ -952,7 +1068,7 @@
     {
       "n": "FixtureManager",
       "p": "/lib/tester/fixtures/fixture-manager.ts",
-      "d": "Менеджер тестовых фикстур с методами для создания тестовых пользователей, персонажей, диалогов и других сущностей. Поддерживает работу с числовыми ID и UUID через встроенные методы конвертации (uuidToNumeric, numericToUuid). ВАЖНО: если требуется доступ к character.user.id или создание связанных сущностей, рекомендуется явно создавать пользователя через createUser() и передавать его в createCharacter({ user }).",
+      "d": "Менеджер тестовых фикстур с методами для создания тестовых пользователей, персонажей, диалогов и других сущностей. Поддерживает работу с числовыми ID и UUID через встроенные методы конвертации (uuidToNumeric, numericToUuid). ВАЖНО: если требуется доступ к character.user.id или создание связанных сущностей, рекомендуется явно создавать пользователя через createUser() и передавать его в createCharacter({ user }) для предсказуемости связей.",
       "u": ["test/integration/telegram-workflow.integration.test.ts", "test/character/character.service.test.ts", "test/character/manipulation-full-cycle.integration.test.ts", "test/character/manipulation.service.integration.test.ts"]
     },
     {
@@ -960,6 +1076,30 @@
       "p": "/src/character/entities/character-memory.entity.ts",
       "d": "Сущность памяти персонажа. ВАЖНО: включена в массив ALL_TEST_ENTITIES (в файле /lib/tester/entities.ts) и поддерживается во всех интеграционных и юнит-тестах. Для тестирования рекомендуется использовать отдельный метод createCharacterMemory в FixtureManager.",
       "u": ["Character", "MemoryService", "CharacterBehaviorService"]
+    },
+    {
+      "n": "MonitoringService",
+      "p": "/src/monitoring/monitoring.service.ts",
+      "d": "Объединенный сервис мониторинга системы с поддержкой метрик базы данных и Prometheus интеграцией. Метрики экспортируются через prom-client (endpoint /monitoring/metrics).",
+      "u": ["MonitoringModule", "MessageQueueService"]
+    },
+    {
+      "n": "ApiKeyService",
+      "p": "/src/infrastructure/api-key.service.ts",
+      "d": "Сервис для проверки API ключей в запросах с поддержкой разных типов ключей и локальных запросов. Метод extractApiKey поддерживает извлечение ключа из заголовка x-api-key и query-параметров apiKey и api_key.",
+      "u": ["InfrastructureModule", "Middleware", "Guards"]
+    },
+    {
+      "n": "MockTypeOrmModule",
+      "p": "/lib/tester/mocks/mock-typeorm.module.ts",
+      "d": "Глобальный модуль-заглушка TypeORM (singleton). Экспортирует DATA_SOURCE и алиас DataSource; кеширует единственный экземпляр DataSource, предотвращая ошибку \"too many clients already\"; автоматически подключается через TestConfigurations.prepareImportsForTesting.",
+      "u": ["TestConfigurations", "Все интеграционные тесты"]
+    },
+    {
+      "n": "MockInfrastructureModule",
+      "p": "/lib/tester/mocks/mock-infrastructure.module.ts",
+      "d": "Модуль-заглушка для инфраструктурных сервисов. Экспортирует EncryptionService и ApiKeyService как моки, используется вместо InfrastructureModule в тестах.",
+      "u": ["TestConfigurations", "Все интеграционные тесты"]
     }
   ],
   "al": [
@@ -1432,15 +1572,37 @@
         "Совместим с жизненным циклом NestJS через onModuleInit",
         "ВАЖНО: Конструктор не принимает аргументов, что может вызывать ошибки при неправильном использовании в других моках (например, в MockLogService)."
       ]
+    },
+    "mockApiKeyService": {
+      "methods": ["extractApiKey", "validateClientApiKey"],
+      "usageInTests": [
+        "Используется в тестах, где требуется ApiKeyService",
+        "Автоматически добавляется через TestConfigurations.requiredMocksAdder"
+      ]
+    },
+    "mockEncryptionService": {
+      "methods": ["encrypt", "decrypt", "hash", "isEncrypted", "generateKey"],
+      "usageInTests": [
+        "Используется в тестах, где требуется EncryptionService",
+        "Автоматически добавляется через TestConfigurations.requiredMocksAdder"
+      ]
     }
   },
   "testDirectories": {
     "test/integration": {
       "description": "Интеграционные тесты для проверки взаимодействия компонентов системы",
       "tests": [
+        "action-service.integration.test.ts",
+        "character-service.integration.test.ts",
+        "character-workflow.integration.test.ts",
+        "dialog-auto-mock.integration.test.ts",
+        "id-types-compatibility.integration.test.ts",
+        "memory-context-workflow.integration.test.ts",
+        "needs-motivation-workflow.integration.test.ts",
+        "specialization-workflow.integration.test.ts",
+        "telegram-test.integration.test.ts",
         "telegram-workflow.integration.test.ts",
-        "technique-executor.service.integration.test.ts",
-        "llm.service.integration.test.ts"
+        "technique-executor.service.integration.test.ts"
       ]
     },
     "test/auth": {
@@ -1453,7 +1615,8 @@
     "test/cache": {
       "description": "Тесты для сервиса кэширования",
       "tests": [
-        "cache.service.integration.test.ts"
+        "cache.service.integration.test.ts",
+        "cache.service.test.ts"
       ]
     },
     "test/monitoring": {
@@ -1487,6 +1650,24 @@
       "tests": [
         "user.service.integration.test.ts"
       ]
+    },
+    "test/common": {
+      "description": "Тесты для проверки инфраструктуры тестирования и общих утилит",
+      "tests": [
+        "test-configurations.test.ts"
+      ]
+    },
+    "test/llm": {
+      "description": "Тесты LLM сервиса",
+      "tests": [
+        "llm.service.test.ts"
+      ]
+    },
+    "test/message-queue": {
+      "description": "Тесты очереди сообщений",
+      "tests": [
+        "message-queue.service.integration.test.ts"
+      ]
     }
   },
   "scripts": {
@@ -1496,7 +1677,7 @@
         {
           "p": "/run-all-tests.js",
           "t": "f",
-          "d": "Скрипт для запуска всех тестов проекта с отчетом о покрытии. Выполняет проверку типов TypeScript, запускает юнит-тесты и интеграционные тесты, генерирует объединенный отчет о покрытии."
+          "d": "Скрипт для запуска всех тестов проекта с отчётом о покрытии. Пишет полный вывод (stdout/stderr) каждого этапа в logs/test-run.log (файл перезаписывается при каждом запуске), при этом дублирует вывод в консоль. Использует spawnSync через обёртку runCommand, логирует ошибки и стадии (tsc, jest unit/integration, merge-coverage). Создаёт директорию logs при отсутствии."
         }
       ]
     },
@@ -1593,6 +1774,15 @@
         "description": "Декоратор для извлечения пользователя из запроса с возможностью получения всего объекта или конкретного свойства"
       }
     ]
-  }
+  },
+  "interface": "Каждый тест оформлять с использованием createTestSuite и createTest, предоставляемыми Tester, для поддержания строгого и понятного интерфейса тестирования.",
+  "typeorm": "В тестах запрещено напрямую подключать TypeOrmModule.forRoot(). Вместо этого полагайтесь на MockTypeOrmModule и TestConfigurations, которые предоставляют singleton DataSource.",
+  "issues": [
+    {
+      "id": "userId-type-mismatch",
+      "d": "Несоответствие типов userId: User.id (uuid string) и некоторые сервисы/контроллеры ожидают number. Character.userId уже uuid string, но DialogService, TelegramHandlers и др. используют number. Требуется унифицировать: все сервисы должны принимать string | number и приводить к uuid при сохранении/поиске, предоставить утилиту ensureIdFormat в общем месте."
+    }
+  ],
+  "testsStructure": "Единая структура тестовых файлов (standardTestFileStructure)\n\n1. Именование файлов:\n   • unit-тесты: *.test.ts\n   • интеграционные: *.integration.test.ts\n   • e2e: *.e2e.test.ts\n   Запрещены *.spec.ts и смешанные форматы.\n\n2. Расположение файлов:\n   /test/unit           — модульные\n   /test/integration    — интеграционные\n   /test/e2e           — e2e\n   Допускаются субпапки (например, /test/character), если повторяют структуру src.\n\n3. Скелет файла:\n   import { createTestSuite, createTest } from 'lib/tester';\n   import { FixtureManager } from 'lib/tester/fixtures/fixture-manager';\n\n   createTestSuite('MyService', ({ tester, fixtureManager }) => {\n     beforeEach(async () => {\n       await fixtureManager.cleanDatabase();\n     });\n\n     createTest('should do X', async () => {\n       // Arrange\n       const user = await fixtureManager.createUser();\n       // Act / Assert\n     });\n   });\n\n4. Обязательные правила:\n   • Каждый тест запускает fixtureManager.cleanDatabase() в beforeEach.\n   • Фикстуры создаются только через методы FixtureManager (createUser, createCharacter, …).\n   • Для построения Nest-модуля используется Tester или TestModuleBuilder с TestConfigurations; прямой TypeOrmModule.forRoot запрещён.\n   • MockTypeOrmModule, MockLoggingModule, MockTelegramModule и прочие моки добавляются автоматически через TestConfigurations — не дублировать вручную, если не требуется переопределение.\n   • В шапке теста запрещено использовать describe/it — только createTestSuite/createTest.\n\n5. Рекомендации по стилю:\n   • Arrange-Act-Assert порядок внутри теста.\n   • Ясные, человекочитаемые названия тестов.\n   • Без any; использовать точные типы и I-префикс для интерфейсов.\n   • Комментарии добавлять только для нетривиальной логики, следуя принципам Open by Default и Learning-Driven Logic.\n\n6. Пример полного файла (unit):\n   // test/character/character.service.test.ts\n   import { CharacterService } from 'src/character/services/character.service';\n   import { createTestSuite, createTest } from 'lib/tester';\n\n   createTestSuite('CharacterService', ({ tester, fixtureManager }) => {\n     let service: CharacterService;\n\n     beforeAll(async () => {\n       service = tester.get(CharacterService);\n     });\n\n     beforeEach(async () => {\n       await fixtureManager.cleanDatabase();\n     });\n\n     createTest('create() должен возвращать персонажа с дефолтными полями', async () => {\n       const character = await service.create({});\n       expect(character.archetype).toBe('HERO');\n       expect(character.appearance).toBe('n/a');\n     });\n   });\n\nЭта структура обязательно поддерживается во всех новых и редактируемых тестах, несоответствующие файлы необходимо привести к данному стандарту."
 }
 

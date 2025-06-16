@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { createTestSuite, createTest, TestConfigType } from '../../lib/tester';
 import { FixtureManager } from '../../lib/tester/fixtures/fixture-manager';
 import { MessageProcessingCoordinator } from '../../src/character/services/message-processing-coordinator.service';
@@ -13,8 +16,21 @@ import { CharacterService } from '../../src/character/services/character.service
 import { Character } from '../../src/character/entities/character.entity';
 import { Need } from '../../src/character/entities/need.entity';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource } from 'typeorm';
 import { Tester } from '../../lib/tester';
+import { LLMService } from '../../src/llm/services/llm.service';
+import { UserService } from '../../src/user/services/user.service';
+import { PromptTemplateService } from '../../src/prompt-template/prompt-template.service';
+import { CharacterMemory } from '../../src/character/entities/character-memory.entity';
+import { ActionService } from '../../src/character/services/action.service';
+import { MemoryService } from '../../src/character/services/memory.service';
+import { ConfigService } from '@nestjs/config';
+import {
+  TechniqueExecution,
+  UserManipulationProfile,
+} from '../../src/character/entities/manipulation-technique.entity';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { MockEventEmitter } from '../../lib/tester/mocks/event-emitter.mock';
 
 createTestSuite('MessageProcessingCoordinator Integration Tests', () => {
   let tester: Tester;
@@ -49,6 +65,13 @@ createTestSuite('MessageProcessingCoordinator Integration Tests', () => {
         SpecializationService,
         CharacterService,
         {
+          provide: LLMService,
+          useValue: {
+            onModuleInit: jest.fn(),
+            generate: jest.fn().mockResolvedValue({ content: 'test' }),
+          },
+        },
+        {
           provide: getRepositoryToken(Character),
           useValue: {
             findOne: jest.fn(),
@@ -62,6 +85,62 @@ createTestSuite('MessageProcessingCoordinator Integration Tests', () => {
             save: jest.fn(),
           },
         },
+        {
+          provide: UserService,
+          useValue: {
+            findById: jest.fn().mockResolvedValue(null),
+          },
+        },
+        {
+          provide: PromptTemplateService,
+          useValue: {
+            getTemplate: jest.fn().mockReturnValue('template'),
+          },
+        },
+        {
+          provide: ConfigService,
+          useValue: {
+            get: jest.fn().mockReturnValue(undefined),
+          },
+        },
+        {
+          provide: getRepositoryToken(CharacterMemory),
+          useValue: {
+            find: jest.fn(),
+            save: jest.fn(),
+          },
+        },
+        {
+          provide: ActionService,
+          useValue: {
+            createActionWithResources: jest.fn(),
+            executeActionWithResources: jest.fn(),
+          },
+        },
+        {
+          provide: MemoryService,
+          useValue: {
+            createMemory: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(TechniqueExecution),
+          useValue: {
+            find: jest.fn(),
+            save: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(UserManipulationProfile),
+          useValue: {
+            find: jest.fn(),
+            save: jest.fn(),
+          },
+        },
+        {
+          provide: EventEmitter2,
+          useValue: new MockEventEmitter(),
+        },
       ],
     },
     async context => {
@@ -70,16 +149,14 @@ createTestSuite('MessageProcessingCoordinator Integration Tests', () => {
       const needRepo = context.get(getRepositoryToken(Need));
       const user = await fixtureManager.createUser();
       const character = await fixtureManager.createCharacter({
-        userId: Number(user.id),
+        user,
+        userId: user.id,
       });
 
       characterRepo.findOne.mockResolvedValue(character);
       needRepo.find.mockResolvedValue([]);
 
-      // Ensure userId is a number
-      const userId = typeof user.id === 'string' ? parseInt(user.id, 10) : user.id;
-
-      const result = await service.processUserMessage(character, userId, 'Hello', []);
+      const result = await service.processUserMessage(character, user.id, 'Hello', []);
 
       expect(result).toBeDefined();
       expect(result.response).toBeDefined();

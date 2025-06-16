@@ -1,13 +1,15 @@
-import { createTestSuite, createTest, TestConfigType, Tester } from '../../lib/tester';
-import { FixtureManager } from '../../lib/tester/fixtures';
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import { createTestSuite, createTest } from '../../lib/tester';
+import { FixtureManager } from '../../lib/tester/fixtures/fixture-manager';
+import { TestModuleBuilder } from '../../lib/tester/utils/test-module-builder';
+import { DataSource } from 'typeorm';
 import {
   ContextCompressionService,
   DataImportanceLevel,
   CompressionType,
 } from '../../src/character/services/context-compression.service';
 import { LogService } from '../../src/logging/log.service';
-import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
-import { MockLogService, MockRollbarService } from '../../lib/tester/mocks';
+import { MockLogService } from '../../lib/tester/mocks';
 import { LLMService } from '../../src/llm/services/llm.service';
 import { DialogService } from '../../src/dialog/services/dialog.service';
 import { PromptTemplateService } from '../../src/prompt-template/prompt-template.service';
@@ -51,52 +53,48 @@ const testProviders = [
   },
   {
     provide: LogService,
-    useValue: {
-      log: jest.fn(),
-      info: jest.fn(),
-      error: jest.fn(),
-      warn: jest.fn(),
-      debug: jest.fn(),
-      verbose: jest.fn(),
-      setContext: jest.fn().mockReturnThis(),
-    },
-  },
-  {
-    provide: FixtureManager,
-    useFactory: () => {
-      return new FixtureManager(Tester.getInstance().getDataSource());
-    },
+    useValue: new MockLogService(),
   },
 ];
 
 createTestSuite('ContextCompressionService Tests', () => {
-  let tester: Tester;
+  let moduleRef: import('@nestjs/testing').TestingModule | null = null;
+  let dataSource: DataSource;
   let fixtureManager: FixtureManager;
   let contextCompressionService: ContextCompressionService;
 
-  beforeAll(async () => {
-    tester = Tester.getInstance();
-    const dataSource = await tester.setupTestEnvironment(TestConfigType.DATABASE);
-    fixtureManager = new FixtureManager(dataSource);
-  });
-  afterAll(async () => {
-    await tester.forceCleanup();
-  });
   beforeEach(async () => {
+    moduleRef = await TestModuleBuilder.create()
+      .withImports([TypeOrmModule.forFeature([Message, Character])])
+      .withProviders(testProviders)
+      .withRequiredMocks()
+      .compile();
+
+    dataSource = moduleRef.get<DataSource>(DataSource);
+    fixtureManager = new FixtureManager(dataSource);
+    contextCompressionService = moduleRef.get<ContextCompressionService>(ContextCompressionService);
+
     await fixtureManager.cleanDatabase();
     jest.clearAllMocks();
   });
+
+  afterEach(async () => {
+    if (dataSource?.isInitialized) {
+      await dataSource.destroy();
+    }
+    if (moduleRef) {
+      await moduleRef.close();
+    }
+  });
+
   createTest(
     {
       name: 'должен создать экземпляр сервиса',
-      configType: TestConfigType.DATABASE,
-      providers: testProviders,
-      imports: [TypeOrmModule.forFeature([Message, Character])],
+      providers: [],
+      imports: [],
       timeout: 10000,
     },
-    async context => {
-      contextCompressionService = context.get(ContextCompressionService);
-
+    async () => {
       expect(contextCompressionService).toBeDefined();
       expect(contextCompressionService).toBeInstanceOf(ContextCompressionService);
     },
@@ -105,14 +103,11 @@ createTestSuite('ContextCompressionService Tests', () => {
   createTest(
     {
       name: 'должен анализировать и сжимать контекст',
-      configType: TestConfigType.DATABASE,
-      providers: testProviders,
-      imports: [TypeOrmModule.forFeature([Message, Character])],
+      providers: [],
+      imports: [],
       timeout: 10000,
     },
-    async context => {
-      contextCompressionService = context.get(ContextCompressionService);
-
+    async () => {
       const contextData =
         'Первый сегмент контекста с важной информацией.\n\nВторой сегмент с менее важными данными.\n\nТретий сегмент с критической информацией о персонаже.';
       const characterId = 1;
@@ -138,16 +133,12 @@ createTestSuite('ContextCompressionService Tests', () => {
   createTest(
     {
       name: 'должен генерировать адаптивный контекст',
-      configType: TestConfigType.DATABASE,
-      providers: testProviders,
-      imports: [TypeOrmModule.forFeature([Message, Character])],
+      providers: [],
+      imports: [],
       timeout: 10000,
     },
-    async context => {
-      contextCompressionService = context.get(ContextCompressionService);
-
+    async () => {
       // Создаем тестового персонажа и сообщения
-      const fixtureManager = context.get(FixtureManager);
       const character = await fixtureManager.createCharacter({
         name: 'Тест',
         personality: {
@@ -161,25 +152,26 @@ createTestSuite('ContextCompressionService Tests', () => {
         },
       });
       const characterId = character.id;
-      const userId = 123;
+      const userObj = await fixtureManager.createUser({});
+      const userId = userObj.id;
       const currentDialog = 'Текущий диалог с пользователем';
 
       // Создаем тестовые сообщения
       await fixtureManager.createMessage({
         content: 'Привет, как дела?',
-        userId: userId,
-        characterId: characterId,
+        userId: userId as any,
+        characterId: characterId as any,
         createdAt: new Date('2024-01-01T10:00:00Z'),
       });
       await fixtureManager.createMessage({
         content: 'Хорошо, спасибо! А у тебя?',
-        userId: userId,
-        characterId: characterId,
+        userId: userId as any,
+        characterId: characterId as any,
         createdAt: new Date('2024-01-01T10:01:00Z'),
       });
       const adaptiveContext = await contextCompressionService.generateAdaptiveContext(
         characterId,
-        userId,
+        userId as any,
         currentDialog,
       );
 
@@ -191,16 +183,12 @@ createTestSuite('ContextCompressionService Tests', () => {
   createTest(
     {
       name: 'должен конвертировать сообщения в сегменты контекста',
-      configType: TestConfigType.DATABASE,
-      providers: testProviders,
-      imports: [TypeOrmModule.forFeature([Message, Character])],
+      providers: [],
+      imports: [],
       timeout: 10000,
     },
-    async context => {
-      contextCompressionService = context.get(ContextCompressionService);
-
+    async () => {
       // Создаем тестового персонажа и сообщения
-      const fixtureManager = context.get(FixtureManager);
       const character = await fixtureManager.createCharacter({
         name: 'Тест',
         personality: {
@@ -214,20 +202,21 @@ createTestSuite('ContextCompressionService Tests', () => {
         },
       });
       const characterId = character.id;
-      const userId = 123;
+      const userObj2 = await fixtureManager.createUser({});
+      const userId = userObj2.id;
 
       const messages = [
         await fixtureManager.createMessage({
           content: 'Первое сообщение',
           createdAt: new Date('2024-01-01T10:00:00Z'),
-          userId: userId,
-          characterId: characterId,
+          userId: userId as any,
+          characterId: characterId as any,
         }),
         await fixtureManager.createMessage({
           content: 'Второе сообщение',
           createdAt: new Date('2024-01-01T10:01:00Z'),
-          userId: userId,
-          characterId: characterId,
+          userId: userId as any,
+          characterId: characterId as any,
         }),
       ];
 
@@ -253,14 +242,11 @@ createTestSuite('ContextCompressionService Tests', () => {
   createTest(
     {
       name: 'должен обрабатывать различные типы компрессии',
-      configType: TestConfigType.DATABASE,
-      providers: testProviders,
-      imports: [TypeOrmModule.forFeature([Message, Character])],
+      providers: [],
+      imports: [],
       timeout: 10000,
     },
-    async context => {
-      contextCompressionService = context.get(ContextCompressionService);
-
+    async () => {
       const contextData = 'Тестовый контекст для компрессии';
       const characterId = 1;
 
@@ -290,14 +276,11 @@ createTestSuite('ContextCompressionService Tests', () => {
   createTest(
     {
       name: 'должен обрабатывать пустой контекст',
-      configType: TestConfigType.DATABASE,
-      providers: testProviders,
-      imports: [TypeOrmModule.forFeature([Message, Character])],
+      providers: [],
+      imports: [],
       timeout: 10000,
     },
-    async context => {
-      contextCompressionService = context.get(ContextCompressionService);
-
+    async () => {
       const emptyContext = '';
       const characterId = 1;
 

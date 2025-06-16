@@ -1,27 +1,27 @@
-import { Tester, createTestSuite, createTest, TestConfigType } from '../../lib/tester';
+import { TestModuleBuilder, createTestSuite, createTest } from '../../lib/tester';
 import { FixtureManager } from '../../lib/tester/fixtures/fixture-manager';
 import { UserService } from '../../src/user/services/user.service';
 import { CreateUserDto } from '../../src/user/dto/create-user.dto';
 import { UpdateUserDto } from '../../src/user/dto/update-user.dto';
 import { DataSource } from 'typeorm';
+import { UserModule } from '../../src/user/user.module';
+import { ConfigModule } from '@nestjs/config';
 
 createTestSuite('UserService Integration Tests', () => {
-  let tester: Tester;
   let fixtureManager: FixtureManager;
   let dataSource: DataSource;
+  let userService: UserService;
 
   beforeAll(async () => {
-    tester = Tester.getInstance();
-    dataSource = await tester.setupTestEnvironment(TestConfigType.DATABASE, {
-      imports: [],
-      providers: [],
-      controllers: [],
-    });
-    fixtureManager = new FixtureManager(dataSource);
-  });
+    // Создаем тестовый модуль с использованием TestModuleBuilder
+    const moduleRef = await TestModuleBuilder.create()
+      .withImports([ConfigModule.forRoot({ isGlobal: true }), UserModule] as any[])
+      .withRequiredMocks()
+      .compile();
 
-  afterAll(async () => {
-    await tester.close();
+    dataSource = moduleRef.get<DataSource>(DataSource);
+    userService = moduleRef.get<UserService>(UserService);
+    fixtureManager = new FixtureManager(dataSource);
   });
 
   beforeEach(async () => {
@@ -31,9 +31,8 @@ createTestSuite('UserService Integration Tests', () => {
   createTest(
     {
       name: 'должен создать нового пользователя',
-      configType: TestConfigType.DATABASE,
     },
-    async _context => {
+    async () => {
       // Не используем context в этом тесте, так как создаем пользователя через fixtureManager
       const createUserDto: CreateUserDto = {
         telegramId: '123456789',
@@ -62,10 +61,8 @@ createTestSuite('UserService Integration Tests', () => {
   createTest(
     {
       name: 'должен найти пользователя по ID',
-      configType: TestConfigType.DATABASE,
     },
-    async context => {
-      const userService = context.get(UserService) as UserService;
+    async () => {
       const createdUser = await fixtureManager.createUser({
         telegramId: '987654321',
         username: 'finduser',
@@ -84,10 +81,8 @@ createTestSuite('UserService Integration Tests', () => {
   createTest(
     {
       name: 'должен найти пользователя по Telegram ID',
-      configType: TestConfigType.DATABASE,
     },
-    async context => {
-      const userService = context.get(UserService) as UserService;
+    async () => {
       const telegramId = '555666777';
       await fixtureManager.createUser({
         telegramId,
@@ -106,10 +101,8 @@ createTestSuite('UserService Integration Tests', () => {
   createTest(
     {
       name: 'должен обновить данные пользователя',
-      configType: TestConfigType.DATABASE,
     },
-    async context => {
-      const userService = context.get(UserService) as UserService;
+    async () => {
       const user = await fixtureManager.createUser({
         telegramId: '111222333',
         username: 'updateuser',
@@ -145,10 +138,8 @@ createTestSuite('UserService Integration Tests', () => {
   createTest(
     {
       name: 'должен удалить пользователя',
-      configType: TestConfigType.DATABASE,
     },
-    async context => {
-      const userService = context.get(UserService) as UserService;
+    async () => {
       const user = await fixtureManager.createUser({
         telegramId: '999888777',
         username: 'deleteuser',
@@ -164,10 +155,8 @@ createTestSuite('UserService Integration Tests', () => {
   createTest(
     {
       name: 'должен сгенерировать ключ доступа для пользователя',
-      configType: TestConfigType.DATABASE,
     },
-    async context => {
-      const userService = context.get(UserService) as UserService;
+    async () => {
       const user = await fixtureManager.createUser({
         telegramId: '444555666',
         username: 'keyuser',
@@ -185,10 +174,8 @@ createTestSuite('UserService Integration Tests', () => {
   createTest(
     {
       name: 'должен активировать ключ доступа',
-      configType: TestConfigType.DATABASE,
     },
-    async context => {
-      const userService = context.get(UserService) as UserService;
+    async () => {
       const user = await fixtureManager.createUser({
         telegramId: '777888999',
         username: 'activateuser',
@@ -196,7 +183,7 @@ createTestSuite('UserService Integration Tests', () => {
         lastName: 'User',
       });
       const key = await userService.generateAccessKey(user.id);
-      const result = await userService.activateAccessKey(user.id, key);
+      const result = await userService.activateAccessKey(key, user.telegramId);
 
       expect(result).toBe(true);
       const updatedUser = await userService.findUserById(user.id);

@@ -16,6 +16,7 @@ import { TelegramCharacterSettings } from './entities/character-settings.entity'
 // Core Handlers
 import { CommandHandler } from './handlers/command.handler';
 import { MessageHandler } from './handlers/message.handler';
+import { CallbackHandler } from './handlers/callback.handler';
 
 // Services
 import { TelegramUserService } from './services/telegram-user.service';
@@ -52,6 +53,7 @@ import { CharacterCreationService } from './services/character-creation.service'
     // Handlers
     CommandHandler,
     MessageHandler,
+    CallbackHandler,
 
     // Services
     TelegramUserService,

@@ -1,9 +1,7 @@
-import { createTest, createTestSuite, TestConfigType } from '../../lib/tester';
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unused-vars */
+import { createTest, createTestSuite } from '../../lib/tester';
 import { TechniqueExecutorService } from '../../src/character/services/technique-executor.service';
-import {
-  ITechniqueContext,
-  ITechniqueResult,
-} from '../../src/character/interfaces/technique.interfaces';
+import { ITechniqueContext } from '../../src/character/interfaces/technique.interfaces';
 import { LogService } from '../../src/logging/log.service';
 import { LLMService } from '../../src/llm/services/llm.service';
 import { PromptTemplateService } from '../../src/prompt-template/prompt-template.service';
@@ -69,7 +67,6 @@ createTestSuite('TechniqueExecutorService Tests', () => {
   createTest(
     {
       name: 'should be defined',
-      configType: TestConfigType.BASIC,
       providers: [
         TechniqueExecutorService,
         {
@@ -122,7 +119,6 @@ createTestSuite('TechniqueExecutorService Tests', () => {
   createTest(
     {
       name: 'should execute PUSH_PULL technique successfully',
-      configType: TestConfigType.BASIC,
       providers: [
         TechniqueExecutorService,
         {
@@ -240,7 +236,6 @@ createTestSuite('TechniqueExecutorService Tests', () => {
   createTest(
     {
       name: 'should execute GRADUAL_INVOLVEMENT technique successfully',
-      configType: TestConfigType.BASIC,
       providers: [
         TechniqueExecutorService,
         {
@@ -355,7 +350,6 @@ createTestSuite('TechniqueExecutorService Tests', () => {
   createTest(
     {
       name: 'should adapt technique to character personality',
-      configType: TestConfigType.BASIC,
       providers: [
         TechniqueExecutorService,
         {
@@ -489,7 +483,6 @@ createTestSuite('TechniqueExecutorService Tests', () => {
   createTest(
     {
       name: 'should block technique due to ethical constraints',
-      configType: TestConfigType.BASIC,
       providers: [
         TechniqueExecutorService,
         {
@@ -581,7 +574,6 @@ createTestSuite('TechniqueExecutorService Tests', () => {
   createTest(
     {
       name: 'should handle context validation failure',
-      configType: TestConfigType.BASIC,
       providers: [
         TechniqueExecutorService,
         {
@@ -657,7 +649,6 @@ createTestSuite('TechniqueExecutorService Tests', () => {
   createTest(
     {
       name: 'should get execution history',
-      configType: TestConfigType.BASIC,
       providers: [
         TechniqueExecutorService,
         {
@@ -757,7 +748,6 @@ createTestSuite('TechniqueExecutorService Tests', () => {
   createTest(
     {
       name: 'should get technique statistics',
-      configType: TestConfigType.BASIC,
       providers: [
         TechniqueExecutorService,
         {
@@ -839,7 +829,6 @@ createTestSuite('TechniqueExecutorService Tests', () => {
   createTest(
     {
       name: 'should handle LLM service error gracefully',
-      configType: TestConfigType.BASIC,
       providers: [
         TechniqueExecutorService,
         {

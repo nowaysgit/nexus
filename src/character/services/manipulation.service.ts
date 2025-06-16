@@ -9,7 +9,11 @@ import {
   TechniqueExecution,
   UserManipulationProfile,
 } from '../entities/manipulation-technique.entity';
-import { ManipulativeTechniqueType, TechniqueIntensity, TechniquePhase } from '../enums/technique.enums';
+import {
+  ManipulativeTechniqueType,
+  TechniqueIntensity,
+  TechniquePhase,
+} from '../enums/technique.enums';
 import { NeedsService } from './needs.service';
 import { EmotionalStateService } from './emotional-state.service';
 import { LLMService } from '../../llm/services/llm.service';
@@ -63,7 +67,7 @@ export class ManipulationService {
    */
   async initializeStrategy(characterId: number): Promise<ITechniqueStrategy> {
     const character = await this.characterRepository.findOne({
-      where: { id: characterId }
+      where: { id: characterId },
     });
 
     if (!character) {
@@ -72,7 +76,9 @@ export class ManipulationService {
 
     // Проверяем наличие personality
     if (!character.personality) {
-      this.logService.warn(`Character ${characterId} has no personality data, using default values`);
+      this.logService.warn(
+        `Character ${characterId} has no personality data, using default values`,
+      );
       character.personality = {
         traits: ['neutral'],
         hobbies: ['general'],
@@ -80,7 +86,7 @@ export class ManipulationService {
         values: ['basic'],
         musicTaste: ['various'],
         strengths: ['adaptability'],
-        weaknesses: ['uncertainty']
+        weaknesses: ['uncertainty'],
       };
     }
 
@@ -135,7 +141,9 @@ export class ManipulationService {
     try {
       analysisResult = analysisResponse;
     } catch (error) {
-      this.logService.error(`Failed to parse analysis response for character ${characterId}`, { error: error.message });
+      this.logService.error(`Failed to parse analysis response for character ${characterId}`, {
+        error: error.message,
+      });
       return null;
     }
 
@@ -170,35 +178,42 @@ export class ManipulationService {
   /**
    * Выбор техники для применения
    */
-  async selectTechnique(
-    context: IManipulationContext
-  ): Promise<{ techniqueType: ManipulativeTechniqueType; intensity: number; priority: number; target: string }> {
+  async selectTechnique(context: IManipulationContext): Promise<{
+    techniqueType: ManipulativeTechniqueType;
+    intensity: number;
+    priority: number;
+    target: string;
+  }> {
     // Извлекаем данные из контекста
     const { characterId, userId } = context;
-    
+
     // Используем userMessage, если messageContent отсутствует
     const messageContent = context.messageContent || context.userMessage || '';
-    
+
     // Используем существующий метод анализа и выбора техники
     const selectedTechnique = await this.analyzeSituationAndChooseTechnique(
       characterId,
       Number(userId),
-      messageContent
+      messageContent,
     );
 
     // Если не удалось выбрать технику, используем технику по умолчанию
     const techniqueType = selectedTechnique || ManipulativeTechniqueType.GRADUAL_INVOLVEMENT;
-    
+
     // Определяем интенсивность техники (от 0 до 1)
-    const intensity = context.intensityLevel === TechniqueIntensity.AGGRESSIVE ? 0.9 :
-                     context.intensityLevel === TechniqueIntensity.MODERATE ? 0.6 : 0.3;
-    
+    const intensity =
+      context.intensityLevel === TechniqueIntensity.AGGRESSIVE
+        ? 0.9
+        : context.intensityLevel === TechniqueIntensity.MODERATE
+          ? 0.6
+          : 0.3;
+
     // Определяем цель воздействия
     const target = this.determineTechniqueTarget(techniqueType);
-    
+
     // Добавляем поле priority равное intensity для совместимости с тестами
     const priority = intensity;
-    
+
     return { techniqueType, intensity, priority, target };
   }
 
@@ -218,9 +233,9 @@ export class ManipulationService {
       [ManipulativeTechniqueType.SNOWBALL]: 'boundaries',
       [ManipulativeTechniqueType.TRIANGULATION]: 'jealousy',
       [ManipulativeTechniqueType.LOVE_BOMBING]: 'emotional-dependency',
-      [ManipulativeTechniqueType.VALIDATION]: 'self-worth'
+      [ManipulativeTechniqueType.VALIDATION]: 'self-worth',
     };
-    
+
     return targets[techniqueType] || 'emotional-state';
   }
 
@@ -233,16 +248,18 @@ export class ManipulationService {
    */
   async executeTechnique(
     contextOrCharacterId: IManipulationContext | number,
-    userIdOrSelectedTechnique?: number | { techniqueType: ManipulativeTechniqueType; intensity: number; target: string },
-    techniqueType?: ManipulativeTechniqueType
+    userIdOrSelectedTechnique?:
+      | number
+      | { techniqueType: ManipulativeTechniqueType; intensity: number; target: string },
+    techniqueType?: ManipulativeTechniqueType,
   ): Promise<string | { success: boolean; message: string }> {
     // Проверяем, какая перегрузка была вызвана
     if (typeof contextOrCharacterId === 'number') {
       // Первая перегрузка: (characterId, userId, technique)
       const characterId = contextOrCharacterId;
       const userId = userIdOrSelectedTechnique as number;
-      const technique = techniqueType as ManipulativeTechniqueType;
-      
+      const technique = techniqueType;
+
       // Создаем Entity для сохранения в БД
       const techniqueExecution = this.techniqueExecutionRepository.create({
         techniqueType: technique,
@@ -289,24 +306,31 @@ export class ManipulationService {
 
         return manipulativeResponse;
       } catch (error) {
-        this.logService.error(`Error executing technique ${technique} for character ${characterId}`, {
-          error: error.message,
-          characterId,
-          userId,
-          technique
-        });
+        this.logService.error(
+          `Error executing technique ${technique} for character ${characterId}`,
+          {
+            error: error.message,
+            characterId,
+            userId,
+            technique,
+          },
+        );
         throw error;
       }
     } else {
       // Вторая перегрузка: (context, selectedTechnique?)
-      const context = contextOrCharacterId as IManipulationContext;
-      
+      const context = contextOrCharacterId;
+
       // Используем userMessage, если messageContent отсутствует
       const messageContent = context.messageContent || context.userMessage;
-      
+
       // Если передана выбранная техника, используем её, иначе выбираем технику автоматически
-      let selectedTechnique: { techniqueType: ManipulativeTechniqueType; intensity: number; target: string };
-      
+      let selectedTechnique: {
+        techniqueType: ManipulativeTechniqueType;
+        intensity: number;
+        target: string;
+      };
+
       if (userIdOrSelectedTechnique && typeof userIdOrSelectedTechnique !== 'number') {
         selectedTechnique = userIdOrSelectedTechnique;
       } else {
@@ -315,17 +339,20 @@ export class ManipulationService {
         const updatedContext = { ...context, messageContent };
         selectedTechnique = await this.selectTechnique(updatedContext);
       }
-      
+
       try {
         // Определяем интенсивность на основе переданных данных или используем значение по умолчанию
-        const intensity = context.intensityLevel || 
-                         (selectedTechnique.intensity > 0.7 ? TechniqueIntensity.AGGRESSIVE : 
-                          selectedTechnique.intensity > 0.4 ? TechniqueIntensity.MODERATE : 
-                          TechniqueIntensity.SUBTLE);
-        
+        const intensity =
+          context.intensityLevel ||
+          (selectedTechnique.intensity > 0.7
+            ? TechniqueIntensity.AGGRESSIVE
+            : selectedTechnique.intensity > 0.4
+              ? TechniqueIntensity.MODERATE
+              : TechniqueIntensity.SUBTLE);
+
         // Определяем фазу техники
         const phase = context.phase || TechniquePhase.EXECUTION;
-        
+
         // Создаем Entity для сохранения в БД
         const techniqueExecution = this.techniqueExecutionRepository.create({
           techniqueType: selectedTechnique.techniqueType,
@@ -347,14 +374,17 @@ export class ManipulationService {
 
         // Сохраняем в базу данных
         await this.techniqueExecutionRepository.save(techniqueExecution);
-        
+
         return { success: true, message: manipulativeResponse };
       } catch (error) {
-        this.logService.error(`Error executing technique ${selectedTechnique.techniqueType} for context`, {
-          error: error.message,
-          context,
-          selectedTechnique
-        });
+        this.logService.error(
+          `Error executing technique ${selectedTechnique.techniqueType} for context`,
+          {
+            error: error.message,
+            context,
+            selectedTechnique,
+          },
+        );
         return { success: false, message: 'Техника не может быть применена в данный момент.' };
       }
     }
@@ -364,19 +394,19 @@ export class ManipulationService {
    * Обновление профиля пользователя на основе данных
    */
   async updateUserProfile(
-    characterId: number | string, 
-    userId: number | string, 
+    characterId: number | string,
+    userId: number | string,
     profileData: {
       vulnerabilities?: string[];
       successfulTechniques?: ManipulativeTechniqueType[];
       resistedTechniques?: ManipulativeTechniqueType[];
       emotionalTriggers?: string[];
-    }
+    },
   ): Promise<UserManipulationProfile> {
     // Преобразуем ID к числовому типу, если они переданы как строки
     let numericUserId: number;
     let numericCharacterId: number;
-    
+
     if (typeof userId === 'string') {
       // Проверяем, является ли строка UUID
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -389,7 +419,7 @@ export class ManipulationService {
     } else {
       numericUserId = userId;
     }
-    
+
     if (typeof characterId === 'string') {
       // Проверяем, является ли строка UUID
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -402,16 +432,16 @@ export class ManipulationService {
     } else {
       numericCharacterId = characterId;
     }
-    
+
     // Проверяем, что ID валидны
     if (isNaN(numericUserId) || isNaN(numericCharacterId)) {
       throw new Error(`Invalid ID format: userId=${userId}, characterId=${characterId}`);
     }
-    
+
     try {
       // Поиск или создание профиля пользователя
       let profile = await this.userManipulationProfileRepository.findOne({
-        where: { userId: numericUserId, characterId: numericCharacterId }
+        where: { userId: numericUserId, characterId: numericCharacterId },
       });
 
       if (!profile) {
@@ -423,7 +453,7 @@ export class ManipulationService {
           successfulTechniques: [],
           resistedTechniques: [],
           emotionalTriggers: [],
-          lastUpdate: new Date()
+          lastUpdate: new Date(),
         });
       }
 
@@ -431,15 +461,15 @@ export class ManipulationService {
       if (profileData.vulnerabilities) {
         profile.vulnerabilities = profileData.vulnerabilities;
       }
-      
+
       if (profileData.successfulTechniques) {
         profile.successfulTechniques = profileData.successfulTechniques;
       }
-      
+
       if (profileData.resistedTechniques) {
         profile.resistedTechniques = profileData.resistedTechniques;
       }
-      
+
       if (profileData.emotionalTriggers) {
         profile.emotionalTriggers = profileData.emotionalTriggers;
       }
@@ -447,19 +477,22 @@ export class ManipulationService {
       profile.lastUpdate = new Date();
       const savedProfile = await this.userManipulationProfileRepository.save(profile);
 
-      this.logService.log(`Updated manipulation profile for user ${numericUserId} with character ${numericCharacterId}`, {
-        userId: numericUserId,
-        characterId: numericCharacterId,
-        profileData
-      });
-      
+      this.logService.log(
+        `Updated manipulation profile for user ${numericUserId} with character ${numericCharacterId}`,
+        {
+          userId: numericUserId,
+          characterId: numericCharacterId,
+          profileData,
+        },
+      );
+
       return savedProfile;
     } catch (error) {
       this.logService.error(`Failed to update user manipulation profile`, {
         error: error.message,
         userId: numericUserId,
         characterId: numericCharacterId,
-        profileData
+        profileData,
       });
       throw error;
     }
@@ -517,7 +550,9 @@ export class ManipulationService {
   private async evaluateEffectiveness(execution: ITechniqueExecution): Promise<void> {
     // Получаем обновленные данные о потребностях и эмоциях
     const needs = await this.needsService.getActiveNeeds(execution.characterId);
-    const emotionalState = await this.emotionalStateService.getEmotionalState(execution.characterId);
+    const emotionalState = await this.emotionalStateService.getEmotionalState(
+      execution.characterId,
+    );
 
     // Простая оценка эффективности на основе изменения потребностей и эмоций
     let effectiveness = 50; // Базовое значение
@@ -655,39 +690,34 @@ export class ManipulationService {
    */
   private uuidToNumeric(uuid: string): number {
     try {
-      console.log('Converting UUID to numeric:', uuid);
-      
       // Проверяем формат UUID
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       if (!uuidRegex.test(uuid)) {
-        console.log('Not a valid UUID format, trying parseInt:', uuid);
         const result = parseInt(uuid, 10) || 0;
-        console.log('Result:', result);
         return result;
       }
-      
+
       // Удаляем дефисы
       const cleanUuid = uuid.replace(/-/g, '');
-      console.log('Clean UUID:', cleanUuid);
-      
+
       // Если UUID содержит только нули, возвращаем 0
       if (/^0+$/.test(cleanUuid)) {
-        console.log('UUID contains only zeros, returning 0');
         return 0;
       }
-      
+
       // Берем первые 9 символов (чтобы избежать переполнения)
       const shortUuid = cleanUuid.substring(0, 9);
-      console.log('Short UUID (first 9 chars):', shortUuid);
-      
+
       // Преобразуем в число
       const result = parseInt(shortUuid, 10);
-      console.log('Result:', result);
-      
+
       return result || 0; // Возвращаем результат или 0, если не удалось преобразовать
     } catch (error) {
       console.error('Error converting UUID to numeric:', error);
-      this.logService.warn('Не удалось преобразовать UUID в числовой ID', { uuid, error: error.message });
+      this.logService.warn('Не удалось преобразовать UUID в числовой ID', {
+        uuid,
+        error: error.message,
+      });
       return 0;
     }
   }

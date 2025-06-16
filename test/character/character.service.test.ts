@@ -1,35 +1,50 @@
-import { createTestSuite, createTest, TestConfigType, Tester } from '../../lib/tester';
-import { FixtureManager } from '../../lib/tester/fixtures';
+import { DataSource, Repository } from 'typeorm';
+import { TypeOrmModule } from '@nestjs/typeorm';
+
+import { createTestSuite, createTest } from '../../lib/tester';
+import { TestModuleBuilder } from '../../lib/tester/utils/test-module-builder';
+import { FixtureManager } from '../../lib/tester/fixtures/fixture-manager';
+
 import { CharacterService } from '../../src/character/services/character.service';
 import { Character, CharacterGender } from '../../src/character/entities/character.entity';
 import { CharacterArchetype } from '../../src/character/enums/character-archetype.enum';
 
 createTestSuite('CharacterService Integration Tests', () => {
-  let tester: Tester;
   let fixtureManager: FixtureManager;
+  let moduleRef: import('@nestjs/testing').TestingModule | null = null;
+  let dataSource: DataSource;
+  let characterService: CharacterService;
 
-  beforeAll(async () => {
-    tester = Tester.getInstance();
-    const dataSource = await tester.setupTestEnvironment(TestConfigType.DATABASE);
-    fixtureManager = new FixtureManager(dataSource);
-  });
-  afterAll(async () => {
-    await tester.forceCleanup();
-  });
   beforeEach(async () => {
+    moduleRef = await TestModuleBuilder.create()
+      .withImports([TypeOrmModule.forFeature([Character])])
+      .withProviders([CharacterService])
+      .withRequiredMocks()
+      .compile();
+
+    dataSource = moduleRef.get<DataSource>(DataSource);
+    fixtureManager = new FixtureManager(dataSource);
+    characterService = moduleRef.get<CharacterService>(CharacterService);
+
     await fixtureManager.cleanDatabase();
   });
+
+  afterEach(async () => {
+    if (dataSource && dataSource.isInitialized) {
+      await dataSource.destroy();
+    }
+    if (moduleRef) {
+      await moduleRef.close();
+    }
+  });
+
   createTest(
     {
       name: 'should create a character',
-      configType: TestConfigType.DATABASE,
     },
-    async context => {
-      const characterService = context.get(CharacterService);
+    async () => {
+      const characterServiceInstance = characterService;
       const user = await fixtureManager.createUser({});
-
-      // Ensure userId is a number
-      const userId = typeof user.id === 'string' ? parseInt(user.id, 10) : user.id;
 
       const characterData = {
         name: 'Test Character',
@@ -48,17 +63,17 @@ createTestSuite('CharacterService Integration Tests', () => {
           strengths: ['creativity', 'empathy'],
           weaknesses: ['impatience', 'stubbornness'],
         },
-        userId: userId,
+        user,
       };
 
-      const result = await characterService.create(characterData);
+      const result = await characterServiceInstance.create(characterData);
 
       expect(result).toBeDefined();
       expect(result.id).toBeDefined();
       expect(result.name).toEqual(characterData.name);
 
       // Use fixtureManager to get the repository
-      const characterRepo = fixtureManager.getRepository(Character);
+      const characterRepo: Repository<Character> = fixtureManager.getRepository(Character);
       const found = await characterRepo.findOneBy({ id: result.id });
 
       expect(found).not.toBeNull();
@@ -71,13 +86,12 @@ createTestSuite('CharacterService Integration Tests', () => {
   createTest(
     {
       name: 'should find a character by ID',
-      configType: TestConfigType.DATABASE,
     },
-    async context => {
+    async () => {
       const user = await fixtureManager.createUser({});
       const character = await fixtureManager.createCharacter({ user });
-      const characterService = context.get(CharacterService);
-      const result = await characterService.findOneById(character.id);
+      const characterServiceInstance = characterService;
+      const result = await characterServiceInstance.findOneById(character.id);
 
       expect(result).toBeDefined();
       expect(result?.id).toEqual(character.id);

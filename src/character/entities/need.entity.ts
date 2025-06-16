@@ -30,7 +30,7 @@ export class Need {
   @Column()
   characterId: number;
 
-  @ManyToOne(() => Character)
+  @ManyToOne(() => Character, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'characterId' })
   character: Character;
 

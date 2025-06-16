@@ -1,6 +1,8 @@
 import { Tester, createTestSuite, createTest, TestConfigType } from '../../lib/tester';
+import { TestModuleBuilder } from '../../lib/tester';
 import { FixtureManager } from '../../lib/tester/fixtures';
 import { PromptTemplateService } from '../../src/prompt-template/prompt-template.service';
+import { PromptTemplateModule } from '../../src/prompt-template/prompt-template.module';
 import { Character } from '../../src/character/entities/character.entity';
 import { CharacterArchetype } from '../../src/character/enums/character-archetype.enum';
 import { IEmotionalState } from '../../src/character/interfaces/emotional-state.interface';
@@ -10,16 +12,11 @@ import { DataSource } from 'typeorm';
 createTestSuite('PromptTemplateService Integration Tests', () => {
   let fixtureManager: FixtureManager;
   let dataSource: DataSource;
-  let tester: Tester;
 
   beforeAll(async () => {
-    tester = Tester.getInstance();
+    const tester = Tester.getInstance();
     dataSource = await tester.setupTestEnvironment(TestConfigType.DATABASE);
     fixtureManager = new FixtureManager(dataSource);
-  });
-
-  afterAll(async () => {
-    await tester.forceCleanup();
   });
 
   beforeEach(async () => {
@@ -29,22 +26,34 @@ createTestSuite('PromptTemplateService Integration Tests', () => {
   createTest(
     {
       name: 'должен создать экземпляр PromptTemplateService',
-      configType: TestConfigType.DATABASE,
+      requiresDatabase: true,
     },
-    async context => {
-      const promptService = context.get(PromptTemplateService);
+    async () => {
+      const moduleRef = await TestModuleBuilder.create()
+        .withImports([PromptTemplateModule])
+        .withRequiredMocks()
+        .compile();
+
+      const promptService = moduleRef.get(PromptTemplateService);
       expect(promptService).toBeDefined();
       expect(promptService).toBeInstanceOf(PromptTemplateService);
+
+      await moduleRef.close();
     },
   );
 
   createTest(
     {
       name: 'должен создавать промпты на основе шаблонов',
-      configType: TestConfigType.DATABASE,
+      requiresDatabase: true,
     },
-    async context => {
-      const promptService = context.get(PromptTemplateService);
+    async () => {
+      const moduleRef = await TestModuleBuilder.create()
+        .withImports([PromptTemplateModule])
+        .withRequiredMocks()
+        .compile();
+
+      const promptService = moduleRef.get(PromptTemplateService);
 
       const testTemplate: PromptTemplate = {
         type: 'test-template',
@@ -69,16 +78,23 @@ createTestSuite('PromptTemplateService Integration Tests', () => {
       expect(typeof prompt).toBe('string');
       expect(prompt).toContain('Привет, Иван!');
       expect(prompt).toContain('Твой возраст: 25');
+
+      await moduleRef.close();
     },
   );
 
   createTest(
     {
       name: 'должен создавать системный промпт для персонажа',
-      configType: TestConfigType.DATABASE,
+      requiresDatabase: true,
     },
-    async context => {
-      const promptService = context.get(PromptTemplateService);
+    async () => {
+      const moduleRef = await TestModuleBuilder.create()
+        .withImports([PromptTemplateModule])
+        .withRequiredMocks()
+        .compile();
+
+      const promptService = moduleRef.get(PromptTemplateService);
 
       const character = new Character();
       character.id = 123456;
@@ -113,32 +129,46 @@ createTestSuite('PromptTemplateService Integration Tests', () => {
       expect(systemPrompt).toBeDefined();
       expect(typeof systemPrompt).toBe('string');
       expect(systemPrompt.length).toBeGreaterThan(0);
+
+      await moduleRef.close();
     },
   );
 
   createTest(
     {
       name: 'должен создавать промпт для анализа сообщений',
-      configType: TestConfigType.DATABASE,
+      requiresDatabase: true,
     },
-    async context => {
-      const promptService = context.get(PromptTemplateService);
+    async () => {
+      const moduleRef = await TestModuleBuilder.create()
+        .withImports([PromptTemplateModule])
+        .withRequiredMocks()
+        .compile();
+
+      const promptService = moduleRef.get(PromptTemplateService);
       const analysisPrompt = (promptService as any).createAnalysisPrompt(
         'Анализ настроения пользователя',
       );
       expect(analysisPrompt).toBeDefined();
       expect(typeof analysisPrompt).toBe('string');
       expect(analysisPrompt.length).toBeGreaterThan(0);
+
+      await moduleRef.close();
     },
   );
 
   createTest(
     {
       name: 'должен управлять версиями шаблонов',
-      configType: TestConfigType.DATABASE,
+      requiresDatabase: true,
     },
-    async context => {
-      const promptService = context.get(PromptTemplateService);
+    async () => {
+      const moduleRef = await TestModuleBuilder.create()
+        .withImports([PromptTemplateModule])
+        .withRequiredMocks()
+        .compile();
+
+      const promptService = moduleRef.get(PromptTemplateService);
 
       const template1: PromptTemplate = {
         type: 'versioned-template',
@@ -181,16 +211,23 @@ createTestSuite('PromptTemplateService Integration Tests', () => {
       });
       expect(prompt).toContain('Версия 2.0');
       expect(prompt).toContain('улучшенная');
+
+      await moduleRef.close();
     },
   );
 
   createTest(
     {
       name: 'должен получать шаблоны по типу и версии',
-      configType: TestConfigType.DATABASE,
+      requiresDatabase: true,
     },
-    async context => {
-      const promptService = context.get(PromptTemplateService);
+    async () => {
+      const moduleRef = await TestModuleBuilder.create()
+        .withImports([PromptTemplateModule])
+        .withRequiredMocks()
+        .compile();
+
+      const promptService = moduleRef.get(PromptTemplateService);
 
       const template: PromptTemplate = {
         type: 'get-template-test',
@@ -210,6 +247,8 @@ createTestSuite('PromptTemplateService Integration Tests', () => {
       expect(retrievedTemplate!.type).toBe('get-template-test');
       expect(retrievedTemplate!.version).toBe('1.5.0');
       expect(retrievedTemplate!.template).toBe('Содержимое: {{data}}');
+
+      await moduleRef.close();
     },
   );
 });

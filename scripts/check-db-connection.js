@@ -21,7 +21,6 @@ async function checkDatabaseConnection() {
   try {
     await client.connect();
     await client.query('SELECT 1');
-    console.log('✅ Подключение к тестовой базе данных успешно установлено');
     await client.end();
     return true;
   } catch (error) {

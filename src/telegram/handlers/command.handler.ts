@@ -118,7 +118,7 @@ export class CommandHandler {
         }
 
         // Получаем персонажей пользователя напрямую через CharacterService
-        const characters = await this.characterService.findByUserId(Number(userId));
+        const characters = await this.characterService.findByUserId(String(userId));
 
         if (!characters || characters.length === 0) {
           // Создаем простую клавиатуру для начала теста
@@ -379,7 +379,11 @@ export class CommandHandler {
         }
 
         // Проверяем, принадлежит ли персонаж этому пользователю
-        if (ctx.from?.id && character.userId !== undefined && Number(character.userId) !== ctx.from.id) {
+        if (
+          ctx.from?.id &&
+          character.userId !== undefined &&
+          character.userId !== ctx.from.id.toString()
+        ) {
           await ctx.reply('У вас нет доступа к этому персонажу.');
           return;
         }
@@ -585,7 +589,7 @@ ${currentAction.content || ''}`;
             motivations: updatedMotivations,
             needsExpression: 'Выполнить предложенное пользователем действие',
             emotionalResponse: 'Готовность выполнить запрос пользователя',
-            messagePrompt: `Выполнить действие ${actionType}`
+            messagePrompt: `Выполнить действие ${actionType}`,
           });
 
           if (action) {

@@ -5,30 +5,57 @@
  * Запуск: node scripts/run-all-tests.js
  */
 
-const { execSync } = require('child_process');
+const { spawnSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
-console.log('🚀 Запуск всех тестов проекта с отчетом о покрытии');
+// Директория и файл для логов
+const logsDir = path.resolve(__dirname, '../logs');
+if (!fs.existsSync(logsDir)) {
+  fs.mkdirSync(logsDir);
+}
+const logFilePath = path.join(logsDir, 'test-run.log');
+// Перезаписываем файл при каждом запуске
+fs.writeFileSync(logFilePath, '');
+
+function logToFile(data) {
+  fs.appendFileSync(logFilePath, data);
+}
+
+function runCommand(command, args = [], options = {}) {
+  console.log(`\n🔧 Запуск: ${command} ${args.join(' ')}`);
+  const result = spawnSync(command, args, {
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env: { ...process.env, NODE_ENV: 'test', ...options.env },
+    shell: options.shell ?? false,
+  });
+
+  if (result.stdout) {
+    process.stdout.write(result.stdout);
+    logToFile(result.stdout);
+  }
+  if (result.stderr) {
+    process.stderr.write(result.stderr);
+    logToFile(result.stderr);
+  }
+
+  if (result.status !== 0 && !options.ignoreError) {
+    throw new Error(`Команда ${command} завершилась с кодом ${result.status}`);
+  }
+}
+
+console.log('🚀 Запуск всех тестов проекта с отчетом о покрытии (лог: logs/test-run.log)');
 
 try {
-    // Сначала проверяем подключение к базе данных
-    console.log('\n🔍 Проверка подключения к тестовой базе данных...');
-    execSync('node scripts/check-db-connection.js', {
-        stdio: 'inherit',
-        env: { ...process.env, NODE_ENV: 'test' }
-    });
+    // Проверяем подключение к базе данных
+    runCommand('node', ['scripts/check-db-connection.js']);
     console.log('✅ База данных готова к тестированию');
 
-    // Запускаем проверку типов
-    console.log('\n📋 Проверка типов TypeScript...');
-    execSync('npx tsc --noEmit', {
-        stdio: 'inherit',
-        env: { ...process.env, NODE_ENV: 'test' }
-    });
+    // Проверка типов
+    runCommand('npx', ['tsc', '--noEmit']);
     console.log('✅ Проверка типов успешно пройдена');
 
-    // Запускаем юнит-тесты с покрытием
+    // Юнит-тесты
     console.log('\n📋 Запуск юнит-тестов...');
     const unitOptions = [
         '--coverage',
@@ -39,20 +66,14 @@ try {
         '--testPathIgnorePatterns=.*\\.e2e\\.test\\.ts$'
     ];
 
-    console.log(`✓ Запуск команды: jest ${unitOptions.join(' ')}`);
-
     try {
-        execSync(`jest ${unitOptions.join(' ')}`, {
-            stdio: 'inherit',
-            env: { ...process.env, NODE_ENV: 'test' }
-        });
-        console.log('✅ Юнит-тесты успешно выполнены');
-    } catch (error) {
-        console.error('⚠️ Некоторые юнит-тесты завершились с ошибками');
-        // Продолжаем выполнение скрипта, чтобы запустить интеграционные тесты
+      runCommand('jest', unitOptions, { ignoreError: true, shell: true });
+      console.log('✅ Юнит-тесты выполнены');
+    } catch (e) {
+      console.error('⚠️ Юнит-тесты завершились с ошибками');
     }
 
-    // Запускаем интеграционные тесты с покрытием
+    // Интеграционные тесты
     console.log('\n📋 Запуск интеграционных тестов...');
     const integrationOptions = [
         '--coverage',
@@ -66,39 +87,31 @@ try {
         '--config=jest.integration.config.js'
     ];
 
-    console.log(`✓ Запуск команды: jest ${integrationOptions.join(' ')}`);
-
     try {
-        execSync(`jest ${integrationOptions.join(' ')}`, {
-            stdio: 'inherit',
-            env: { ...process.env, NODE_ENV: 'test' }
-        });
-        console.log('✅ Интеграционные тесты успешно выполнены');
-    } catch (error) {
-        console.error('⚠️ Некоторые интеграционные тесты завершились с ошибками');
-        // Продолжаем выполнение скрипта для вывода общей статистики
+      runCommand('jest', integrationOptions, { ignoreError: true, shell: true });
+      console.log('✅ Интеграционные тесты выполнены');
+    } catch (e) {
+      console.error('⚠️ Интеграционные тесты завершились с ошибками');
     }
 
-    // Объединяем отчеты о покрытии (если такая возможность есть)
+    // Объединяем отчёты о покрытии
     console.log('\n📊 Генерация объединенного отчета о покрытии...');
     try {
-        // Проверяем, установлен ли nyc для объединения отчетов
-        execSync('npx nyc --version', { stdio: 'ignore' });
+        runCommand('npx', ['nyc', '--version'], { ignoreError: false });
 
-        // Объединяем отчеты с помощью nyc
-        execSync('npx nyc merge coverage/unit coverage/merged-report.json', { stdio: 'inherit' });
-        execSync('npx nyc merge coverage/integration coverage/merged-integration.json', { stdio: 'inherit' });
-        execSync('npx nyc merge coverage coverage/final-report.json', { stdio: 'inherit' });
-        execSync('npx nyc report --reporter=text --reporter=lcov --temp-dir=coverage', { stdio: 'inherit' });
+        runCommand('npx', ['nyc', 'merge', 'coverage/unit', 'coverage/merged-report.json']);
+        runCommand('npx', ['nyc', 'merge', 'coverage/integration', 'coverage/merged-integration.json']);
+        runCommand('npx', ['nyc', 'merge', 'coverage', 'coverage/final-report.json']);
+        runCommand('npx', ['nyc', 'report', '--reporter=text', '--reporter=lcov', '--temp-dir=coverage']);
 
         console.log('✅ Объединенный отчет о покрытии успешно создан');
     } catch (error) {
         console.warn('⚠️ Не удалось создать объединенный отчет о покрытии. Убедитесь, что установлен пакет nyc');
-        console.warn('   Для установки nyc выполните: npm install -g nyc');
     }
 
     console.log('\n🎉 Все тесты выполнены! Отчеты о покрытии доступны в директории coverage/');
 } catch (error) {
+    logToFile(`\n❌ Сбой: ${error.message}`);
     console.error('❌ Ошибка при выполнении тестов:', error.message);
     process.exit(1);
 } 

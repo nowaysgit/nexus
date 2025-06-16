@@ -8,6 +8,7 @@ import {
   OneToMany,
   JoinColumn,
   Index,
+  RelationId,
 } from 'typeorm';
 import { User } from '../../user/entities/user.entity';
 import { Dialog } from '../../dialog/entities/dialog.entity';
@@ -48,7 +49,6 @@ export interface PersonalityData {
 }
 
 @Entity('characters')
-@Index(['userId'])
 @Index(['name'])
 @Index(['archetype'])
 export class Character {
@@ -142,8 +142,9 @@ export class Character {
   @JoinColumn({ name: 'userId' })
   user: User;
 
-  @Column()
-  userId: number;
+  @Column({ type: 'uuid', nullable: true })
+  @RelationId((character: Character) => character.user)
+  userId: string;
 
   @OneToMany(() => Need, need => need.character, {
     cascade: true,

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call */
 import { Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -9,6 +10,7 @@ import { IMessagingService } from '../../common/interfaces/messaging.interface';
 import { CacheService } from '../../cache/cache.service';
 import { LogService } from '../../logging/log.service';
 import { Inject } from '@nestjs/common';
+import { toNumeric } from '../../../lib/tester/utils/id-converter';
 
 /**
  * Типы сообщений в диалоге для БД
@@ -70,12 +72,13 @@ export class DialogService implements IMessagingService {
     private readonly characterRepository: Repository<Character>,
     private readonly cacheService: CacheService,
     private readonly logService: LogService,
-    @Optional() @Inject('UserService')
+    @Optional()
+    @Inject('UserService')
     private readonly userService?: any,
   ) {
     this.logService.setContext(DialogService.name);
     this.isTestMode = process.env.NODE_ENV === 'test';
-    
+
     if (!this.userService && !this.isTestMode) {
       this.logService.warn('UserService не предоставлен. Некоторые функции будут недоступны.', {
         service: 'DialogService',
@@ -95,7 +98,7 @@ export class DialogService implements IMessagingService {
       async () => {
         // Преобразуем telegramId в строку для совместимости с БД
         const stringTelegramId = telegramId.toString();
-        
+
         const cacheKey = `dialog:${stringTelegramId}:${characterId}`;
 
         // Проверяем кэш
@@ -126,11 +129,17 @@ export class DialogService implements IMessagingService {
 
           // Получаем userId из telegramId
           let userId: number | null = null;
-          
+
           // В тестовом окружении, если userService не доступен, используем 123 как тестовый userId
-          if (process.env.NODE_ENV === 'test' && (!this.userService || typeof this.userService.getUserIdByTelegramId !== 'function')) {
+          if (
+            process.env.NODE_ENV === 'test' &&
+            (!this.userService || typeof this.userService.getUserIdByTelegramId !== 'function')
+          ) {
             userId = 123; // Тестовый userId
-          } else if (this.userService && typeof this.userService.getUserIdByTelegramId === 'function') {
+          } else if (
+            this.userService &&
+            typeof this.userService.getUserIdByTelegramId === 'function'
+          ) {
             userId = await this.userService.getUserIdByTelegramId(stringTelegramId);
           }
 
@@ -142,7 +151,7 @@ export class DialogService implements IMessagingService {
             telegramId: stringTelegramId,
             characterId,
             character,
-            userId,
+            userId: typeof userId === 'string' ? toNumeric(userId) : userId,
             isActive: true,
             lastInteractionDate: new Date(),
           });
@@ -152,13 +161,13 @@ export class DialogService implements IMessagingService {
 
         // Сохраняем в кэш на 5 минут
         await this.cacheService.set(cacheKey, dialog, 300);
-        
+
         return dialog;
       },
       `получении или создании диалога для telegramId=${telegramId} и characterId=${characterId}`,
       this.logService,
       { telegramId, characterId },
-      null
+      null,
     );
   }
 
@@ -486,7 +495,7 @@ export class DialogService implements IMessagingService {
   async getDialogMessages(
     dialogId: number,
     page: number = 1,
-    limit: number = 20
+    limit: number = 20,
   ): Promise<Message[] | { messages: Message[]; total: number }> {
     return withErrorHandling(
       async () => {
@@ -501,7 +510,7 @@ export class DialogService implements IMessagingService {
         if (process.env.NODE_ENV === 'test') {
           return messages;
         }
-        
+
         return { messages, total };
       },
       'получении сообщений диалога',
@@ -599,11 +608,14 @@ export class DialogService implements IMessagingService {
   /**
    * Создать новый диалог
    */
-  async createDialog(dataOrTelegramId: CreateDialogData | string, characterId?: number): Promise<Dialog> {
+  async createDialog(
+    dataOrTelegramId: CreateDialogData | string,
+    characterId?: number,
+  ): Promise<Dialog> {
     return withErrorHandling(
       async () => {
         let dialog: Partial<Dialog>;
-        
+
         // Поддержка двух вариантов вызова
         if (typeof dataOrTelegramId === 'string' && characterId !== undefined) {
           // Старый вариант с отдельными параметрами
@@ -619,7 +631,7 @@ export class DialogService implements IMessagingService {
           dialog = this.dialogRepository.create({
             telegramId: data.telegramId,
             characterId: data.characterId,
-            userId: data.userId,
+            userId: typeof data.userId === 'string' ? toNumeric(data.userId) : data.userId,
             title: data.title || null,
             isActive: true,
             lastInteractionDate: new Date(),
@@ -630,9 +642,9 @@ export class DialogService implements IMessagingService {
       },
       'создании нового диалога',
       this.logService,
-      typeof dataOrTelegramId === 'string' 
-        ? { telegramId: dataOrTelegramId, characterId } 
-        : dataOrTelegramId as Record<string, unknown>,
+      typeof dataOrTelegramId === 'string'
+        ? { telegramId: dataOrTelegramId, characterId }
+        : (dataOrTelegramId as Record<string, unknown>),
       null,
     );
   }

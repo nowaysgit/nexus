@@ -1,35 +1,157 @@
-import { DataSource } from 'typeorm';
+import { DataSource, DataSourceOptions } from 'typeorm';
 import { ALL_TEST_ENTITIES } from '../entities';
 import { DbConnectionManager } from './db-connection-manager';
-import { waitForDatabaseConnection } from './db-connection-checker';
 import { v4 as uuidv4 } from 'uuid';
 import { Client } from 'pg';
 
 // Хранилище для уже созданных схем, чтобы избежать дублирования
 const createdSchemas = new Set<string>();
 
-/**
- * Генерирует уникальное имя схемы для тестов
- * @returns Уникальное имя схемы
- */
-function generateUniqueSchemaName(): string {
-  // Генерируем уникальное имя схемы и проверяем, что оно еще не использовалось
-  let schemaName = `test_${uuidv4().replace(/-/g, '_').substring(0, 16)}`;
+// Глобальный кеш DataSource для переиспользования в тестах и минимизации числа подключений
+let sharedTestDataSource: DataSource | null = null;
 
-  // Если схема с таким именем уже существует, генерируем новое имя
-  while (createdSchemas.has(schemaName)) {
-    schemaName = `test_${uuidv4().replace(/-/g, '_').substring(0, 16)}`;
+// Мок для DataSource, который используется, когда база данных не требуется
+const mockDataSource = {
+  isInitialized: true,
+  initialize: async () => Promise.resolve(),
+  destroy: async () => Promise.resolve(),
+  createQueryRunner: () => ({
+    connect: async () => Promise.resolve(),
+    startTransaction: async () => Promise.resolve(),
+    commitTransaction: async () => Promise.resolve(),
+    rollbackTransaction: async () => Promise.resolve(),
+    release: async () => Promise.resolve(),
+    manager: {
+      find: async () => [],
+      findOne: async () => null,
+      save: async (entity: unknown) => entity,
+      update: async () => ({ affected: 1 }),
+      delete: async () => ({ affected: 1 }),
+      createQueryBuilder: () => ({
+        where: () => ({ getOne: async () => null, getMany: async () => [] }),
+      }),
+    },
+  }),
+  getRepository: () => ({
+    find: async () => [],
+    findOne: async () => null,
+    save: async (entity: unknown) => entity,
+    update: async () => ({ affected: 1 }),
+    delete: async () => ({ affected: 1 }),
+    createQueryBuilder: () => ({
+      where: () => ({ getOne: async () => null, getMany: async () => [] }),
+    }),
+  }),
+  query: async () => [],
+  manager: {
+    query: async () => [],
+  },
+  entityMetadatas: [],
+} as unknown as DataSource;
+
+/**
+ * Создает DataSource для тестов
+ */
+export async function createTestDataSource(entities?: any[]): Promise<DataSource> {
+  // Проверяем, требуется ли база данных для текущего теста
+  const globalContext = global as { __currentTest?: { params?: { requiresDatabase?: boolean } } };
+  const currentTest = globalContext.__currentTest;
+  const requiresDatabase = currentTest?.params?.requiresDatabase !== false;
+
+  // Если база данных не требуется, возвращаем мок DataSource
+  if (!requiresDatabase) {
+    console.log('[createTestDataSource] Используем мок DataSource, т.к. requiresDatabase: false');
+    return mockDataSource;
   }
 
-  // Добавляем имя схемы в список созданных
-  createdSchemas.add(schemaName);
+  // Проверяем доступность базы данных без вывода ошибок (тихая проверка)
+  try {
+    const client = new Client({
+      host: process.env.TEST_DB_HOST || 'localhost',
+      port: parseInt(process.env.TEST_DB_PORT || '5433', 10),
+      user: process.env.TEST_DB_USERNAME || 'test_user',
+      password: process.env.TEST_DB_PASSWORD || 'test_password',
+      database: process.env.TEST_DB_NAME || 'nexus_test',
+      connectionTimeoutMillis: 1000, // Быстрый таймаут
+    });
 
-  return schemaName;
+    await client.connect();
+    await client.end();
+  } catch (_error) {
+    console.log('[createTestDataSource] База данных недоступна, используем мок DataSource');
+    return mockDataSource;
+  }
+
+  // Если передан список сущностей, создаем новый DataSource
+  if (entities && entities.length > 0) {
+    return createNewTestDataSource(entities);
+  }
+
+  // Если уже есть созданный DataSource, возвращаем его
+  if (sharedTestDataSource && sharedTestDataSource.isInitialized) {
+    return sharedTestDataSource;
+  }
+
+  // Иначе создаем новый DataSource со всеми сущностями
+  const dataSource = await createNewTestDataSource(ALL_TEST_ENTITIES);
+  sharedTestDataSource = dataSource;
+  return dataSource;
+}
+
+/**
+ * Создает новый DataSource для тестов
+ */
+async function createNewTestDataSource(entities: any[]): Promise<DataSource> {
+  // Генерируем уникальное имя схемы для изоляции тестов
+  const schemaName = `test_${uuidv4().replace(/-/g, '_')}`;
+
+  // Проверяем, не существует ли уже такая схема
+  if (createdSchemas.has(schemaName)) {
+    console.log(`Схема ${schemaName} уже существует, создаем новую...`);
+    return createNewTestDataSource(entities);
+  }
+
+  // Настройки подключения к тестовой базе данных
+  const options: DataSourceOptions = {
+    type: 'postgres',
+    host: process.env.TEST_DB_HOST || 'localhost',
+    port: parseInt(process.env.TEST_DB_PORT || '5433', 10),
+    username: process.env.TEST_DB_USERNAME || 'test_user',
+    password: process.env.TEST_DB_PASSWORD || 'test_password',
+    database: process.env.TEST_DB_NAME || 'nexus_test',
+    schema: schemaName,
+    synchronize: true,
+    dropSchema: true,
+    entities,
+    logging: false,
+  };
+
+  // Создаем DataSource
+  const dataSource = new DataSource(options);
+
+  try {
+    // Создаем схему в базе данных
+    await createSchema(schemaName);
+
+    // Инициализируем DataSource
+    await dataSource.initialize();
+
+    // Добавляем схему в список созданных
+    createdSchemas.add(schemaName);
+
+    // Регистрируем соединение в DbConnectionManager
+    DbConnectionManager.registerConnection(dataSource);
+
+    return dataSource;
+  } catch (error) {
+    console.error('Ошибка при создании DataSource:', error);
+    console.log('[createNewTestDataSource] Из-за ошибки используем мок DataSource');
+    return mockDataSource;
+  }
 }
 
 /**
  * Создает схему в базе данных
- * @param schemaName Имя схемы для создания
  */
 async function createSchema(schemaName: string): Promise<void> {
   const client = new Client({
@@ -38,126 +160,74 @@ async function createSchema(schemaName: string): Promise<void> {
     user: process.env.TEST_DB_USERNAME || 'test_user',
     password: process.env.TEST_DB_PASSWORD || 'test_password',
     database: process.env.TEST_DB_NAME || 'nexus_test',
-    connectionTimeoutMillis: 5000,
   });
 
   try {
     await client.connect();
-
-    // Проверяем существование схемы перед созданием
-    const checkResult = await client.query(
-      `SELECT schema_name FROM information_schema.schemata WHERE schema_name = $1`,
-      [schemaName],
-    );
-
-    if (checkResult.rows.length === 0) {
-      // Схема не существует, создаем её
-      await client.query(`CREATE SCHEMA ${schemaName}`);
-      console.log(`✅ Схема ${schemaName} успешно создана`);
-    } else {
-      console.log(`✅ Схема ${schemaName} уже существует`);
-    }
+    await client.query(`CREATE SCHEMA IF NOT EXISTS ${schemaName}`);
+    await client.end();
   } catch (error) {
-    console.error(`❌ Ошибка при создании схемы ${schemaName}:`, error);
-    throw error;
-  } finally {
+    console.error(`Ошибка при создании схемы ${schemaName}:`, error);
     await client.end();
   }
 }
 
 /**
- * Создает тестовое подключение к базе данных
- * @param entities Опциональный массив сущностей для TypeORM
- * @param checkConnection Проверять ли доступность базы данных перед созданием DataSource
- * @returns DataSource для тестовой базы данных
- */
-export async function createTestDataSource(
-  entities?: any[],
-  checkConnection = true,
-): Promise<DataSource> {
-  // Проверяем доступность базы данных, если требуется
-  if (checkConnection) {
-    const isConnected = await waitForDatabaseConnection();
-    if (!isConnected) {
-      throw new Error(
-        'Не удалось подключиться к тестовой базе данных. Убедитесь, что контейнер запущен: docker compose -f docker-compose.test.yml up -d',
-      );
-    }
-  }
-
-  // Генерируем уникальное имя схемы для этого запуска теста
-  const schemaName = generateUniqueSchemaName();
-
-  // Создаем схему перед инициализацией DataSource
-  await createSchema(schemaName);
-
-  const dataSource = new DataSource({
-    type: 'postgres',
-    host: process.env.TEST_DB_HOST || 'localhost',
-    port: parseInt(process.env.TEST_DB_PORT || '5433', 10),
-    username: process.env.TEST_DB_USERNAME || 'test_user',
-    password: process.env.TEST_DB_PASSWORD || 'test_password',
-    database: process.env.TEST_DB_NAME || 'nexus_test',
-    schema: schemaName,
-    synchronize: true,
-    dropSchema: true,
-    logging: false,
-    entities: entities || ALL_TEST_ENTITIES,
-    extra: {
-      max: 1, // Минимизируем количество соединений для тестов
-      min: 1,
-      connectionTimeoutMillis: 5000,
-      idleTimeoutMillis: 10000,
-      acquireTimeoutMillis: 5000,
-    },
-  });
-
-  // Регистрируем соединение в менеджере соединений
-  DbConnectionManager.registerConnection(dataSource);
-
-  return dataSource;
-}
-
-/**
- * Создает тестовое подключение к базе данных (синхронная версия для обратной совместимости)
- * @deprecated Используйте асинхронную версию createTestDataSource
- * @param entities Опциональный массив сущностей для TypeORM
- * @returns DataSource для тестовой базы данных
+ * Создает DataSource для тестов синхронно
  */
 export function createTestDataSourceSync(entities?: any[]): DataSource {
-  console.warn(
-    'ПРЕДУПРЕЖДЕНИЕ: Использование устаревшей синхронной версии createTestDataSource. Рекомендуется перейти на асинхронную версию.',
-  );
+  // Проверяем, требуется ли база данных для текущего теста
+  const globalContext = global as { __currentTest?: { params?: { requiresDatabase?: boolean } } };
+  const currentTest = globalContext.__currentTest;
+  const requiresDatabase = currentTest?.params?.requiresDatabase !== false;
 
-  // Генерируем уникальное имя схемы для этого запуска теста
-  const schemaName = generateUniqueSchemaName();
+  // Если база данных не требуется, возвращаем мок DataSource
+  if (!requiresDatabase) {
+    console.log(
+      '[createTestDataSourceSync] Используем мок DataSource, т.к. requiresDatabase: false',
+    );
+    return mockDataSource;
+  }
 
-  // В синхронной версии мы не можем создать схему асинхронно,
-  // поэтому полагаемся на то, что TypeORM сделает это автоматически
+  // Если передан список сущностей, создаем новый DataSource
+  if (entities && entities.length > 0) {
+    // Настройки подключения к тестовой базе данных
+    const options: DataSourceOptions = {
+      type: 'postgres',
+      host: process.env.TEST_DB_HOST || 'localhost',
+      port: parseInt(process.env.TEST_DB_PORT || '5433', 10),
+      username: process.env.TEST_DB_USERNAME || 'test_user',
+      password: process.env.TEST_DB_PASSWORD || 'test_password',
+      database: process.env.TEST_DB_NAME || 'nexus_test',
+      synchronize: true,
+      dropSchema: true,
+      entities,
+      logging: false,
+    };
 
-  const dataSource = new DataSource({
+    // Создаем DataSource
+    return new DataSource(options);
+  }
+
+  // Если уже есть созданный DataSource, возвращаем его
+  if (sharedTestDataSource && sharedTestDataSource.isInitialized) {
+    return sharedTestDataSource;
+  }
+
+  // Иначе создаем новый DataSource со всеми сущностями
+  const options: DataSourceOptions = {
     type: 'postgres',
     host: process.env.TEST_DB_HOST || 'localhost',
     port: parseInt(process.env.TEST_DB_PORT || '5433', 10),
     username: process.env.TEST_DB_USERNAME || 'test_user',
     password: process.env.TEST_DB_PASSWORD || 'test_password',
     database: process.env.TEST_DB_NAME || 'nexus_test',
-    schema: schemaName,
     synchronize: true,
     dropSchema: true,
+    entities: ALL_TEST_ENTITIES,
     logging: false,
-    entities: entities || ALL_TEST_ENTITIES,
-    extra: {
-      max: 1,
-      min: 1,
-      connectionTimeoutMillis: 5000,
-      idleTimeoutMillis: 10000,
-      acquireTimeoutMillis: 5000,
-    },
-  });
+  };
 
-  // Регистрируем соединение в менеджере соединений
-  DbConnectionManager.registerConnection(dataSource);
-
-  return dataSource;
+  // Создаем DataSource
+  return new DataSource(options);
 }

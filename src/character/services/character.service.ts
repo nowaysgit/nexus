@@ -4,6 +4,7 @@ import { Repository, DeepPartial, FindOptionsWhere } from 'typeorm';
 import { Character } from '../entities/character.entity';
 import { withErrorHandling } from '../../common/utils/error-handling/error-handling.utils';
 import { LogService } from '../../logging/log.service';
+import { CharacterArchetype } from '../enums/character-archetype.enum';
 
 // Определяем интерфейсы локально
 export interface PaginationOptions {
@@ -74,6 +75,15 @@ export class CharacterService {
   async create(data: DeepPartial<Character>): Promise<Character> {
     return withErrorHandling(
       async () => {
+        if (!data.archetype) {
+          data.archetype = CharacterArchetype.HERO;
+        }
+
+        // По умолчанию appearance не должен быть null из-за NOT NULL ограничения
+        if (!data.appearance) {
+          data.appearance = 'n/a';
+        }
+
         const entity = this.repository.create(data);
         return await this.repository.save(entity);
       },
@@ -145,7 +155,7 @@ export class CharacterService {
    * Поиск персонажей по ID пользователя
    * @param userId ID пользователя
    */
-  async findByUserId(userId: number): Promise<Character[]> {
+  async findByUserId(userId: string): Promise<Character[]> {
     return withErrorHandling(
       async () => {
         return this.repository.find({

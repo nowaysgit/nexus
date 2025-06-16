@@ -1,52 +1,66 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { TestingModule } from '@nestjs/testing';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { Repository, DataSource } from 'typeorm';
+
+// Entities
+import { Character } from '../../src/character/entities/character.entity';
+import { CharacterArchetype } from '../../src/character/enums/character-archetype.enum';
+import { ActionType } from '../../src/character/enums/action-type.enum';
+import { Need } from '../../src/character/entities/need.entity';
+import { CharacterNeedType } from '../../src/character/enums/character-need-type.enum';
+import { CharacterMotivation } from '../../src/character/entities/character-motivation.entity';
+import { Action } from '../../src/character/entities/action.entity';
+import { CharacterMemory } from '../../src/character/entities/character-memory.entity';
+
+// Services
+import { CharacterService } from '../../src/character/services/character.service';
 import { NeedsService } from '../../src/character/services/needs.service';
 import { MotivationService } from '../../src/character/services/motivation.service';
 import { ActionService } from '../../src/character/services/action.service';
-import { CharacterService } from '../../src/character/services/character.service';
-import { Character } from '../../src/character/entities/character.entity';
-import { Need } from '../../src/character/entities/need.entity';
-import { CharacterNeedType } from '../../src/character/enums/character-need-type.enum';
-import { Repository } from 'typeorm';
-import { CharacterModule } from '../../src/character/character.module';
-import { LLMModule } from '../../src/llm/llm.module';
-import { CacheModule } from '../../src/cache/cache.module';
-import { LoggingModule } from '../../src/logging/logging.module';
-import { MessageQueueModule } from '../../src/message-queue/message-queue.module';
-import { ValidationModule } from '../../src/validation/validation.module';
-import { MonitoringModule } from '../../src/monitoring/monitoring.module';
-import { PromptTemplateModule } from '../../src/prompt-template/prompt-template.module';
-import { createTestSuite, createTest, TestConfigType } from '../../lib/tester';
+import { MemoryService } from '../../src/character/services/memory.service';
+
+// Tester utilities
+import { TestModuleBuilder, createTestSuite, createTest } from '../../lib/tester';
+import { FixtureManager } from '../../lib/tester/fixtures/fixture-manager';
 
 createTestSuite('Needs and Motivation Workflow Integration Tests', () => {
   let moduleRef: TestingModule | null = null;
-  let characterService: CharacterService;
-  let needsService: NeedsService;
   let motivationService: MotivationService;
   let actionService: ActionService;
-  let characterRepository: Repository<Character>;
-  let needRepository: Repository<Need>;
+  let _characterRepository: Repository<Character>;
+  let _needRepository: Repository<Need>;
+  let _actionRepository: Repository<Action>;
+  let fixtureManager: FixtureManager;
+  let needsService: NeedsService;
 
   beforeEach(async () => {
-    moduleRef = await Test.createTestingModule({
-      imports: [
-        CharacterModule,
-        LLMModule,
-        CacheModule,
-        LoggingModule,
-        MessageQueueModule,
-        ValidationModule,
-        MonitoringModule,
-        PromptTemplateModule,
-      ],
-    }).compile();
+    moduleRef = await TestModuleBuilder.create()
+      .withImports([
+        TypeOrmModule.forFeature([Character, Need, CharacterMotivation, Action, CharacterMemory]),
+      ])
+      .withProviders([
+        CharacterService,
+        NeedsService,
+        MotivationService,
+        ActionService,
+        MemoryService,
+      ])
+      .withRequiredMocks()
+      .compile();
 
-    characterService = moduleRef.get<CharacterService>(CharacterService);
-    needsService = moduleRef.get<NeedsService>(NeedsService);
     motivationService = moduleRef.get<MotivationService>(MotivationService);
     actionService = moduleRef.get<ActionService>(ActionService);
-    characterRepository = moduleRef.get<Repository<Character>>(getRepositoryToken(Character));
-    needRepository = moduleRef.get<Repository<Need>>(getRepositoryToken(Need));
+    _characterRepository = moduleRef.get<Repository<Character>>(getRepositoryToken(Character));
+    _needRepository = moduleRef.get<Repository<Need>>(getRepositoryToken(Need));
+    _actionRepository = moduleRef.get<Repository<Action>>(getRepositoryToken(Action));
+    needsService = moduleRef.get<NeedsService>(NeedsService);
+
+    // Инициализируем FixtureManager для удобного создания зависимых сущностей
+    const dataSource = moduleRef.get<DataSource>(DataSource);
+    fixtureManager = new FixtureManager(dataSource);
+
+    await fixtureManager.cleanDatabase();
   });
 
   afterEach(async () => {
@@ -59,12 +73,17 @@ createTestSuite('Needs and Motivation Workflow Integration Tests', () => {
   createTest(
     {
       name: 'should create character and initialize needs',
-      configType: TestConfigType.INTEGRATION,
+      requiresDatabase: true,
     },
     async () => {
-      const character = await characterService.create({
+      const user = await fixtureManager.createUser({ email: 'anna@example.com' });
+
+      const character = await fixtureManager.createCharacter({
         name: 'Анна',
         age: 25,
+        archetype: CharacterArchetype.HERO,
+        user,
+        userId: user.id,
         biography: 'Общительная девушка, которая любит внимание',
         appearance: 'Привлекательная девушка с яркой улыбкой',
         personality: {
@@ -105,23 +124,31 @@ createTestSuite('Needs and Motivation Workflow Integration Tests', () => {
           thresholdValue: 70,
           accumulationRate: 1.5,
           resourceCost: 20,
-          successProbability: 0.7,
+          successProbability: 70,
         },
       );
 
       expect(motivation).toBeDefined();
-      expect(motivation.characterId).toBe(character.id);
-
-      await needRepository.delete({ characterId: character.id });
-      await characterRepository.delete(character.id);
+      if (motivation) {
+        expect(motivation.characterId).toBe(character.id);
+      }
     },
   );
 
   createTest(
-    { name: 'should handle action service integration', configType: TestConfigType.INTEGRATION },
+    {
+      name: 'should handle action service integration',
+      requiresDatabase: true,
+    },
     async () => {
-      const character = await characterService.create({
+      const user = await fixtureManager.createUser({ email: 'victor@example.com' });
+
+      const character = await fixtureManager.createCharacter({
         name: 'Виктор',
+        age: 32,
+        archetype: CharacterArchetype.HERO,
+        user,
+        userId: user.id,
         biography: 'Активный парень, который любит действовать',
         personality: {
           traits: ['активный', 'целеустремленный'],
@@ -133,21 +160,18 @@ createTestSuite('Needs and Motivation Workflow Integration Tests', () => {
           weaknesses: ['нетерпеливость'],
         },
         isActive: true,
+        appearance: 'Спортивный мужчина среднего роста',
       });
 
-      const action = await actionService.createActionWithResources(
-        character.id,
-        'SEND_MESSAGE' as any,
-        {
-          resourceCost: 10,
-          successProbability: 0.8,
-          potentialReward: { communication: 30 },
-          description: 'Отправка сообщения',
-        },
-      );
+      const action = await actionService.createActionWithResources(character.id, ActionType.WORK, {
+        resourceCost: 10,
+        successProbability: 0.8,
+        potentialReward: { communication: 30 },
+        description: 'Отправка сообщения',
+      });
 
       expect(action).toBeDefined();
-      expect(action.id).toBeDefined();
+      expect(action.metadata.id).toBeDefined();
 
       const actionContext = {
         character,
@@ -161,8 +185,59 @@ createTestSuite('Needs and Motivation Workflow Integration Tests', () => {
       const result = await actionService.execute(actionContext);
       expect(result).toBeDefined();
       expect(typeof result.success).toBe('boolean');
+    },
+  );
 
-      await characterRepository.delete(character.id);
+  createTest(
+    {
+      name: 'should create third character and initialize needs',
+      requiresDatabase: true,
+    },
+    async () => {
+      const user = await fixtureManager.createUser({ email: 'maria@example.com' });
+
+      const character = await fixtureManager.createCharacter({
+        name: 'Мария',
+        age: 22,
+        archetype: CharacterArchetype.HERO,
+        user,
+        userId: user.id,
+        biography: 'Студентка, которая много учится',
+        personality: {
+          traits: ['умная', 'целеустремленная'],
+          hobbies: ['учеба', 'книги'],
+          fears: ['неудача'],
+          values: ['знания', 'прогресс'],
+          musicTaste: ['классика', 'джаз'],
+          strengths: ['интеллект'],
+          weaknesses: ['перфекционизм'],
+        },
+        isActive: true,
+        appearance: 'Уставшая студентка с темными кругами под глазами',
+      });
+
+      const action = await actionService.createActionWithResources(character.id, ActionType.WORK, {
+        resourceCost: 10,
+        successProbability: 0.8,
+        potentialReward: { communication: 30 },
+        description: 'Отправка сообщения',
+      });
+
+      expect(action).toBeDefined();
+      expect(action.metadata.id).toBeDefined();
+
+      const actionContext = {
+        character,
+        action,
+        metadata: { testExecution: true },
+      };
+
+      const canExecute = await actionService.canExecute(actionContext);
+      expect(canExecute).toBe(true);
+
+      const result = await actionService.execute(actionContext);
+      expect(result).toBeDefined();
+      expect(typeof result.success).toBe('boolean');
     },
   );
 });

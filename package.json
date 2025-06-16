@@ -19,6 +19,10 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:integration": "./scripts/test-integration.sh",
     "test:all": "./scripts/run-all-tests.js",
+    "test:parallel": "jest --maxWorkers=4",
+    "test:parallel:integration": "jest --maxWorkers=4 --testMatch=\"**/test/**/*.integration.test.ts\"",
+    "test:parallel:unit": "jest --maxWorkers=4 --testMatch=\"**/test/**/*.test.ts\" --testPathIgnorePatterns=\".integration.test.ts\" --testPathIgnorePatterns=\".e2e.test.ts\"",
+    "test:parallel:all": "jest --maxWorkers=4 --coverage",
     "prepare": "husky install",
     "fix:lf": "eslint --fix \"{src,apps,libs}/**/*.ts\" && prettier --write \"{src,apps,libs}/**/*.ts\"",
     "cleanup:tests": "node scripts/cleanup-test-backups.js"

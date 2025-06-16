@@ -1,17 +1,42 @@
 import { DynamicModule, ForwardReference, INestApplication, Provider, Type } from '@nestjs/common';
 import { Test, TestingModule, TestingModuleBuilder } from '@nestjs/testing';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { WinstonModule } from 'nest-winston';
-import * as winston from 'winston';
-import { format } from 'winston';
 import { DataSource } from 'typeorm';
-import { TestConfigurations, TestConfig } from './test-configurations';
-import { ALL_TEST_ENTITIES } from './entities';
-import { requiredMocksAdder } from './test-configurations';
+import { TestConfigurations, TestConfig, requiredMocksAdder } from './test-configurations';
 import { FixtureManager } from './fixtures/fixture-manager';
+import { TestModuleBuilder } from './utils/test-module-builder';
+import { createTestSuite, createTest, createBasicTest } from './utils/test-functions';
+import { createTestDataSource, createTestDataSourceSync } from './utils/data-source';
+import { checkDatabaseConnection, waitForDatabaseConnection } from './utils/db-connection-checker';
+import { ConfigService } from '@nestjs/config';
 
 // Переопределяем jest.setTimeout
 jest.setTimeout(30000); // 30 секунд
+
+// Глобальная переменная для хранения информации о текущем тесте
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace NodeJS {
+    interface Global {
+      __currentTest?: {
+        params: {
+          requiresDatabase?: boolean;
+          [key: string]: any;
+        };
+      };
+    }
+  }
+}
+
+// Для TypeScript 4.x
+declare const global: {
+  __currentTest?: {
+    params: {
+      requiresDatabase?: boolean;
+      [key: string]: any;
+    };
+  };
+  [key: string]: any;
+};
 
 /**
  * Типы тестовых конфигураций
@@ -123,6 +148,7 @@ export class Tester {
   public module: TestingModule;
   private builder: TestingModuleBuilder;
   private dataSource: DataSource;
+  private currentTestParams: any;
 
   private constructor() {}
 
@@ -131,6 +157,13 @@ export class Tester {
       Tester.instance = new Tester();
     }
     return Tester.instance;
+  }
+
+  // Метод для установки параметров текущего теста
+  public setCurrentTestParams(params: any): void {
+    this.currentTestParams = params;
+    // Устанавливаем глобальную переменную для доступа из других модулей
+    global.__currentTest = { params };
   }
 
   public async init(
@@ -143,41 +176,37 @@ export class Tester {
   ): Promise<TestingModule> {
     const config = TestConfigurations[configType];
 
+    // Подготавливаем импорты (заменяем LoggingModule, TelegrafModule, добавляем MockTypeOrmModule)
+    const preparedImports = TestConfigurations.prepareImportsForTesting(
+      (metadata.imports || []) as (Type<any> | DynamicModule)[],
+    ) as unknown as (Type<any> | DynamicModule)[];
+
+    const importsForMocks: (Type<any> | DynamicModule)[] = preparedImports.filter(
+      (imp): imp is Type<any> | DynamicModule => typeof (imp as any)?.then !== 'function',
+    );
+
     this.builder = Test.createTestingModule({
-      imports: [
-        TypeOrmModule.forRootAsync({
-          useFactory: () => ({
-            ...(config?.db || BASE_TEST_CONFIG.database),
-            entities: ALL_TEST_ENTITIES,
-          }),
-        }),
-        WinstonModule.forRoot({
-          transports: [
-            new winston.transports.Console({
-              format: winston.format.combine(
-                winston.format.timestamp(),
-                winston.format.ms(),
-                winston.format.colorize(),
-                format.printf(({ level, message, timestamp, ms, context, ...meta }) => {
-                  const contextStr = context ? `[${context}] ` : '';
-                  const metaStr = Object.keys(meta).length ? ` ${JSON.stringify(meta)}` : '';
-                  return `${timestamp} ${ms} ${level}: ${contextStr}${message}${metaStr}`;
-                }),
-              ),
-            }),
-          ],
-        }),
-        ...(metadata.imports || []),
-      ],
+      imports: [...preparedImports],
       controllers: [...(metadata.controllers || [])],
-      providers: requiredMocksAdder((metadata.imports || []) as (Type<any> | DynamicModule)[], [
-        ...(metadata.providers || []),
-      ]),
+      providers: requiredMocksAdder(importsForMocks, [...(metadata.providers || [])]),
     });
 
     this.module = await this.builder.compile();
     this.app = this.module.createNestApplication();
     await this.app.init();
+
+    // DEBUG: проверяем наличие EncryptionService и ApiKeyService в контейнере
+    try {
+      const { EncryptionService } = await import('../../src/infrastructure/encryption.service');
+      const { ApiKeyService } = await import('../../src/infrastructure/api-key.service');
+      const enc = this.module.get(EncryptionService, { strict: false });
+      const api = this.module.get(ApiKeyService, { strict: false });
+
+      console.log('[Tester DEBUG] EncryptionService from container:', enc ? 'FOUND' : 'NOT FOUND');
+      console.log('[Tester DEBUG] ApiKeyService from container:', api ? 'FOUND' : 'NOT FOUND');
+    } catch {
+      // ignore
+    }
 
     return this.module;
   }
@@ -191,6 +220,13 @@ export class Tester {
     } = {},
   ): Promise<DataSource> {
     await this.init(configType, metadata);
+
+    // Если текущий тест не требует базы данных, возвращаем null
+    if (this.currentTestParams?.requiresDatabase === false) {
+      console.log('[Tester] Пропускаем подключение к базе данных, т.к. requiresDatabase: false');
+      return null;
+    }
+
     this.dataSource = this.module.get<DataSource>(DataSource);
     return this.dataSource;
   }
@@ -202,6 +238,10 @@ export class Tester {
     if (this.dataSource && this.dataSource.isInitialized) {
       await this.dataSource.destroy();
     }
+
+    // Очищаем информацию о текущем тесте
+    this.currentTestParams = null;
+    global.__currentTest = undefined;
   }
 
   public get<T>(token: Type<T> | string): T {
@@ -223,25 +263,19 @@ export class Tester {
   }
 }
 
-// Импортируем функции для создания тестов из отдельного файла
-import { createTestSuite, createTest, createBasicTest } from './utils/test-functions';
-
-export { createTestSuite, createTest, createBasicTest };
-
-// Импортируем функцию для создания тестового подключения к БД
-import { createTestDataSource, createTestDataSourceSync } from './utils/data-source';
-import { checkDatabaseConnection, waitForDatabaseConnection } from './utils/db-connection-checker';
-
+// Экспортируем все необходимые классы и функции
 export {
+  createTestSuite,
+  createTest,
+  createBasicTest,
   FixtureManager,
   Test,
   TestingModuleBuilder,
   TestConfig,
   TestConfigurations,
-  ALL_TEST_ENTITIES,
-  requiredMocksAdder,
   createTestDataSource,
   createTestDataSourceSync,
   checkDatabaseConnection,
   waitForDatabaseConnection,
+  TestModuleBuilder,
 };

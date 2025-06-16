@@ -1,203 +1,206 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { createTestSuite, createTest, TestConfigType } from '../../lib/tester';
-import { Character, CharacterGender } from '../../src/character/entities/character.entity';
-import { Dialog } from '../../src/dialog/entities/dialog.entity';
+import { TestingModule } from '@nestjs/testing';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { ConfigModule } from '@nestjs/config';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+
+// Entities
+import { Character } from '../../src/character/entities/character.entity';
+import { Need } from '../../src/character/entities/need.entity';
+import { CharacterNeedType } from '../../src/character/enums/character-need-type.enum';
+import { CharacterMotivation } from '../../src/character/entities/character-motivation.entity';
+import { Action } from '../../src/character/entities/action.entity';
+import { CharacterMemory } from '../../src/character/entities/character-memory.entity';
+import { StoryEvent } from '../../src/character/entities/story-event.entity';
+import { StoryPlan, StoryMilestone } from '../../src/character/entities/story-plan.entity';
+
+// Services
 import { CharacterService } from '../../src/character/services/character.service';
-import { DialogService } from '../../src/dialog/services/dialog.service';
-import { UserService } from '../../src/user/services/user.service';
-import { FixtureManager } from '../../lib/tester/fixtures/fixture-manager';
-import { CharacterArchetype } from '../../src/character/enums/character-archetype.enum';
-import { INestApplication } from '@nestjs/common';
-import { DataSource } from 'typeorm';
-import { AppModule } from '../../src/app.module';
+import { NeedsService } from '../../src/character/services/needs.service';
+import { MotivationService } from '../../src/character/services/motivation.service';
+import { ActionService } from '../../src/character/services/action.service';
+import { MemoryService } from '../../src/character/services/memory.service';
+import { MemoryType } from '../../src/character/interfaces/memory.interfaces';
+import { ActionType } from '../../src/character/enums/action-type.enum';
 
-createTestSuite('ID Types Compatibility Integration Tests', () => {
-  let app: INestApplication;
+// Tester utilities
+import { TestModuleBuilder, createTestSuite, createTest } from '../../lib/tester';
+
+// Тесты для проверки совместимости различных типов ID в системе
+createTestSuite('ID Types Compatibility Tests', () => {
+  let moduleRef: TestingModule | null = null;
   let characterService: CharacterService;
-  let dialogService: DialogService;
-  let userService: UserService;
-  let fixtureManager: FixtureManager;
-  let dataSource: DataSource;
-
-  beforeAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-
-    app = moduleFixture.createNestApplication();
-    await app.init();
-
-    dataSource = app.get(DataSource);
-    characterService = app.get<CharacterService>(CharacterService);
-    dialogService = app.get<DialogService>(DialogService);
-    userService = app.get<UserService>(UserService);
-    fixtureManager = new FixtureManager(dataSource);
-  });
+  let needsService: NeedsService;
+  let motivationService: MotivationService;
+  let actionService: ActionService;
+  let memoryService: MemoryService;
+  let _characterRepository: Repository<Character>;
 
   beforeEach(async () => {
-    await fixtureManager.cleanDatabase();
+    moduleRef = await TestModuleBuilder.create()
+      .withImports([
+        ConfigModule.forRoot({ isGlobal: true }),
+        TypeOrmModule.forFeature([
+          Character,
+          Need,
+          CharacterMotivation,
+          Action,
+          CharacterMemory,
+          StoryEvent,
+          StoryPlan,
+          StoryMilestone,
+        ]),
+      ] as any[])
+      .withProviders([
+        CharacterService,
+        NeedsService,
+        MotivationService,
+        ActionService,
+        MemoryService,
+      ])
+      .withRequiredMocks()
+      .compile();
+
+    characterService = moduleRef.get<CharacterService>(CharacterService);
+    needsService = moduleRef.get<NeedsService>(NeedsService);
+    motivationService = moduleRef.get<MotivationService>(MotivationService);
+    actionService = moduleRef.get<ActionService>(ActionService);
+    memoryService = moduleRef.get<MemoryService>(MemoryService);
+    _characterRepository = moduleRef.get<Repository<Character>>(getRepositoryToken(Character));
   });
 
-  afterAll(async () => {
-    await app.close();
+  afterEach(async () => {
+    if (moduleRef) {
+      await moduleRef.close();
+      moduleRef = null;
+    }
   });
 
   createTest(
     {
-      name: 'должен корректно работать с числовым ID пользователя',
-      configType: TestConfigType.INTEGRATION,
+      name: 'should handle numeric and string IDs correctly',
+      requiresDatabase: true,
     },
     async () => {
-      const user = await fixtureManager.createUser({
-        id: 'a1b2c3d4-e5f6-7890-abcd-000000012345',
-        email: 'numeric-id@example.com',
-        password: 'password123',
-        username: 'Numeric ID User',
-        telegramId: '12345',
-      });
-      expect(user).toBeDefined();
-
-      const character = await fixtureManager.createCharacter({
-        name: 'Test Character',
-        userId: 12345,
-        age: 25,
-        gender: CharacterGender.FEMALE,
-        archetype: CharacterArchetype.CAREGIVER,
-        biography: 'Test biography',
-        appearance: 'Test appearance',
-        personality: {
-          traits: ['kind', 'smart'],
-          hobbies: ['reading', 'music'],
-          fears: ['heights'],
-          values: ['honesty'],
-          musicTaste: ['rock', 'jazz'],
-          strengths: ['intelligence'],
-          weaknesses: ['impatience'],
-        },
-      });
-      expect(character).toBeDefined();
-      expect(character.userId).toBe(12345);
-
-      const dialog = await fixtureManager.createDialog({
-        user: user,
-        character: character,
-        userId: 12345,
-        characterId: character.id,
-      });
-      expect(dialog).toBeDefined();
-      expect(dialog.userId).toBe(12345);
-      expect(dialog.characterId).toBe(character.id);
-
-      const foundCharacters = await characterService.findByUserId(12345);
-      expect(foundCharacters).toBeDefined();
-      expect(foundCharacters.length).toBe(1);
-      expect(foundCharacters[0].id).toBe(character.id);
-
-      const foundDialogs = await dialogService.getUserDialogs(user.telegramId);
-      expect(foundDialogs).toBeDefined();
-      expect(foundDialogs.length).toBe(1);
-      expect(foundDialogs[0].id).toBe(dialog.id);
-    },
-  );
-
-  createTest(
-    {
-      name: 'должен корректно конвертировать типы ID с помощью FixtureManager',
-      configType: TestConfigType.INTEGRATION,
-    },
-    async () => {
-      const numericId = 12345;
-      const uuidFromNumeric = fixtureManager.numericToUuid(numericId);
-      expect(uuidFromNumeric).toBeDefined();
-      expect(typeof uuidFromNumeric).toBe('string');
-      expect(uuidFromNumeric.length).toBe(36);
-
-      const uuid = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
-      const numericFromUuid = fixtureManager.uuidToNumeric(uuid);
-      expect(numericFromUuid).toBeDefined();
-      expect(typeof numericFromUuid).toBe('number');
-
-      const stringResult = fixtureManager.ensureIdFormat(12345, 'string');
-      expect(stringResult).toBeDefined();
-      expect(typeof stringResult).toBe('string');
-
-      const numberResult = fixtureManager.ensureIdFormat(
-        'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-        'number',
-      );
-      expect(numberResult).toBeDefined();
-      expect(typeof numberResult).toBe('number');
-    },
-  );
-
-  createTest(
-    {
-      name: 'должен корректно работать при смешанном использовании типов ID',
-      configType: TestConfigType.INTEGRATION,
-    },
-    async () => {
-      const user1 = await fixtureManager.createUser({
-        id: 'a1b2c3d4-e5f6-7890-abcd-000000012345',
-        email: 'numeric-id@example.com',
-        password: 'password123',
-        username: 'Numeric ID User',
-        telegramId: '12345',
-      });
-
-      const user2 = await fixtureManager.createUser({
-        id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-        email: 'string-id@example.com',
-        password: 'password123',
-        username: 'String ID User',
-        telegramId: '67890',
-      });
-
-      const character1 = await fixtureManager.createCharacter({
-        name: 'Numeric User Character',
-        userId: 12345,
-        age: 25,
-        gender: CharacterGender.FEMALE,
-        archetype: CharacterArchetype.CAREGIVER,
-        biography: 'Test biography',
-        appearance: 'Test appearance',
-        personality: {
-          traits: ['kind', 'smart'],
-          hobbies: ['reading', 'music'],
-          fears: ['heights'],
-          values: ['honesty'],
-          musicTaste: ['rock', 'jazz'],
-          strengths: ['intelligence'],
-          weaknesses: ['impatience'],
-        },
-      });
-      const character2 = await fixtureManager.createCharacter({
-        name: 'String User Character',
-        user: user2,
+      // Создаем персонажа с числовым ID
+      const character = await characterService.create({
+        name: 'Тестовый персонаж',
         age: 30,
-        gender: CharacterGender.MALE,
-        archetype: CharacterArchetype.EXPLORER,
-        biography: 'Another test biography',
-        appearance: 'Another test appearance',
+        biography: 'Биография для теста ID',
         personality: {
-          traits: ['brave', 'curious'],
-          hobbies: ['hiking', 'photography'],
-          fears: ['spiders'],
-          values: ['freedom'],
-          musicTaste: ['indie', 'folk'],
-          strengths: ['adaptability'],
-          weaknesses: ['recklessness'],
+          traits: ['тестовый'],
+          hobbies: ['тестирование'],
+          fears: ['ошибки'],
+          values: ['точность'],
+          musicTaste: ['тишина'],
+          strengths: ['внимательность'],
+          weaknesses: ['педантичность'],
         },
+        isActive: true,
       });
 
-      expect(character1).toBeDefined();
-      expect(character1.userId).toBe(12345);
-      expect(character2).toBeDefined();
-      expect(character2.userId).toBe(user2.id);
+      // Проверяем, что ID числовой
+      expect(character.id).toBeDefined();
+      expect(typeof character.id).toBe('number');
 
-      const foundCharacters1 = await characterService.findByUserId(12345);
-      expect(foundCharacters1.length).toBe(1);
-      expect(foundCharacters1[0].id).toBe(character1.id);
-      // We cannot test findByUserId with user2 because user2.id is a string, and the service expects a number.
+      // Создаем потребности для персонажа
+      await needsService.createDefaultNeeds(character.id);
+      const needs = await needsService.getNeedsByCharacter(character.id);
+
+      // Проверяем, что ID потребностей числовые и связь с персонажем корректная
+      expect(needs.length).toBeGreaterThan(0);
+      needs.forEach(need => {
+        expect(typeof need.id).toBe('number');
+        expect(need.characterId).toBe(character.id);
+      });
+
+      // Создаем мотивацию с числовым ID персонажа
+      const motivation = await motivationService.createMotivation(
+        character.id,
+        CharacterNeedType.COMMUNICATION,
+        'Тестовая мотивация',
+        75,
+        {
+          thresholdValue: 70,
+          accumulationRate: 1.0,
+          resourceCost: 15,
+          successProbability: 80,
+        },
+      );
+
+      // Проверяем, что ID мотивации числовой и связь с персонажем корректная
+      expect(typeof motivation.id).toBe('number');
+      expect(motivation.characterId).toBe(character.id);
+
+      // Проверяем преобразование строкового ID в числовой
+      const stringId = String(character.id);
+      const foundCharacter = await characterService.findOne(Number(stringId));
+
+      // Проверяем, что персонаж найден по преобразованному ID
+      expect(foundCharacter).toBeDefined();
+      expect(foundCharacter.id).toBe(character.id);
+
+      // Очистка
+      await characterService.delete(character.id);
+    },
+  );
+
+  createTest(
+    {
+      name: 'should handle ID conversion between services',
+      requiresDatabase: true,
+    },
+    async () => {
+      // Создаем персонажа
+      const character = await characterService.create({
+        name: 'Персонаж для теста конверсии ID',
+        age: 25,
+        biography: 'Тестирование преобразования ID между сервисами',
+        personality: {
+          traits: ['тестовый'],
+          hobbies: ['проверка совместимости'],
+          fears: ['несовместимость'],
+          values: ['интеграция'],
+          musicTaste: ['системные звуки'],
+          strengths: ['адаптивность'],
+          weaknesses: ['зависимость от типов'],
+        },
+        isActive: true,
+      });
+
+      // Создаем действие для персонажа
+      const action = await actionService.createActionWithResources(
+        character.id, // Используем числовой ID
+        ActionType.SEND_MESSAGE,
+        {
+          resourceCost: 10,
+          successProbability: 90,
+          potentialReward: { test: 100 },
+          description: 'Тестовое действие для проверки ID',
+        },
+      );
+
+      // Проверяем, что действие создано
+      expect(action).toBeDefined();
+      expect(action.type).toBe(ActionType.SEND_MESSAGE);
+
+      // Создаем воспоминание, используя разные форматы ID
+      const stringId = String(character.id);
+      const numericId = Number(stringId);
+
+      const memory = await memoryService.createMemory(
+        numericId,
+        'Тестовое воспоминание для проверки совместимости ID',
+        MemoryType.EVENT,
+        5,
+        { test: true },
+      );
+
+      // Проверяем, что воспоминание создано с правильным ID персонажа
+      expect(memory.characterId).toBe(character.id);
+
+      // Очистка
+      await characterService.delete(numericId);
     },
   );
 });
