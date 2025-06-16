@@ -1,5 +1,5 @@
 {
-  "current_step": 356,
+  "current_step": 357,
   "completed": [
     "Интегрировать TestConfigurations и TestModuleBuilder в test/integration/id-types-compatibility.integration.test.ts",
     "Интегрировать TestConfigurations и TestModuleBuilder в test/integration/memory-context-workflow.integration.test.ts",
@@ -46,7 +46,8 @@
     "Исправить ошибки в тесте log.service.integration.test.ts (mockWinston.info/error не вызывается)",
     "Создан глобальный механизм очистки базы данных перед каждым тестом с параметром requiresDatabase: true, обеспечена изоляция тестовых данных",
     "Частично исправлены ошибки типизации в тестах specialization-workflow.integration.test.ts и log.service.integration.test.ts",
-    "Исправлен глобальный механизм очистки базы данных: вместо добавления хука beforeEach внутри функции setupDatabaseCleanup, теперь очистка выполняется непосредственно перед запуском теста в функции cleanupDatabase"
+    "Исправлен глобальный механизм очистки базы данных: вместо добавления хука beforeEach внутри функции setupDatabaseCleanup, теперь очистка выполняется непосредственно перед запуском теста в функции cleanupDatabase",
+    "Исправлены тесты LogService: улучшена типизация, добавлена корректная проверка вызовов методов логирования и интеграции с Rollbar. Улучшена документация моков."
   ],
   "pending": [
     "Исправить ошибки типизации в тестах specialization-workflow.integration.test.ts и log.service.integration.test.ts: решить проблемы с параметрами withImports/withProviders и типами моков",
