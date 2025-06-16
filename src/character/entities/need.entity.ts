@@ -14,9 +14,9 @@ import { CharacterNeedType } from '../enums/character-need-type.enum';
  * Приоритеты потребностей
  */
 export enum NeedPriority {
-  LOW = 1,      // Низкий приоритет
-  MEDIUM = 5,   // Средний приоритет
-  HIGH = 10     // Высокий приоритет
+  LOW = 1, // Низкий приоритет
+  MEDIUM = 5, // Средний приоритет
+  HIGH = 10, // Высокий приоритет
 }
 
 /**

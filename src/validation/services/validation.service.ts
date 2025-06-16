@@ -198,7 +198,10 @@ export class ValidationService implements IValidationService {
         };
       }
 
-      if (characterData.age && (typeof characterData.age !== 'number' || characterData.age < 18 || characterData.age > 100)) {
+      if (
+        characterData.age &&
+        (typeof characterData.age !== 'number' || characterData.age < 18 || characterData.age > 100)
+      ) {
         return {
           isValid: false,
           errors: [
@@ -240,14 +243,17 @@ export class ValidationService implements IValidationService {
   async validateUserInput(input: Record<string, unknown>): Promise<ValidationResult> {
     try {
       // Пример базовой валидации
-      const sanitizedInput = Object.entries(input).reduce((acc, [key, value]) => {
-        if (typeof value === 'string') {
-          acc[key] = this.sanitizeInput(value);
-        } else {
-          acc[key] = value;
-        }
-        return acc;
-      }, {} as Record<string, unknown>);
+      const sanitizedInput = Object.entries(input).reduce(
+        (acc, [key, value]) => {
+          if (typeof value === 'string') {
+            acc[key] = this.sanitizeInput(value);
+          } else {
+            acc[key] = value;
+          }
+          return acc;
+        },
+        {} as Record<string, unknown>,
+      );
 
       return {
         isValid: true,
@@ -307,7 +313,10 @@ export class ValidationService implements IValidationService {
 
       // Проверка метода
       const validMethods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
-      if (typeof request.method === 'string' && !validMethods.includes(request.method.toUpperCase())) {
+      if (
+        typeof request.method === 'string' &&
+        !validMethods.includes(request.method.toUpperCase())
+      ) {
         return {
           isValid: false,
           errors: [
@@ -325,16 +334,19 @@ export class ValidationService implements IValidationService {
       if (request.body && typeof request.body === 'object') {
         // Рекурсивная санитизация строковых полей
         const sanitizeObject = (obj: Record<string, unknown>): Record<string, unknown> => {
-          return Object.entries(obj).reduce((acc, [key, value]) => {
-            if (typeof value === 'string') {
-              acc[key] = this.sanitizeInput(value);
-            } else if (typeof value === 'object' && value !== null) {
-              acc[key] = sanitizeObject(value as Record<string, unknown>);
-            } else {
-              acc[key] = value;
-            }
-            return acc;
-          }, {} as Record<string, unknown>);
+          return Object.entries(obj).reduce(
+            (acc, [key, value]) => {
+              if (typeof value === 'string') {
+                acc[key] = this.sanitizeInput(value);
+              } else if (typeof value === 'object' && value !== null) {
+                acc[key] = sanitizeObject(value as Record<string, unknown>);
+              } else {
+                acc[key] = value;
+              }
+              return acc;
+            },
+            {} as Record<string, unknown>,
+          );
         };
 
         validatedRequest.body = sanitizeObject(request.body as Record<string, unknown>);
@@ -528,11 +540,7 @@ export class ValidationService implements IValidationService {
    * Проверяет, является ли переданный объект классом DTO
    */
   private isDtoClass(obj: unknown): boolean {
-    return (
-      typeof obj === 'function' &&
-      obj.prototype &&
-      obj.prototype.constructor === obj
-    );
+    return typeof obj === 'function' && obj.prototype && obj.prototype.constructor === obj;
   }
 
   /**

@@ -21,7 +21,11 @@ import { MessageAnalysisService } from './message-analysis.service';
 import { ManipulationService } from './manipulation.service';
 import { EmotionalStateService } from './emotional-state.service';
 import { LogService } from '../../logging/log.service';
-import { CharacterAction, ActionResult, ActionTriggerContext } from '../interfaces/behavior.interfaces';
+import {
+  CharacterAction,
+  ActionResult,
+  ActionTriggerContext,
+} from '../interfaces/behavior.interfaces';
 import { LLMMessageRole } from '../../common/interfaces/llm-provider.interface';
 import { ActionType } from '../enums/action-type.enum';
 
@@ -93,7 +97,7 @@ export class CharacterBehaviorService {
 
   // Карта последних времен обработки для каждого персонажа
   private lastProcessTimes: Map<number, Date> = new Map();
-  
+
   // Интервал для фоновых процессов (для возможности очистки в тестах)
   private behaviorInterval?: NodeJS.Timeout;
 
@@ -147,7 +151,7 @@ export class CharacterBehaviorService {
       clearInterval(this.behaviorInterval);
       this.behaviorInterval = undefined;
     }
-    
+
     // Очищаем все таймеры фрустрации
     for (const timer of this.frustrationDebuffTimers.values()) {
       clearTimeout(timer);
@@ -188,7 +192,7 @@ export class CharacterBehaviorService {
       },
       'плановом обновлении поведения персонажей',
       this.logService,
-    ) as Promise<void>;
+    );
   }
 
   /**
@@ -389,7 +393,9 @@ export class CharacterBehaviorService {
         }));
 
       // Получаем текущее действие
-      const currentAction: CharacterAction | null = this.actionService.getCurrentAction(characterId.toString()) as CharacterAction | null;
+      const currentAction: CharacterAction | null = this.actionService.getCurrentAction(
+        characterId.toString(),
+      );
 
       // Получаем недавние важные воспоминания
       const recentMemories = await this.memoryRepository.find({
@@ -978,17 +984,19 @@ export class CharacterBehaviorService {
     return modifiedRate;
   }
 
-  async determineBehaviorPattern(characterId: number): Promise<{ type: string; description: string }> {
+  async determineBehaviorPattern(
+    characterId: number,
+  ): Promise<{ type: string; description: string }> {
     // Получаем текущий уровень фрустрации и активные паттерны
     const frustrationLevel = await this.analyzeFrustration(characterId);
     const frustrationPatterns = this.getActiveFrustrationPatterns(characterId);
-    
+
     // Получаем эмоциональное состояние персонажа
     const emotionalState = await this.emotionalStateService.getEmotionalState(characterId);
-    
+
     // Получаем активные потребности
     const activeNeeds = await this.needsService.getActiveNeeds(characterId);
-    
+
     // Определяем доминирующую потребность
     let dominantNeedType = 'none';
     let maxPriority = 0;
@@ -998,17 +1006,19 @@ export class CharacterBehaviorService {
         dominantNeedType = need.type;
       }
     }
-    
+
     // Определяем тип поведения на основе фрустрации и потребностей
     let behaviorType = 'balanced';
     let description = 'Персонаж находится в сбалансированном состоянии';
-    
+
     if (frustrationLevel !== FrustrationLevel.NONE && frustrationPatterns.length > 0) {
       // Если есть фрустрация, выбираем поведение на основе самого сильного паттерна
-      const strongestPattern = frustrationPatterns.reduce((max, pattern) => 
-        this.getFrustrationIntensity(pattern.level) > this.getFrustrationIntensity(max.level) ? pattern : max
+      const strongestPattern = frustrationPatterns.reduce((max, pattern) =>
+        this.getFrustrationIntensity(pattern.level) > this.getFrustrationIntensity(max.level)
+          ? pattern
+          : max,
       );
-      
+
       behaviorType = `frustrated_${strongestPattern.type}`;
       description = `Персонаж демонстрирует поведение, связанное с фрустрацией типа ${strongestPattern.type} на уровне ${strongestPattern.level}`;
     } else if (dominantNeedType !== 'none') {
@@ -1020,8 +1030,10 @@ export class CharacterBehaviorService {
       behaviorType = `emotion_driven_neutral`;
       description = `Персонаж действует в нейтральном эмоциональном состоянии`;
     }
-    
-    this.logService.debug(`Определен паттерн поведения для персонажа ${characterId}: ${behaviorType}`);
+
+    this.logService.debug(
+      `Определен паттерн поведения для персонажа ${characterId}: ${behaviorType}`,
+    );
     return { type: behaviorType, description };
   }
 
@@ -1030,30 +1042,36 @@ export class CharacterBehaviorService {
     const character = await this.characterRepository.findOne({ where: { id: characterId } });
     if (!character) throw new Error(`Character with ID ${characterId} not found`);
     const userId = 0; // Временное значение, так как userId отсутствует в контексте
-    const analysis = await this.messageAnalysisService.analyzeUserMessage(character, userId, message);
-    
+    const analysis = await this.messageAnalysisService.analyzeUserMessage(
+      character,
+      userId,
+      message,
+    );
+
     // Получаем контекст поведения для формирования ответа
     const behaviorContext = await this.getBehaviorContextForResponse(characterId);
-    
+
     // Определяем текущий паттерн поведения
     const behaviorPattern = await this.determineBehaviorPattern(characterId);
-    
+
     // Формируем промт для LLM на основе контекста и анализа сообщения
     const prompt = this.constructResponsePrompt(
       behaviorContext,
       behaviorPattern,
       message,
-      analysis
+      analysis,
     );
-    
+
     // Генерируем ответ с помощью LLM
-    const response = await this.llmService.generateText([{ role: LLMMessageRole.USER, content: prompt }]);
+    const response = await this.llmService.generateText([
+      { role: LLMMessageRole.USER, content: prompt },
+    ]);
     const responseText = response.text;
-    
+
     // Сохраняем память о сообщении и ответе
     await this.saveMessageMemory(characterId, userId, message, this.defaultMemoryImportance);
     await this.saveMessageMemory(characterId, userId, responseText, this.defaultMemoryImportance);
-    
+
     return { text: responseText };
   }
 
@@ -1074,27 +1092,29 @@ export class CharacterBehaviorService {
     },
     behaviorPattern: { type: string; description: string },
     message: string,
-    analysis: MessageAnalysis
+    analysis: MessageAnalysis,
   ): string {
-    const emotionalStateInfo = behaviorContext.emotionalState 
+    const emotionalStateInfo = behaviorContext.emotionalState
       ? `Текущее эмоциональное состояние: ${behaviorContext.emotionalState.primary} (интенсивность: ${behaviorContext.emotionalState.intensity})\n`
       : 'Нейтральное эмоциональное состояние\n';
 
-    const motivationsInfo = behaviorContext.motivations.length > 0
-      ? `Текущие мотивации:\n${behaviorContext.motivations
-          .map(m => `- ${m.needType} (интенсивность: ${m.intensity})`)
-          .join('\n')}\n`
-      : 'Нет активных мотиваций\n';
-    
+    const motivationsInfo =
+      behaviorContext.motivations.length > 0
+        ? `Текущие мотивации:\n${behaviorContext.motivations
+            .map(m => `- ${m.needType} (интенсивность: ${m.intensity})`)
+            .join('\n')}\n`
+        : 'Нет активных мотиваций\n';
+
     // Формируем описание последних воспоминаний
-    const memories = behaviorContext.recentMemories.length > 0
-      ? behaviorContext.recentMemories.map(m => m.content).join('; ')
-      : 'нет недавних воспоминаний';
-    
+    const memories =
+      behaviorContext.recentMemories.length > 0
+        ? behaviorContext.recentMemories.map(m => m.content).join('; ')
+        : 'нет недавних воспоминаний';
+
     // Формируем описание анализа сообщения
     const userMood = analysis.emotionalAnalysis?.userMood || 'неизвестно';
     const emotionalIntensity = analysis.emotionalAnalysis?.emotionalIntensity || 0.5;
-    
+
     // Создаем промт с учетом всех факторов
     return `Ты - персонаж с искусственным интеллектом. ${emotionalStateInfo}Твои текущие мотивации: ${motivationsInfo}Твое текущее поведение: ${behaviorPattern.description}. Недавние воспоминания: ${memories}. Пользователь написал тебе сообщение: "${message}". Настроение пользователя: ${userMood} с интенсивностью ${emotionalIntensity}. Сформируй естественный и подходящий ответ, учитывая все эти факторы. Ответ должен быть кратким, не более 2-3 предложений.`;
   }
@@ -1106,39 +1126,44 @@ export class CharacterBehaviorService {
    * @param motivations Мотивации персонажа
    * @returns Результат выполнения действия
    */
-  async processActionTrigger(characterId: number, triggerType: string, 
-    motivations: IMotivation[]): Promise<ActionResult> {
+  async processActionTrigger(
+    characterId: number,
+    triggerType: string,
+    motivations: IMotivation[],
+  ): Promise<ActionResult> {
     return withErrorHandling(
       async () => {
-        this.logService.debug(`Обработка триггера действия ${triggerType} для персонажа ${characterId}`);
-        
+        this.logService.debug(
+          `Обработка триггера действия ${triggerType} для персонажа ${characterId}`,
+        );
+
         if (!motivations || motivations.length === 0) {
           return {
             success: false,
             message: `Нет подходящих мотиваций для триггера ${triggerType}`,
           };
         }
-        
+
         // Выбираем основную мотивацию с наивысшей интенсивностью
         const primaryMotivation = motivations.sort((a, b) => b.intensity - a.intensity)[0];
-        
+
         // Выбираем действие на основе мотивации
         const action = await this.selectActionForMotivation(primaryMotivation);
-        
+
         if (!action) {
           return {
             success: false,
             message: `Не удалось выбрать действие для мотивации типа ${primaryMotivation.needType}`,
           };
         }
-        
+
         // Создаем контекст триггера
         const triggerContext: ActionTriggerContext = {
           characterId,
           userId: 0, // Будет заполнено позже
           triggerType,
           triggerData: {},
-          timestamp: new Date()
+          timestamp: new Date(),
         };
 
         // Получаем персонажа для определения userId
@@ -1146,9 +1171,9 @@ export class CharacterBehaviorService {
         if (!character) {
           throw new Error(`Персонаж с ID ${characterId} не найден`);
         }
-        
+
         triggerContext.userId = character.userId;
-        
+
         // Выполняем действие
         return this.executeAction(action, triggerContext);
       },
@@ -1158,7 +1183,7 @@ export class CharacterBehaviorService {
       {
         success: false,
         message: 'Произошла ошибка при обработке триггера действия',
-      }
+      },
     );
   }
 
@@ -1167,12 +1192,14 @@ export class CharacterBehaviorService {
    * @param motivation Мотивация
    * @returns Выбранное действие или null
    */
-  private async selectActionForMotivation(motivation: IMotivation): Promise<CharacterAction | null> {
+  private async selectActionForMotivation(
+    motivation: IMotivation,
+  ): Promise<CharacterAction | null> {
     return withErrorHandling(
       async () => {
         // Определяем тип действия на основе типа потребности
         let actionType: ActionType;
-        
+
         switch (motivation.needType) {
           case CharacterNeedType.ATTENTION:
             actionType = ActionType.SOCIALIZATION;
@@ -1186,22 +1213,25 @@ export class CharacterBehaviorService {
           default:
             actionType = ActionType.SOCIALIZE;
         }
-        
+
         // Создаем действие
         const action: CharacterAction = {
           type: actionType,
           description: `Действие на основе мотивации ${motivation.needType}`,
-          priority: motivation.priority !== undefined ? motivation.priority : Math.round(motivation.intensity / 10), // Используем priority если есть, иначе на основе intensity
+          priority:
+            motivation.priority !== undefined
+              ? motivation.priority
+              : Math.round(motivation.intensity / 10), // Используем priority если есть, иначе на основе intensity
           relatedNeeds: [motivation.needType],
           status: 'planned',
         };
-        
+
         return action;
       },
       'выборе действия на основе мотивации',
       this.logService,
       { motivationType: motivation.needType, characterId: motivation.characterId },
-      null
+      null,
     );
   }
 
@@ -1211,40 +1241,48 @@ export class CharacterBehaviorService {
    * @param context Контекст триггера действия
    * @returns Результат выполнения действия
    */
-  async executeAction(action: CharacterAction, context: ActionTriggerContext): Promise<ActionResult> {
+  async executeAction(
+    action: CharacterAction,
+    context: ActionTriggerContext,
+  ): Promise<ActionResult> {
     return withErrorHandling(
       async () => {
-        this.logService.debug(`Выполнение действия типа ${action.type} для персонажа ${context.characterId}`);
-        
+        this.logService.debug(
+          `Выполнение действия типа ${action.type} для персонажа ${context.characterId}`,
+        );
+
         // Проверяем, может ли действие быть выполнено
         const canExecute = await this.actionService.canExecute({
-          character: await this.characterService.findOneById(context.characterId) as Character,
-          action
+          character: await this.characterService.findOneById(context.characterId),
+          action,
         });
-        
+
         if (!canExecute) {
           return {
             success: false,
             message: `Действие не может быть выполнено`,
           };
         }
-        
+
         // Применяем эффекты фрустрации, если есть
         const frustrationLevel = this.getFrustrationLevel(context.characterId);
         const baseSuccessRate = 0.8; // Базовый шанс успеха
-        const adjustedSuccessRate = this.applyFrustrationToAction(context.characterId, baseSuccessRate);
-        
+        const adjustedSuccessRate = this.applyFrustrationToAction(
+          context.characterId,
+          baseSuccessRate,
+        );
+
         // Определяем успешность действия
         const isSuccessful = Math.random() < adjustedSuccessRate;
-        
+
         if (isSuccessful) {
           // Выполняем действие через ActionService
           const result = await this.actionService.execute({
-            character: await this.characterService.findOneById(context.characterId) as Character,
+            character: await this.characterService.findOneById(context.characterId),
             action,
-            metadata: context.triggerData
+            metadata: context.triggerData,
           });
-          
+
           // Обновляем эмоциональное состояние при успехе
           await this.emotionalStateService.updateEmotionalState(context.characterId, {
             emotions: {
@@ -1254,7 +1292,7 @@ export class CharacterBehaviorService {
             source: 'action_success',
             description: `Успешное выполнение действия ${action.type}`,
           });
-          
+
           return result;
         } else {
           // При неудаче увеличиваем фрустрацию
@@ -1263,7 +1301,7 @@ export class CharacterBehaviorService {
             FrustrationLevel.MILD,
             new Set([FrustrationType.FAILED_ACTIONS]),
           );
-          
+
           // Обновляем эмоциональное состояние при неудаче
           await this.emotionalStateService.updateEmotionalState(context.characterId, {
             emotions: {
@@ -1274,7 +1312,7 @@ export class CharacterBehaviorService {
             source: 'action_failure',
             description: `Неудачное выполнение действия ${action.type}`,
           });
-          
+
           return {
             success: false,
             message: `Не удалось выполнить действие ${action.type}`,
@@ -1295,7 +1333,7 @@ export class CharacterBehaviorService {
       {
         success: false,
         message: 'Произошла ошибка при выполнении действия',
-      }
+      },
     );
   }
 }

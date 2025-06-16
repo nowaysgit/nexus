@@ -47,7 +47,7 @@ export class GlobalValidationPipe implements PipeTransform<any> {
    */
   private sanitizeObjectFields(obj: Record<string, unknown>): Record<string, unknown> {
     const result: Record<string, unknown> = {};
-    
+
     for (const [key, value] of Object.entries(obj)) {
       if (typeof value === 'string') {
         result[key] = this.validationService.sanitizeInput(value);
@@ -57,7 +57,7 @@ export class GlobalValidationPipe implements PipeTransform<any> {
         result[key] = value;
       }
     }
-    
+
     return result;
   }
 

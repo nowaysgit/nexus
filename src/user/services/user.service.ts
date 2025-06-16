@@ -155,7 +155,7 @@ export class UserService {
       async () => {
         // Обновляем пользователя
         await this.userRepository.update(id, updateUserDto as Partial<User>);
-        
+
         // Получаем обновленного пользователя напрямую из БД, минуя кэш
         const updatedUser = await this.userRepository.findOne({ where: { id } });
         if (!updatedUser) {
@@ -181,7 +181,7 @@ export class UserService {
       async () => {
         const now = new Date();
         await this.userRepository.update(id, { lastActivity: now });
-        
+
         // Получаем обновленного пользователя напрямую из БД, минуя кэш
         const updatedUser = await this.userRepository.findOne({ where: { id } });
         if (!updatedUser) {
@@ -389,7 +389,7 @@ export class UserService {
       async () => {
         const now = new Date();
         await this.userRepository.update(id, { hasCompletedTest: true, testCompletedAt: now });
-        
+
         // Получаем обновленного пользователя напрямую из БД, минуя кэш
         const updatedUser = await this.userRepository.findOne({ where: { id } });
         if (!updatedUser) {
@@ -444,15 +444,15 @@ export class UserService {
       async () => {
         const user = await this.userRepository.findOne({
           where: { telegramId },
-          select: ['id']
+          select: ['id'],
         });
-        
+
         return user ? parseInt(user.id.toString()) : null;
       },
       `получении userId по Telegram ID ${telegramId}`,
       this.logService,
       { telegramId },
-      null
+      null,
     );
   }
 }

@@ -59,10 +59,10 @@ export interface INeed {
 export interface INeedUpdate {
   /** Тип потребности */
   type: CharacterNeedType;
-  
+
   /** Величина изменения */
   change: number;
-  
+
   /** Причина изменения (опционально) */
   reason?: string;
 }

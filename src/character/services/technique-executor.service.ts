@@ -14,7 +14,11 @@ import { CharacterNeedType } from '../enums/character-need-type.enum';
 import { EmotionalState } from '../entities/emotional-state';
 import { ITechniqueContext, ITechniqueResult } from '../interfaces/technique.interfaces';
 import { INeed } from '../interfaces/needs.interfaces';
-import { ManipulativeTechniqueType, TechniqueIntensity, TechniquePhase } from '../enums/technique.enums';
+import {
+  ManipulativeTechniqueType,
+  TechniqueIntensity,
+  TechniquePhase,
+} from '../enums/technique.enums';
 
 /**
  * Стратегия выполнения техники
@@ -72,7 +76,7 @@ export class TechniqueExecutorService {
     techniqueType: ManipulativeTechniqueType,
     intensity: TechniqueIntensity = TechniqueIntensity.MODERATE,
     phase: TechniquePhase = TechniquePhase.EXECUTION,
-    context: ITechniqueContext
+    context: ITechniqueContext,
   ): Promise<ITechniqueResult> {
     return withErrorHandling(
       async () => {
@@ -98,7 +102,9 @@ export class TechniqueExecutorService {
 
         // Получаем текущие потребности и эмоциональное состояние для более точного выполнения
         const needs = await this.needsService.getActiveNeeds(context.character.id);
-        const emotionalState = await this.emotionalStateService.getEmotionalState(context.character.id);
+        const emotionalState = await this.emotionalStateService.getEmotionalState(
+          context.character.id,
+        );
 
         // Обновляем контекст с учетом потребностей и эмоций
         context.emotionalState = emotionalState;
@@ -122,14 +128,14 @@ export class TechniqueExecutorService {
         // Формируем результат
         const result: ITechniqueResult = {
           success: true,
-          message: "Техника успешно применена",
+          message: 'Техника успешно применена',
           techniqueType: techniqueType,
           intensity: intensity,
           affectedParameters: this.calculateAffectedParameters(techniqueType, intensity),
           phase: phase,
           effectiveness: effectiveness,
           ethicalScore: ethicalScore,
-          
+
           // Дополнительные поля для тестов
           generatedResponse: generatedResponse,
           responseText: generatedResponse, // Добавляем поле responseText для совместимости с тестами
@@ -137,8 +143,8 @@ export class TechniqueExecutorService {
           appliedTechnique: {
             type: techniqueType,
             priority: intensity,
-            phase: phase
-          }
+            phase: phase,
+          },
         };
 
         // Сохраняем в историю
@@ -166,9 +172,9 @@ export class TechniqueExecutorService {
       },
       'выполнении манипулятивной техники',
       this.logService,
-      { 
-        techniqueType, 
-        characterId: context && context.character ? context.character.id : 'unknown' 
+      {
+        techniqueType,
+        characterId: context && context.character ? context.character.id : 'unknown',
       },
       {
         success: false,
@@ -177,7 +183,7 @@ export class TechniqueExecutorService {
         intensity: intensity,
         affectedParameters: [],
         phase: phase,
-        
+
         // Дополнительные поля для тестов
         generatedResponse: 'Техника не может быть выполнена из-за ошибки',
         responseText: 'Техника не может быть выполнена из-за ошибки', // Добавляем поле responseText для совместимости с тестами
@@ -187,8 +193,8 @@ export class TechniqueExecutorService {
         appliedTechnique: {
           type: techniqueType,
           priority: intensity,
-          phase: phase
-        }
+          phase: phase,
+        },
       },
     );
   }
@@ -196,7 +202,10 @@ export class TechniqueExecutorService {
   /**
    * Рассчитывает параметры, на которые влияет техника
    */
-  private calculateAffectedParameters(techniqueType: ManipulativeTechniqueType, intensity: TechniqueIntensity): string[] {
+  private calculateAffectedParameters(
+    techniqueType: ManipulativeTechniqueType,
+    intensity: TechniqueIntensity,
+  ): string[] {
     const baseParameters: Record<ManipulativeTechniqueType, string[]> = {
       [ManipulativeTechniqueType.PUSH_PULL]: ['эмоциональная стабильность', 'привязанность'],
       [ManipulativeTechniqueType.GRADUAL_INVOLVEMENT]: ['доверие', 'открытость'],
@@ -209,9 +218,9 @@ export class TechniqueExecutorService {
       [ManipulativeTechniqueType.SNOWBALL]: ['границы', 'самоконтроль'],
       [ManipulativeTechniqueType.TRIANGULATION]: ['ревность', 'неуверенность'],
       [ManipulativeTechniqueType.LOVE_BOMBING]: ['эмоциональная стабильность', 'зависимость'],
-      [ManipulativeTechniqueType.VALIDATION]: ['самооценка', 'зависимость от одобрения']
+      [ManipulativeTechniqueType.VALIDATION]: ['самооценка', 'зависимость от одобрения'],
     };
-    
+
     return baseParameters[techniqueType] || ['эмоциональное состояние'];
   }
 
@@ -250,7 +259,12 @@ export class TechniqueExecutorService {
         const adaptedContext = this.adaptContextToPersonality(context, character, emotionalState);
 
         // Выполняем технику с адаптированными параметрами
-        return this.executeTechnique(techniqueType, adaptedIntensity, TechniquePhase.EXECUTION, adaptedContext);
+        return this.executeTechnique(
+          techniqueType,
+          adaptedIntensity,
+          TechniquePhase.EXECUTION,
+          adaptedContext,
+        );
       },
       'адаптации техники под профиль',
       this.logService,
@@ -259,14 +273,14 @@ export class TechniqueExecutorService {
         success: false,
         message: 'Не удалось адаптировать технику под профиль персонажа',
         appliedTechnique: techniqueType,
-        
+
         // Дополнительные поля для тестов
         techniqueType: techniqueType,
         generatedResponse: 'Не удалось адаптировать технику под профиль персонажа',
         effectiveness: 0,
         ethicalScore: 0,
         sideEffects: ['Ошибка адаптации'],
-        phase: TechniquePhase.PREPARATION
+        phase: TechniquePhase.PREPARATION,
       },
     );
   }
@@ -463,10 +477,10 @@ export class TechniqueExecutorService {
     if (!context.emotionalState) {
       return { valid: true }; // Если нет эмоционального состояния, пропускаем проверку
     }
-    
+
     // Используем primary в качестве текущей эмоции
     const currentEmotion = context.emotionalState.primary || 'neutral';
-    
+
     if (
       strategy.contextRequirements.forbiddenStates.includes(currentEmotion) ||
       (!strategy.contextRequirements.requiredEmotionalStates.includes(currentEmotion) &&
@@ -599,11 +613,14 @@ export class TechniqueExecutorService {
     // Простая логика ротации техник
     const allTechniques = Object.values(ManipulativeTechniqueType);
     const currentIndex = allTechniques.indexOf(currentTechnique);
-    let nextIndex = (currentIndex + 1) % allTechniques.length;
+    const nextIndex = (currentIndex + 1) % allTechniques.length;
 
     // Если есть потребности, выбираем технику на основе самой высокой потребности
     if (needs && needs.length > 0) {
-      const highestNeed = needs.reduce((max, curr) => curr.currentValue > max.currentValue ? curr : max, needs[0]);
+      const highestNeed = needs.reduce(
+        (max, curr) => (curr.currentValue > max.currentValue ? curr : max),
+        needs[0],
+      );
       if (highestNeed.type === 'COMMUNICATION' && highestNeed.currentValue > 70) {
         return ManipulativeTechniqueType.PUSH_PULL;
       } else if (highestNeed.type === 'SECURITY' && highestNeed.currentValue > 70) {
@@ -665,12 +682,15 @@ export class TechniqueExecutorService {
     if (character.personality) {
       // Создаем базовое эмоциональное состояние, если его нет
       adaptedContext.emotionalState = adaptedContext.emotionalState || { primary: 'neutral' };
-      
+
       // Адаптируем существующее эмоциональное состояние, не добавляя несовместимые поля
       if (character.personality.traits && character.personality.traits.includes('агрессивный')) {
         adaptedContext.emotionalState.primary = 'angry';
         adaptedContext.emotionalState.intensity = 80;
-      } else if (character.personality.traits && character.personality.traits.includes('эмпатичный')) {
+      } else if (
+        character.personality.traits &&
+        character.personality.traits.includes('эмпатичный')
+      ) {
         adaptedContext.emotionalState.primary = 'compassionate';
         adaptedContext.emotionalState.intensity = 80;
       }
@@ -760,11 +780,14 @@ export class TechniqueExecutorService {
     };
   }
 
-  private determineIntensity(techniqueType: ManipulativeTechniqueType, relationshipLevel: number): TechniqueIntensity {
+  private determineIntensity(
+    techniqueType: ManipulativeTechniqueType,
+    relationshipLevel: number,
+  ): TechniqueIntensity {
     const intensityThresholds = {
       subtle: 30,
       moderate: 60,
-      aggressive: 100
+      aggressive: 100,
     };
 
     if (relationshipLevel <= intensityThresholds.subtle) {
@@ -781,45 +804,44 @@ export class TechniqueExecutorService {
    * Возвращает объект с результатом проверки и причиной в случае отказа
    */
   async checkEthicalLimits(
-    techniqueType: ManipulativeTechniqueType, 
+    techniqueType: ManipulativeTechniqueType,
     context: ITechniqueContext,
-    intensity: TechniqueIntensity = TechniqueIntensity.MODERATE
+    intensity: TechniqueIntensity = TechniqueIntensity.MODERATE,
   ): Promise<{ allowed: boolean; reason?: string }> {
     return withErrorHandling(
       async () => {
         // Получаем историю применения техник для данного персонажа
         const history = this.getExecutionHistory(context.character.id);
-        
+
         // Получаем стратегию выполнения техники
         const strategy = this.executionStrategies.get(techniqueType);
         if (!strategy) {
           return { allowed: false, reason: 'Неизвестная техника' };
         }
-        
+
         // Проверяем частоту использования
         const lastHourUsage = history.filter(
-          (result) => 
-            result.appliedTechnique === techniqueType && 
-            new Date().getTime() - new Date().getTime() < 60 * 60 * 1000
+          result =>
+            result.appliedTechnique === techniqueType &&
+            new Date().getTime() - new Date().getTime() < 60 * 60 * 1000,
         ).length;
-        
+
         if (lastHourUsage >= strategy.ethicalConstraints.maxUsagePerHour) {
           return {
             allowed: false,
             reason: `Превышен лимит использования техники (${strategy.ethicalConstraints.maxUsagePerHour} раз в час)`,
           };
         }
-        
+
         // Проверяем время с последнего использования (охлаждение)
         const lastUsage = history
-          .filter((result) => result.appliedTechnique === techniqueType)
+          .filter(result => result.appliedTechnique === techniqueType)
           .sort((a, b) => new Date().getTime() - new Date().getTime())
           .shift();
-        
+
         if (lastUsage) {
-          const minutesSinceLastUsage = 
-            (new Date().getTime() - new Date().getTime()) / (60 * 1000);
-          
+          const minutesSinceLastUsage = (new Date().getTime() - new Date().getTime()) / (60 * 1000);
+
           if (minutesSinceLastUsage < strategy.ethicalConstraints.cooldownMinutes) {
             return {
               allowed: false,
@@ -827,27 +849,27 @@ export class TechniqueExecutorService {
             };
           }
         }
-        
+
         // Проверяем запрещенные комбинации
         const recentTechniques = history
-          .filter((result) => new Date().getTime() - new Date().getTime() < 60 * 60 * 1000)
-          .map((result) => result.appliedTechnique);
-        
+          .filter(result => new Date().getTime() - new Date().getTime() < 60 * 60 * 1000)
+          .map(result => result.appliedTechnique);
+
         const hasBannedCombination = strategy.ethicalConstraints.bannedCombinations.some(
-          (bannedTechnique) => recentTechniques.includes(bannedTechnique)
+          bannedTechnique => recentTechniques.includes(bannedTechnique),
         );
-        
+
         if (hasBannedCombination) {
           return {
             allowed: false,
             reason: 'Запрещенная комбинация техник',
           };
         }
-        
+
         // Оцениваем уязвимость пользователя на основе анализа сообщений
         const userMessage = context.messageContent;
         const vulnerabilityScore = this.parseVulnerabilityScore(userMessage);
-        
+
         // Ограничиваем интенсивность для уязвимых пользователей
         if (vulnerabilityScore > 0.7 && intensity === TechniqueIntensity.AGGRESSIVE) {
           return {
@@ -855,7 +877,7 @@ export class TechniqueExecutorService {
             reason: 'Высокая уязвимость пользователя - интенсивные техники ограничены',
           };
         }
-        
+
         return { allowed: true };
       },
       'проверке этических ограничений',

@@ -324,12 +324,17 @@ export class MotivationService {
       id: parseInt(motivation.motivationId.split('_').pop() || '0', 10),
       characterId: motivation.characterId,
       needType: motivation.relatedNeed,
-      intensity: motivation.intensity === MotivationIntensity.CRITICAL ? 90 : 
-                motivation.intensity === MotivationIntensity.HIGH ? 75 : 
-                motivation.intensity === MotivationIntensity.MODERATE ? 50 : 25,
+      intensity:
+        motivation.intensity === MotivationIntensity.CRITICAL
+          ? 90
+          : motivation.intensity === MotivationIntensity.HIGH
+            ? 75
+            : motivation.intensity === MotivationIntensity.MODERATE
+              ? 50
+              : 25,
       status: motivation.status,
       createdAt: motivation.createdAt,
-      priority: motivation.priority
+      priority: motivation.priority,
     };
   }
 

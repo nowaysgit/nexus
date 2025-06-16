@@ -46,24 +46,24 @@ export interface ErrorHandlingResult {
 export enum ValidationErrorType {
   /** Общая ошибка валидации */
   GENERAL = 'general',
-  
+
   /** Ошибка формата данных */
   FORMAT = 'format',
-  
+
   /** Ошибка API валидации */
   API = 'api',
-  
+
   /** Ошибка валидации БД */
   DATABASE = 'database',
-  
+
   /** Ошибка валидации сообщения */
   MESSAGE = 'message',
-  
+
   /** Ошибка валидации пользовательского ввода */
   USER_INPUT = 'user_input',
-  
+
   /** Ошибка валидации конфигурации */
-  CONFIGURATION = 'configuration'
+  CONFIGURATION = 'configuration',
 }
 
 /**
@@ -72,7 +72,7 @@ export enum ValidationErrorType {
 export interface ExtendedValidationError extends ValidationError {
   /** Тип ошибки валидации */
   type?: ValidationErrorType;
-  
+
   /** Дополнительные данные об ошибке */
   details?: Record<string, unknown>;
 }
@@ -273,18 +273,18 @@ export class ValidationErrorHandlerService {
    * @returns Результат валидации с API ошибкой
    */
   handleApiValidationError(
-    error: unknown, 
-    source = 'api', 
-    logLevel: 'debug' | 'info' | 'warn' | 'error' = 'error'
+    error: unknown,
+    source = 'api',
+    logLevel: 'debug' | 'info' | 'warn' | 'error' = 'error',
   ): ValidationResult {
     const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
-    
-    const logData = { 
-      error: errorMessage, 
-      source, 
-      type: ValidationErrorType.API 
+
+    const logData = {
+      error: errorMessage,
+      source,
+      type: ValidationErrorType.API,
     };
-    
+
     switch (logLevel) {
       case 'debug':
         this.logService.debug('Ошибка валидации API', logData);
@@ -302,12 +302,14 @@ export class ValidationErrorHandlerService {
 
     return {
       isValid: false,
-      errors: [{
-        message: this.formatError(error),
-        field: 'api',
-        code: 'API_VALIDATION_ERROR',
-        type: ValidationErrorType.API
-      } as ExtendedValidationError],
+      errors: [
+        {
+          message: this.formatError(error),
+          field: 'api',
+          code: 'API_VALIDATION_ERROR',
+          type: ValidationErrorType.API,
+        } as ExtendedValidationError,
+      ],
       validatedData: {} as Record<string, unknown>,
     };
   }
@@ -319,28 +321,26 @@ export class ValidationErrorHandlerService {
    * @param source Источник ошибки
    * @returns Результат валидации с ошибкой формата
    */
-  handleFormatValidationError(
-    error: unknown, 
-    field = 'format', 
-    source = 'data'
-  ): ValidationResult {
+  handleFormatValidationError(error: unknown, field = 'format', source = 'data'): ValidationResult {
     const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
-    
-    this.logService.warn('Ошибка валидации формата данных', { 
-      error: errorMessage, 
+
+    this.logService.warn('Ошибка валидации формата данных', {
+      error: errorMessage,
       field,
-      source, 
-      type: ValidationErrorType.FORMAT 
+      source,
+      type: ValidationErrorType.FORMAT,
     });
 
     return {
       isValid: false,
-      errors: [{
-        message: this.formatError(error),
-        field,
-        code: 'FORMAT_VALIDATION_ERROR',
-        type: ValidationErrorType.FORMAT
-      } as ExtendedValidationError],
+      errors: [
+        {
+          message: this.formatError(error),
+          field,
+          code: 'FORMAT_VALIDATION_ERROR',
+          type: ValidationErrorType.FORMAT,
+        } as ExtendedValidationError,
+      ],
       validatedData: {} as Record<string, unknown>,
     };
   }
@@ -351,27 +351,26 @@ export class ValidationErrorHandlerService {
    * @param entity Сущность с ошибкой
    * @returns Результат валидации с ошибкой БД
    */
-  handleDatabaseValidationError(
-    error: unknown, 
-    entity: string
-  ): ValidationResult {
+  handleDatabaseValidationError(error: unknown, entity: string): ValidationResult {
     const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
-    
-    this.logService.error('Ошибка валидации базы данных', { 
-      error: errorMessage, 
+
+    this.logService.error('Ошибка валидации базы данных', {
+      error: errorMessage,
       entity,
-      type: ValidationErrorType.DATABASE 
+      type: ValidationErrorType.DATABASE,
     });
 
     return {
       isValid: false,
-      errors: [{
-        message: `Ошибка валидации в базе данных для ${entity}: ${this.formatError(error)}`,
-        field: entity,
-        code: 'DATABASE_VALIDATION_ERROR',
-        type: ValidationErrorType.DATABASE,
-        details: { entity }
-      } as ExtendedValidationError],
+      errors: [
+        {
+          message: `Ошибка валидации в базе данных для ${entity}: ${this.formatError(error)}`,
+          field: entity,
+          code: 'DATABASE_VALIDATION_ERROR',
+          type: ValidationErrorType.DATABASE,
+          details: { entity },
+        } as ExtendedValidationError,
+      ],
       validatedData: {} as Record<string, unknown>,
     };
   }
@@ -382,27 +381,26 @@ export class ValidationErrorHandlerService {
    * @param messageId ID сообщения
    * @returns Результат валидации с ошибкой сообщения
    */
-  handleMessageValidationError(
-    error: unknown, 
-    messageId?: string
-  ): ValidationResult {
+  handleMessageValidationError(error: unknown, messageId?: string): ValidationResult {
     const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
-    
-    this.logService.warn('Ошибка валидации сообщения', { 
+
+    this.logService.warn('Ошибка валидации сообщения', {
       error: errorMessage,
       messageId,
-      type: ValidationErrorType.MESSAGE 
+      type: ValidationErrorType.MESSAGE,
     });
 
     return {
       isValid: false,
-      errors: [{
-        message: `Ошибка валидации сообщения: ${this.formatError(error)}`,
-        field: 'message',
-        code: 'MESSAGE_VALIDATION_ERROR',
-        type: ValidationErrorType.MESSAGE,
-        details: { messageId }
-      } as ExtendedValidationError],
+      errors: [
+        {
+          message: `Ошибка валидации сообщения: ${this.formatError(error)}`,
+          field: 'message',
+          code: 'MESSAGE_VALIDATION_ERROR',
+          type: ValidationErrorType.MESSAGE,
+          details: { messageId },
+        } as ExtendedValidationError,
+      ],
       validatedData: {} as Record<string, unknown>,
     };
   }
@@ -415,28 +413,30 @@ export class ValidationErrorHandlerService {
    * @returns Результат валидации с ошибкой пользовательского ввода
    */
   handleUserInputValidationError(
-    error: unknown, 
+    error: unknown,
     userId?: string | number,
-    inputType = 'unknown'
+    inputType = 'unknown',
   ): ValidationResult {
     const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
-    
-    this.logService.warn('Ошибка валидации пользовательского ввода', { 
+
+    this.logService.warn('Ошибка валидации пользовательского ввода', {
       error: errorMessage,
       userId,
       inputType,
-      type: ValidationErrorType.USER_INPUT 
+      type: ValidationErrorType.USER_INPUT,
     });
 
     return {
       isValid: false,
-      errors: [{
-        message: `Ошибка валидации пользовательского ввода типа ${inputType}: ${this.formatError(error)}`,
-        field: inputType,
-        code: 'USER_INPUT_VALIDATION_ERROR',
-        type: ValidationErrorType.USER_INPUT,
-        details: { userId, inputType }
-      } as ExtendedValidationError],
+      errors: [
+        {
+          message: `Ошибка валидации пользовательского ввода типа ${inputType}: ${this.formatError(error)}`,
+          field: inputType,
+          code: 'USER_INPUT_VALIDATION_ERROR',
+          type: ValidationErrorType.USER_INPUT,
+          details: { userId, inputType },
+        } as ExtendedValidationError,
+      ],
       validatedData: {} as Record<string, unknown>,
     };
   }
@@ -447,27 +447,26 @@ export class ValidationErrorHandlerService {
    * @param configKey Ключ конфигурации
    * @returns Результат валидации с ошибкой конфигурации
    */
-  handleConfigValidationError(
-    error: unknown, 
-    configKey?: string
-  ): ValidationResult {
+  handleConfigValidationError(error: unknown, configKey?: string): ValidationResult {
     const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
-    
-    this.logService.error('Ошибка валидации конфигурации', { 
+
+    this.logService.error('Ошибка валидации конфигурации', {
       error: errorMessage,
       configKey,
-      type: ValidationErrorType.CONFIGURATION 
+      type: ValidationErrorType.CONFIGURATION,
     });
 
     return {
       isValid: false,
-      errors: [{
-        message: `Ошибка валидации конфигурации ${configKey ? `(${configKey})` : ''}: ${this.formatError(error)}`,
-        field: configKey || 'config',
-        code: 'CONFIG_VALIDATION_ERROR',
-        type: ValidationErrorType.CONFIGURATION,
-        details: { configKey }
-      } as ExtendedValidationError],
+      errors: [
+        {
+          message: `Ошибка валидации конфигурации ${configKey ? `(${configKey})` : ''}: ${this.formatError(error)}`,
+          field: configKey || 'config',
+          code: 'CONFIG_VALIDATION_ERROR',
+          type: ValidationErrorType.CONFIGURATION,
+          details: { configKey },
+        } as ExtendedValidationError,
+      ],
       validatedData: {} as Record<string, unknown>,
     };
   }
@@ -486,25 +485,27 @@ export class ValidationErrorHandlerService {
     field = 'unknown',
     code = 'CUSTOM_VALIDATION_ERROR',
     type = ValidationErrorType.GENERAL,
-    details?: Record<string, unknown>
+    details?: Record<string, unknown>,
   ): ValidationResult {
-    this.logService.warn('Кастомная ошибка валидации', { 
+    this.logService.warn('Кастомная ошибка валидации', {
       message,
       field,
       code,
       type,
-      details
+      details,
     });
 
     return {
       isValid: false,
-      errors: [{
-        message,
-        field,
-        code,
-        type,
-        details
-      } as ExtendedValidationError],
+      errors: [
+        {
+          message,
+          field,
+          code,
+          type,
+          details,
+        } as ExtendedValidationError,
+      ],
       validatedData: {} as Record<string, unknown>,
     };
   }

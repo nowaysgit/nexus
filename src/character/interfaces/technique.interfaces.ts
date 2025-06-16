@@ -1,4 +1,8 @@
-import { ManipulativeTechniqueType, TechniqueIntensity, TechniquePhase } from '../enums/technique.enums';
+import {
+  ManipulativeTechniqueType,
+  TechniqueIntensity,
+  TechniquePhase,
+} from '../enums/technique.enums';
 import { Character } from '../entities/character.entity';
 import { User } from '../../user/entities/user.entity';
 import { EmotionalState } from '../interfaces/emotional-state.interface';
@@ -9,17 +13,19 @@ import { EmotionalState } from '../interfaces/emotional-state.interface';
 export interface ITechniqueResult {
   success: boolean;
   message: string;
-  appliedTechnique?: ManipulativeTechniqueType | {
-    type: ManipulativeTechniqueType;
-    priority: TechniqueIntensity;
-    phase: TechniquePhase;
-  };
+  appliedTechnique?:
+    | ManipulativeTechniqueType
+    | {
+        type: ManipulativeTechniqueType;
+        priority: TechniqueIntensity;
+        phase: TechniquePhase;
+      };
   intensity?: TechniqueIntensity;
   affectedParameters?: string[];
   phase?: TechniquePhase;
   effectiveness?: number;
   ethicalScore?: number;
-  
+
   // Свойства, используемые в тестах
   techniqueType?: ManipulativeTechniqueType; // Дублирует appliedTechnique для обратной совместимости
   generatedResponse?: string; // Сгенерированный ответ
@@ -42,7 +48,7 @@ export interface ITechniqueContext {
   previousInteractions?: number;
   conversationHistory?: string[];
   relationshipLevel: number;
-  
+
   // Дополнительные поля для тестов
   characterId?: number;
   userId?: number; // Используем только числовой ID для соответствия с базой данных
@@ -67,4 +73,4 @@ export interface IManipulationContext {
   excludeTechniques?: ManipulativeTechniqueType[]; // Техники, которые не следует использовать
   phase?: TechniquePhase; // Фаза техники
   additionalParameters?: Record<string, any>;
-} 
+}

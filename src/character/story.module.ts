@@ -19,4 +19,4 @@ import { CharacterModule } from './character.module';
   providers: [StoryService],
   exports: [StoryService],
 })
-export class StoryModule {} 
+export class StoryModule {}

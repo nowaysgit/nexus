@@ -388,32 +388,37 @@ export class FixtureManager {
   public async createNeed(needData: Partial<Need> = {}): Promise<Need> {
     const needRepository = this.getRepository(Need);
 
-    if (!needData.character && this.testData.characters && this.testData.characters.length > 0) {
-      needData.character = this.testData.characters[0];
-    }
-
+    // Создаем персонажа, если он не указан
     if (!needData.character) {
-      throw new Error('Необходимо указать персонажа для потребности или создать его заранее');
+      needData.character = await this.createCharacter();
     }
 
-    const defaultNeed = {
-      type: CharacterNeedType.COMMUNICATION,
-      priority: 5,
+    // Устанавливаем значения по умолчанию
+    const defaultNeedData = {
+      type: CharacterNeedType.REST,
       currentValue: 50,
       maxValue: 100,
-      growthRate: 1.0,
-      decayRate: 0.5,
-      threshold: 80,
-      ...needData,
+      growthRate: 5,
+      decayRate: 1,
+      priority: 1,
+      isActive: true,
+      threshold: 70,
     };
 
-    const need = needRepository.create(defaultNeed);
-    await needRepository.save(need);
+    // Объединяем данные по умолчанию с переданными данными
+    const finalNeedData = { ...defaultNeedData, ...needData };
 
-    if (!this.testData.needs) this.testData.needs = [];
-    this.testData.needs.push(need);
+    // Создаем потребность
+    const need = needRepository.create(finalNeedData);
+    const savedNeed = await needRepository.save(need);
 
-    return need;
+    // Сохраняем потребность в тестовых данных
+    if (!this.testData.needs) {
+      this.testData.needs = [];
+    }
+    this.testData.needs.push(savedNeed);
+
+    return savedNeed;
   }
 
   /**

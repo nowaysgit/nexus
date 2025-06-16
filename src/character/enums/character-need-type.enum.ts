@@ -54,14 +54,14 @@ export enum CharacterNeedType {
   EXPLORATION = 'EXPLORATION',
   CURIOSITY = 'CURIOSITY',
   MENTAL_STIMULATION = 'MENTAL_STIMULATION',
-  
+
   // Дополнительные эмоциональные потребности
   FREEDOM = 'FREEDOM',
   CONNECTION = 'CONNECTION',
   SELF_REALIZATION = 'SELF_REALIZATION',
-  
+
   // Системные потребности
   USER_COMMAND = 'USER_COMMAND',
   USER_REQUEST = 'USER_REQUEST',
-  SYSTEM = 'SYSTEM'
-} 
+  SYSTEM = 'SYSTEM',
+}

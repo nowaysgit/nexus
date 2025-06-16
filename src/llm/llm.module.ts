@@ -17,11 +17,11 @@ import { LlamaProviderService } from './providers/llama-provider.service';
  */
 @Module({
   imports: [
-    ConfigModule, 
-    EventEmitterModule.forRoot(), 
-    LoggingModule, 
-    CacheModule, 
-    MessageQueueModule
+    ConfigModule,
+    EventEmitterModule.forRoot(),
+    LoggingModule,
+    CacheModule,
+    MessageQueueModule,
   ],
   providers: [
     LLMService,

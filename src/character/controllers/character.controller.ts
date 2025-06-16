@@ -24,7 +24,10 @@ import { UpdateNeedDto } from '../dto/update-needs.dto';
 import { CharacterService } from '../services/character.service';
 import { LogService } from '../../logging/log.service';
 import { CHARACTER_SERVICE } from '../../common/constants/injection-tokens';
-import { CharacterManagementService, ICharacterAnalysis } from '../services/character-management.service';
+import {
+  CharacterManagementService,
+  ICharacterAnalysis,
+} from '../services/character-management.service';
 import { GlobalExceptionFilter } from '../../logging/global-exception.filter';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { User } from '../../auth/user.decorator';

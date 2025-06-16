@@ -13,7 +13,11 @@ import {
 import { LLMProviderManagerService } from './llm-provider-manager.service';
 
 // Реэкспортируем интерфейсы для использования в других модулях
-export { ILLMMessage, LLMProviderType, LLMMessageRole } from '../../common/interfaces/llm-provider.interface';
+export {
+  ILLMMessage,
+  LLMProviderType,
+  LLMMessageRole,
+} from '../../common/interfaces/llm-provider.interface';
 
 /**
  * Единый LLM сервис для работы с различными провайдерами AI моделей

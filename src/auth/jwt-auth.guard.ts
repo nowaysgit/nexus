@@ -9,7 +9,10 @@ import { LogService } from '../logging/log.service';
  */
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
-  constructor(private reflector: Reflector, private logService: LogService) {
+  constructor(
+    private reflector: Reflector,
+    private logService: LogService,
+  ) {
     super();
     this.logService.setContext('JwtAuthGuard');
   }
@@ -54,4 +57,4 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 
     return user;
   }
-} 
+}

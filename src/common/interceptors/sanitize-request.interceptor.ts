@@ -35,7 +35,7 @@ export class SanitizeRequestInterceptor implements NestInterceptor {
    */
   private sanitizeObject(obj: Record<string, unknown>): Record<string, unknown> {
     const result: Record<string, unknown> = {};
-    
+
     for (const [key, value] of Object.entries(obj)) {
       if (typeof value === 'string') {
         result[key] = this.validationService.sanitizeInput(value);
@@ -45,7 +45,7 @@ export class SanitizeRequestInterceptor implements NestInterceptor {
         result[key] = value;
       }
     }
-    
+
     return result;
   }
 
@@ -54,21 +54,21 @@ export class SanitizeRequestInterceptor implements NestInterceptor {
    */
   private sanitizeQueryObject(query: ParsedQs): ParsedQs {
     const result: ParsedQs = {};
-    
+
     for (const [key, value] of Object.entries(query)) {
       if (typeof value === 'string') {
         result[key] = this.validationService.sanitizeInput(value);
       } else if (Array.isArray(value)) {
-        result[key] = value.map(item => 
-          typeof item === 'string' ? this.validationService.sanitizeInput(item) : item
+        result[key] = value.map(item =>
+          typeof item === 'string' ? this.validationService.sanitizeInput(item) : item,
         );
       } else if (typeof value === 'object' && value !== null) {
-        result[key] = this.sanitizeQueryObject(value as ParsedQs);
+        result[key] = this.sanitizeQueryObject(value);
       } else {
         result[key] = value;
       }
     }
-    
+
     return result;
   }
 
@@ -77,7 +77,7 @@ export class SanitizeRequestInterceptor implements NestInterceptor {
    */
   private sanitizeParamsObject(params: ParamsDictionary): ParamsDictionary {
     const result: ParamsDictionary = {};
-    
+
     for (const [key, value] of Object.entries(params)) {
       if (typeof value === 'string') {
         result[key] = this.validationService.sanitizeInput(value);
@@ -85,7 +85,7 @@ export class SanitizeRequestInterceptor implements NestInterceptor {
         result[key] = value;
       }
     }
-    
+
     return result;
   }
 }

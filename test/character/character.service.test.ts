@@ -41,9 +41,11 @@ createTestSuite('CharacterService Integration Tests', () => {
   createTest(
     {
       name: 'should create a character',
+      requiresDatabase: true,
     },
     async () => {
       const characterServiceInstance = characterService;
+      // Create user with explicit UUID format
       const user = await fixtureManager.createUser({});
 
       const characterData = {
@@ -71,6 +73,7 @@ createTestSuite('CharacterService Integration Tests', () => {
       expect(result).toBeDefined();
       expect(result.id).toBeDefined();
       expect(result.name).toEqual(characterData.name);
+      expect(result.userId).toEqual(user.id); // Check that userId is correctly set
 
       // Use fixtureManager to get the repository
       const characterRepo: Repository<Character> = fixtureManager.getRepository(Character);
@@ -79,6 +82,7 @@ createTestSuite('CharacterService Integration Tests', () => {
       expect(found).not.toBeNull();
       if (found) {
         expect(found.name).toBe('Test Character');
+        expect(found.userId).toBe(user.id); // Verify userId is a string (UUID)
       }
     },
   );
@@ -86,6 +90,7 @@ createTestSuite('CharacterService Integration Tests', () => {
   createTest(
     {
       name: 'should find a character by ID',
+      requiresDatabase: true,
     },
     async () => {
       const user = await fixtureManager.createUser({});
@@ -95,6 +100,26 @@ createTestSuite('CharacterService Integration Tests', () => {
 
       expect(result).toBeDefined();
       expect(result?.id).toEqual(character.id);
+      expect(result?.userId).toEqual(user.id); // Verify userId is correctly set
+    },
+  );
+
+  createTest(
+    {
+      name: 'should find characters by user ID',
+      requiresDatabase: true,
+    },
+    async () => {
+      const user = await fixtureManager.createUser({});
+      const _character1 = await fixtureManager.createCharacter({ user, name: 'Character 1' });
+      const _character2 = await fixtureManager.createCharacter({ user, name: 'Character 2' });
+
+      const characters = await characterService.findByUserId(user.id);
+
+      expect(characters).toHaveLength(2);
+      expect(characters.map(c => c.name).sort()).toEqual(['Character 1', 'Character 2'].sort());
+      expect(characters[0].userId).toEqual(user.id);
+      expect(characters[1].userId).toEqual(user.id);
     },
   );
 });

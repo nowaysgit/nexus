@@ -131,15 +131,15 @@ export class EmotionalStateService {
       async () => {
         // Получаем текущее эмоциональное состояние
         const currentState = await this.getEmotionalState(characterId);
-        
+
         // Проверяем, является ли объект EmotionalUpdate
         if ('emotions' in analysisOrUpdate && 'source' in analysisOrUpdate) {
           return this.updateFromEmotionalUpdate(characterId, currentState, analysisOrUpdate);
         }
-        
+
         // В противном случае это MessageAnalysis
-        const analysis = analysisOrUpdate as MessageAnalysis;
-        
+        const analysis = analysisOrUpdate;
+
         // Используем эмоциональный анализ из нового формата
         const emotionalAnalysis = analysis.emotionalAnalysis;
         if (!emotionalAnalysis || emotionalAnalysis.userMood === 'neutral') {
@@ -179,50 +179,51 @@ export class EmotionalStateService {
    * Обновляет эмоциональное состояние персонажа на основе прямого эмоционального обновления
    */
   private updateFromEmotionalUpdate(
-    characterId: number, 
-    currentState: EmotionalState, 
-    update: EmotionalUpdate
+    characterId: number,
+    currentState: EmotionalState,
+    update: EmotionalUpdate,
   ): EmotionalState {
     // Находим самую интенсивную эмоцию
     let primaryEmotion = '';
     let maxIntensity = 0;
-    
+
     for (const [emotion, intensity] of Object.entries(update.emotions)) {
       if (intensity > maxIntensity) {
         primaryEmotion = emotion;
         maxIntensity = intensity;
       }
     }
-    
+
     if (!primaryEmotion) {
       return currentState;
     }
-    
+
     // Находим вторую по интенсивности эмоцию
     let secondaryEmotion = '';
     let secondMaxIntensity = 0;
-    
+
     for (const [emotion, intensity] of Object.entries(update.emotions)) {
       if (intensity > secondMaxIntensity && emotion !== primaryEmotion) {
         secondaryEmotion = emotion;
         secondMaxIntensity = intensity;
       }
     }
-    
+
     // Рассчитываем новую интенсивность
     const newIntensity = Math.max(1, Math.min(10, Math.round(maxIntensity / 10)));
-    
+
     // Формируем новое эмоциональное состояние
     const newState: EmotionalState = {
       primary: primaryEmotion,
       secondary: secondaryEmotion,
       intensity: newIntensity,
-      description: update.description || this.generateEmotionalDescription(primaryEmotion, newIntensity),
+      description:
+        update.description || this.generateEmotionalDescription(primaryEmotion, newIntensity),
     };
-    
+
     // Сохраняем в кэш
     this.emotionalStates.set(characterId, newState);
-    
+
     return newState;
   }
 

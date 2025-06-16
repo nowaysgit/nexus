@@ -6,13 +6,8 @@ import { PromptTemplateModule } from '../prompt-template/prompt-template.module'
 import { LoggingModule } from '../logging/logging.module';
 
 @Module({
-  imports: [
-    DialogModule,
-    LLMModule,
-    PromptTemplateModule,
-    LoggingModule,
-  ],
+  imports: [DialogModule, LLMModule, PromptTemplateModule, LoggingModule],
   providers: [ContextCompressionService],
   exports: [ContextCompressionService],
 })
-export class ContextCompressionModule {} 
+export class ContextCompressionModule {}

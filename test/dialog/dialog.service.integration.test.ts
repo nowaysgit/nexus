@@ -1,282 +1,279 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import {
-  DialogService,
-  DialogMessageType,
-  CreateMessageData,
-} from '../../src/dialog/services/dialog.service';
-import { Dialog } from '../../src/dialog/entities/dialog.entity';
+import { createTestSuite, createTest } from '../../lib/tester';
+import { DialogService } from '../../src/dialog/services/dialog.service';
 import { Message } from '../../src/dialog/entities/message.entity';
-import { Character } from '../../src/character/entities/character.entity';
-import { CacheService } from '../../src/cache/cache.service';
-import { LogService } from '../../src/logging/log.service';
+import { DialogModule } from '../../src/dialog/dialog.module';
+import { CacheModule } from '../../src/cache/cache.module';
+import { TestConfigType } from '../../lib/tester';
+import { FixtureManager } from '../../lib/tester/fixtures/fixture-manager';
+import { MessageQueueModule } from '../../src/message-queue/message-queue.module';
+import { ValidationModule } from '../../src/validation/validation.module';
 
-describe('DialogService Integration Tests', () => {
-  let dialogService: DialogService;
-  let dialogRepository: Repository<Dialog>;
-  let messageRepository: Repository<Message>;
-  let mockCacheService: Partial<CacheService>;
-  let mockLogService: Partial<LogService>;
+// Создаем расширенный мок для UserService
+const extendedMockUserService = {
+  getUserIdByTelegramId: jest.fn(),
+  getUserById: jest.fn(),
+  getUserByTelegramId: jest.fn(),
+  createUser: jest.fn(),
+  updateUser: jest.fn(),
+  deleteUser: jest.fn(),
+};
 
-  beforeEach(async () => {
-    // Создаем моки для репозиториев и сервисов
-    mockCacheService = {
-      get: jest.fn().mockResolvedValue(null),
-      set: jest.fn().mockResolvedValue(undefined),
-      delete: jest.fn().mockResolvedValue(true),
-    };
+// Интерфейс для типизации UserService
+interface IUserService {
+  getUserIdByTelegramId: jest.Mock;
+  getUserById: jest.Mock;
+  getUserByTelegramId: jest.Mock;
+  createUser: jest.Mock;
+  updateUser: jest.Mock;
+  deleteUser: jest.Mock;
+}
 
-    mockLogService = {
-      setContext: jest.fn(),
-      debug: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-      log: jest.fn(),
-    };
-
-    const module: TestingModule = await Test.createTestingModule({
+createTestSuite('DialogService Integration Tests', () => {
+  createTest(
+    {
+      name: 'должен быть определен',
+      configType: TestConfigType.INTEGRATION,
+      requiresDatabase: true,
+      imports: [DialogModule, CacheModule, MessageQueueModule, ValidationModule],
       providers: [
-        DialogService,
         {
-          provide: getRepositoryToken(Dialog),
-          useValue: {
-            findOne: jest.fn(),
-            find: jest.fn(),
-            save: jest.fn(),
-            create: jest.fn(),
-          },
-        },
-        {
-          provide: getRepositoryToken(Message),
-          useValue: {
-            findOne: jest.fn(),
-            find: jest.fn(),
-            save: jest.fn(),
-            create: jest.fn(),
-          },
-        },
-        {
-          provide: getRepositoryToken(Character),
-          useValue: {
-            findOne: jest.fn(),
-          },
-        },
-        {
-          provide: CacheService,
-          useValue: mockCacheService,
-        },
-        {
-          provide: LogService,
-          useValue: mockLogService,
+          provide: 'UserService',
+          useValue: extendedMockUserService,
         },
       ],
-    }).compile();
+    },
+    async testModule => {
+      const dialogService = testModule.get<DialogService>(DialogService);
+      expect(dialogService).toBeDefined();
+    },
+  );
 
-    dialogService = module.get<DialogService>(DialogService);
-    dialogRepository = module.get<Repository<Dialog>>(getRepositoryToken(Dialog));
-    messageRepository = module.get<Repository<Message>>(getRepositoryToken(Message));
+  createTest(
+    {
+      name: 'должен создавать диалог',
+      configType: TestConfigType.INTEGRATION,
+      requiresDatabase: true,
+      imports: [DialogModule, CacheModule, MessageQueueModule, ValidationModule],
+      providers: [
+        {
+          provide: 'UserService',
+          useValue: extendedMockUserService,
+        },
+      ],
+    },
+    async testModule => {
+      // Устанавливаем тестовый режим
+      process.env.NODE_ENV = 'test';
 
-    // Устанавливаем process.env.NODE_ENV для тестового режима
-    process.env.NODE_ENV = 'test';
-  });
+      const dialogService = testModule.get<DialogService>(DialogService);
+      const fixtureManager = new FixtureManager(testModule.get('DATA_SOURCE'));
+      const userService = testModule.get<IUserService>('UserService');
 
-  afterEach(() => {
-    jest.clearAllMocks();
-  });
+      // Очищаем базу данных перед тестом
+      await fixtureManager.cleanDatabase();
 
-  it('should be defined', () => {
-    expect(dialogService).toBeDefined();
-  });
+      // Создаем тестового пользователя и персонажа
+      const user = await fixtureManager.createUser();
+      const character = await fixtureManager.createCharacter({ user });
 
-  it('should create a dialog', async () => {
-    const telegramId = '123456789';
-    const characterId = 1;
-    const userId = 1;
-    const mockDialog = {
-      id: 1,
-      telegramId,
-      characterId,
-      userId,
-      messages: [],
-    };
+      // Используем числовой формат для telegramId в тестах
+      const telegramId = '123456789';
 
-    // Мокируем методы репозитория
-    jest.spyOn(dialogRepository, 'findOne').mockResolvedValue(null);
-    jest.spyOn(dialogRepository, 'create').mockReturnValue(mockDialog as unknown as Dialog);
-    jest.spyOn(dialogRepository, 'save').mockResolvedValue(mockDialog as unknown as Dialog);
+      // Настраиваем мок для getUserIdByTelegramId
+      userService.getUserIdByTelegramId.mockResolvedValue(user.id);
+      userService.getUserById.mockResolvedValue(user);
 
-    // Переопределяем метод getOrCreateDialog для теста
-    const originalGetOrCreateDialog = dialogService.getOrCreateDialog;
-    dialogService.getOrCreateDialog = jest.fn().mockResolvedValue(mockDialog as unknown as Dialog);
+      // Вызываем метод сервиса
+      const result = await dialogService.getOrCreateDialog(telegramId, character.id);
 
-    const result = await dialogService.getOrCreateDialog(telegramId, characterId);
+      // Проверяем результат
+      expect(result).toBeDefined();
+      expect(result).not.toBeNull();
+      expect(result.telegramId).toBe(telegramId);
+      expect(result.characterId).toBe(character.id);
+      expect(result.isActive).toBe(true);
+    },
+  );
 
-    expect(result).toEqual(mockDialog);
-    expect(dialogService.getOrCreateDialog).toHaveBeenCalledWith(telegramId, characterId);
+  createTest(
+    {
+      name: 'должен сохранять сообщения пользователя и персонажа',
+      configType: TestConfigType.INTEGRATION,
+      requiresDatabase: true,
+      imports: [DialogModule, CacheModule, MessageQueueModule, ValidationModule],
+      providers: [
+        {
+          provide: 'UserService',
+          useValue: extendedMockUserService,
+        },
+      ],
+    },
+    async testModule => {
+      // Устанавливаем тестовый режим
+      process.env.NODE_ENV = 'test';
 
-    // Восстанавливаем оригинальный метод
-    dialogService.getOrCreateDialog = originalGetOrCreateDialog;
-  });
+      const dialogService = testModule.get<DialogService>(DialogService);
+      const fixtureManager = new FixtureManager(testModule.get('DATA_SOURCE'));
+      const userService = testModule.get<IUserService>('UserService');
 
-  it('should save user and character messages', async () => {
-    const telegramId = '123456789';
-    const characterId = 1;
-    const dialogId = 1;
-    const userMessageContent = 'Привет, это тестовое сообщение!';
-    const characterMessageContent = 'Привет, я получил твое сообщение!';
+      // Очищаем базу данных перед тестом
+      await fixtureManager.cleanDatabase();
 
-    const mockDialog = {
-      id: dialogId,
-      telegramId,
-      characterId,
-      userId: 1,
-      messages: [],
-    };
+      // Создаем тестового пользователя и персонажа
+      const user = await fixtureManager.createUser();
+      const character = await fixtureManager.createCharacter({ user });
 
-    const mockUserMessage = {
-      id: 1,
-      dialogId,
-      content: userMessageContent,
-      type: DialogMessageType.USER,
-      createdAt: new Date(),
-      isFromUser: true,
-    };
+      // Используем числовой формат для telegramId в тестах
+      const telegramId = '123456789';
+      const userMessageContent = 'Привет, это тестовое сообщение!';
+      const characterMessageContent = 'Привет, я получил твое сообщение!';
 
-    const mockCharacterMessage = {
-      id: 2,
-      dialogId,
-      content: characterMessageContent,
-      type: DialogMessageType.CHARACTER,
-      createdAt: new Date(),
-      isFromUser: false,
-    };
+      // Настраиваем мок для getUserIdByTelegramId
+      userService.getUserIdByTelegramId.mockResolvedValue(user.id);
+      userService.getUserById.mockResolvedValue(user);
 
-    // Мокируем методы сервиса
-    const originalGetOrCreateDialog = dialogService.getOrCreateDialog;
-    dialogService.getOrCreateDialog = jest.fn().mockResolvedValue(mockDialog as unknown as Dialog);
+      // Создаем диалог
+      const dialog = await dialogService.getOrCreateDialog(telegramId, character.id);
 
-    const originalCreateMessage = dialogService.createMessage;
-    dialogService.createMessage = jest.fn().mockImplementation((data: CreateMessageData) => {
-      if (data.type === DialogMessageType.USER) {
-        return Promise.resolve(mockUserMessage as unknown as Message);
-      } else {
-        return Promise.resolve(mockCharacterMessage as unknown as Message);
-      }
-    });
+      // Проверяем, что диалог создан успешно
+      expect(dialog).toBeDefined();
+      expect(dialog).not.toBeNull();
 
-    const originalSaveUserMessage = dialogService.saveUserMessage;
-    dialogService.saveUserMessage = jest
-      .fn()
-      .mockResolvedValue(mockUserMessage as unknown as Message);
+      // Сохраняем сообщение пользователя
+      const userMessage = await dialogService.saveUserMessage(
+        telegramId,
+        character.id,
+        userMessageContent,
+      );
 
-    const originalSaveCharacterMessageDirect = dialogService.saveCharacterMessageDirect;
-    dialogService.saveCharacterMessageDirect = jest
-      .fn()
-      .mockResolvedValue(mockCharacterMessage as unknown as Message);
+      expect(userMessage).toBeDefined();
+      expect(userMessage.content).toBe(userMessageContent);
+      expect(userMessage.isFromUser).toBe(true);
 
-    // Вызываем методы напрямую
-    const userMessage = await dialogService.saveUserMessage(
-      telegramId,
-      characterId,
-      userMessageContent,
-    );
-    const characterMessage = await dialogService.saveCharacterMessageDirect(
-      dialogId,
-      characterMessageContent,
-    );
+      // Сохраняем сообщение персонажа
+      const characterMessage = await dialogService.saveCharacterMessageDirect(
+        dialog.id,
+        characterMessageContent,
+      );
 
-    expect(userMessage).toEqual(mockUserMessage);
-    expect(characterMessage).toEqual(mockCharacterMessage);
+      expect(characterMessage).toBeDefined();
+      expect(characterMessage.content).toBe(characterMessageContent);
+      expect(characterMessage.isFromUser).toBe(false);
+    },
+  );
 
-    expect(dialogService.saveUserMessage).toHaveBeenCalledWith(
-      telegramId,
-      characterId,
-      userMessageContent,
-    );
-    expect(dialogService.saveCharacterMessageDirect).toHaveBeenCalledWith(
-      dialogId,
-      characterMessageContent,
-    );
+  createTest(
+    {
+      name: 'должен получать историю диалога',
+      configType: TestConfigType.INTEGRATION,
+      requiresDatabase: true,
+      imports: [DialogModule, CacheModule, MessageQueueModule, ValidationModule],
+      providers: [
+        {
+          provide: 'UserService',
+          useValue: extendedMockUserService,
+        },
+      ],
+    },
+    async testModule => {
+      // Устанавливаем тестовый режим
+      process.env.NODE_ENV = 'test';
 
-    // Восстанавливаем оригинальные методы
-    dialogService.getOrCreateDialog = originalGetOrCreateDialog;
-    dialogService.createMessage = originalCreateMessage;
-    dialogService.saveUserMessage = originalSaveUserMessage;
-    dialogService.saveCharacterMessageDirect = originalSaveCharacterMessageDirect;
-  });
+      const dialogService = testModule.get<DialogService>(DialogService);
+      const fixtureManager = new FixtureManager(testModule.get('DATA_SOURCE'));
+      const userService = testModule.get<IUserService>('UserService');
 
-  it('should retrieve dialog history', async () => {
-    const dialogId = 1;
-    const mockMessages = [
-      {
-        id: 1,
-        dialogId,
-        content: 'Сообщение 1',
-        type: DialogMessageType.USER,
-        createdAt: new Date(),
-        isFromUser: true,
-      },
-      {
-        id: 2,
-        dialogId,
-        content: 'Ответ 1',
-        type: DialogMessageType.CHARACTER,
-        createdAt: new Date(),
-        isFromUser: false,
-      },
-      {
-        id: 3,
-        dialogId,
-        content: 'Сообщение 2',
-        type: DialogMessageType.USER,
-        createdAt: new Date(),
-        isFromUser: true,
-      },
-    ];
+      // Очищаем базу данных перед тестом
+      await fixtureManager.cleanDatabase();
 
-    // Мокируем метод find, чтобы он возвращал mockMessages
-    jest.spyOn(messageRepository, 'find').mockResolvedValue(mockMessages as unknown as Message[]);
+      // Создаем тестового пользователя и персонажа
+      const user = await fixtureManager.createUser();
+      const character = await fixtureManager.createCharacter({ user });
 
-    // Переопределяем метод getDialogMessages для теста
-    const originalGetDialogMessages = dialogService.getDialogMessages;
-    dialogService.getDialogMessages = jest
-      .fn()
-      .mockResolvedValue(mockMessages as unknown as Message[]);
+      // Используем числовой формат для telegramId в тестах
+      const telegramId = '123456789';
 
-    const historyResult = await dialogService.getDialogMessages(dialogId, 1, 10);
+      // Настраиваем мок для getUserIdByTelegramId
+      userService.getUserIdByTelegramId.mockResolvedValue(user.id);
+      userService.getUserById.mockResolvedValue(user);
 
-    expect(historyResult).toEqual(mockMessages);
-    expect(dialogService.getDialogMessages).toHaveBeenCalledWith(dialogId, 1, 10);
+      // Создаем диалог и сообщения
+      const dialog = await dialogService.getOrCreateDialog(telegramId, character.id);
 
-    // Восстанавливаем оригинальный метод
-    dialogService.getDialogMessages = originalGetDialogMessages;
-  });
+      // Проверяем, что диалог создан успешно
+      expect(dialog).toBeDefined();
+      expect(dialog).not.toBeNull();
 
-  it('should get a dialog by ID', async () => {
-    const dialogId = 1;
-    const mockDialog = {
-      id: dialogId,
-      telegramId: '123456789',
-      characterId: 1,
-      userId: 1,
-      messages: [],
-    };
+      // Добавляем несколько сообщений
+      await dialogService.saveUserMessage(telegramId, character.id, 'Сообщение 1');
+      await dialogService.saveCharacterMessageDirect(dialog.id, 'Ответ 1');
+      await dialogService.saveUserMessage(telegramId, character.id, 'Сообщение 2');
 
-    // Мокируем метод findOne, чтобы он возвращал mockDialog
-    jest.spyOn(dialogRepository, 'findOne').mockResolvedValue(mockDialog as unknown as Dialog);
-    jest.spyOn(mockCacheService, 'set').mockResolvedValue(undefined);
+      // Получаем историю диалога
+      const result = await dialogService.getDialogMessages(dialog.id, 1, 10);
 
-    // Переопределяем метод getDialogById для теста
-    const originalGetDialogById = dialogService.getDialogById;
-    dialogService.getDialogById = jest.fn().mockResolvedValue(mockDialog as unknown as Dialog);
+      // В тестовом режиме getDialogMessages возвращает массив
+      expect(Array.isArray(result)).toBe(true);
+      const messages = result as Message[];
+      expect(messages.length).toBe(3);
 
-    const result = await dialogService.getDialogById(dialogId);
+      // Проверяем содержимое сообщений
+      expect(messages[0].content).toBe('Сообщение 1');
+      expect(messages[1].content).toBe('Ответ 1');
+      expect(messages[2].content).toBe('Сообщение 2');
+    },
+  );
 
-    expect(result).toEqual(mockDialog);
-    expect(dialogService.getDialogById).toHaveBeenCalledWith(dialogId);
+  createTest(
+    {
+      name: 'должен получать диалог по ID',
+      configType: TestConfigType.INTEGRATION,
+      requiresDatabase: true,
+      imports: [DialogModule, CacheModule, MessageQueueModule, ValidationModule],
+      providers: [
+        {
+          provide: 'UserService',
+          useValue: extendedMockUserService,
+        },
+      ],
+    },
+    async testModule => {
+      // Устанавливаем тестовый режим
+      process.env.NODE_ENV = 'test';
 
-    // Восстанавливаем оригинальный метод
-    dialogService.getDialogById = originalGetDialogById;
-  });
+      const dialogService = testModule.get<DialogService>(DialogService);
+      const fixtureManager = new FixtureManager(testModule.get('DATA_SOURCE'));
+      const userService = testModule.get<IUserService>('UserService');
+
+      // Очищаем базу данных перед тестом
+      await fixtureManager.cleanDatabase();
+
+      // Создаем тестового пользователя и персонажа
+      const user = await fixtureManager.createUser();
+      const character = await fixtureManager.createCharacter({ user });
+
+      // Используем числовой формат для telegramId в тестах
+      const telegramId = '123456789';
+
+      // Настраиваем мок для getUserIdByTelegramId
+      userService.getUserIdByTelegramId.mockResolvedValue(user.id);
+      userService.getUserById.mockResolvedValue(user);
+
+      // Создаем диалог
+      const createdDialog = await dialogService.getOrCreateDialog(telegramId, character.id);
+
+      // Проверяем, что диалог создан успешно
+      expect(createdDialog).toBeDefined();
+      expect(createdDialog).not.toBeNull();
+
+      // Получаем диалог по ID
+      const retrievedDialog = await dialogService.getDialogById(createdDialog.id);
+
+      // Проверяем результат
+      expect(retrievedDialog).toBeDefined();
+      expect(retrievedDialog.id).toBe(createdDialog.id);
+      expect(retrievedDialog.telegramId).toBe(telegramId);
+      expect(retrievedDialog.characterId).toBe(character.id);
+    },
+  );
 });

@@ -194,11 +194,11 @@ export class DialogController {
       }
 
       const messagesResult = await this.dialogService.getDialogMessages(dialogId, 1, 100);
-      
+
       // Проверяем формат возвращаемого значения и получаем нужные данные
       let messages: Message[];
       let totalMessages: number;
-      
+
       if (Array.isArray(messagesResult)) {
         // Если это массив сообщений (в тестовом окружении)
         messages = messagesResult;
@@ -212,7 +212,7 @@ export class DialogController {
       return {
         dialog,
         messages,
-        totalMessages
+        totalMessages,
       };
     } catch (error) {
       this.logService.error(

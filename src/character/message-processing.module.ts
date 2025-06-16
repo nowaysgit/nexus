@@ -20,12 +20,22 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Need } from './entities/need.entity';
 import { Character } from './entities/character.entity';
 import { CharacterMemory } from './entities/character-memory.entity';
-import { TechniqueExecution, UserManipulationProfile } from './entities/manipulation-technique.entity';
+import {
+  TechniqueExecution,
+  UserManipulationProfile,
+} from './entities/manipulation-technique.entity';
 import { Action } from './entities/action.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Need, Character, CharacterMemory, TechniqueExecution, UserManipulationProfile, Action]),
+    TypeOrmModule.forFeature([
+      Need,
+      Character,
+      CharacterMemory,
+      TechniqueExecution,
+      UserManipulationProfile,
+      Action,
+    ]),
     DialogModule,
     LLMModule,
     PromptTemplateModule,
@@ -48,4 +58,4 @@ import { Action } from './entities/action.entity';
   ],
   exports: [MessageProcessingCoordinator],
 })
-export class MessageProcessingModule {} 
+export class MessageProcessingModule {}

@@ -204,7 +204,7 @@ createTestSuite('CacheService Integration Tests', () => {
       );
 
       // Проверяем, что дата была сохранена как строка (сериализация JSON)
-      expect(typeof retrieved.date).toBe('string');
+      expect(typeof (retrieved as { date: string }).date).toBe('string');
     },
   );
 

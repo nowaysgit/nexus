@@ -41,15 +41,12 @@ import { MemoryService } from './services/memory.service';
 import { MessageAnalysisService } from './services/message-analysis.service';
 import { CharacterResponseService } from './services/character-response.service';
 
-
 // Specialization Services
 import { SpecializationService } from './services/specialization.service';
 
 // Manipulation Services
 import { ManipulationService } from './services/manipulation.service';
 import { TechniqueExecutorService } from './services/technique-executor.service';
-
-
 
 // Story Integration
 import { StoryController } from './controllers/story.controller';

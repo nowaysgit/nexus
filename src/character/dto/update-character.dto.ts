@@ -81,4 +81,4 @@ export class UpdateCharacterDto {
   @IsOptional()
   @IsBoolean()
   isArchived?: boolean;
-} 
+}

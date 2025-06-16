@@ -8,7 +8,11 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { Character } from './character.entity';
-import { ManipulativeTechniqueType, TechniqueIntensity, TechniquePhase } from '../enums/technique.enums';
+import {
+  ManipulativeTechniqueType,
+  TechniqueIntensity,
+  TechniquePhase,
+} from '../enums/technique.enums';
 
 /**
  * Entity для хранения выполненных манипулятивных техник согласно ТЗ МАНИПУЛЯТИВНЫЕ ТЕХНИКИ
@@ -227,7 +231,7 @@ export class UserManipulationProfile {
   @Column({
     type: 'timestamp',
     default: () => 'CURRENT_TIMESTAMP',
-    comment: 'Дата последнего обновления'
+    comment: 'Дата последнего обновления',
   })
   lastUpdate!: Date;
 

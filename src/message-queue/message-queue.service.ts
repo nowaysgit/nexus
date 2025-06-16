@@ -170,13 +170,14 @@ export class MessageQueueService implements OnModuleDestroy {
         }
 
         if (message.status === MessageQueueStatus.COMPLETED) {
-          const result = (message.result as MessageProcessingResult<T>) ||
+          const result =
+            (message.result as MessageProcessingResult<T>) ||
             ({
               success: true,
               handled: true,
               context: message.messageContext,
             } as MessageProcessingResult<T>);
-          
+
           // Удаляем сообщение только после получения результата
           this.removeMessage(messageId);
           resolve(result);

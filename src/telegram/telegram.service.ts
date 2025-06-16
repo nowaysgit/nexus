@@ -63,7 +63,9 @@ export class TelegramService implements OnModuleInit, OnApplicationShutdown {
         if (this.bot && this.bot.telegram) {
           await this.bot.telegram.deleteWebhook();
         } else {
-          this.logService.warn('Не удалось удалить webhook: объект bot.telegram не инициализирован');
+          this.logService.warn(
+            'Не удалось удалить webhook: объект bot.telegram не инициализирован',
+          );
         }
 
         // Запускаем в режиме polling
@@ -109,7 +111,9 @@ export class TelegramService implements OnModuleInit, OnApplicationShutdown {
     if (this.bot && this.bot.telegram) {
       return await this.bot.telegram.getMe();
     } else {
-      this.logService.warn('Не удалось получить информацию о боте: объект bot.telegram не инициализирован');
+      this.logService.warn(
+        'Не удалось получить информацию о боте: объект bot.telegram не инициализирован',
+      );
       return null;
     }
   }

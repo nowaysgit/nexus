@@ -45,7 +45,7 @@ export class MessageProcessingCoordinator {
       async () => {
         // Преобразуем userId в number для внутреннего использования
         const numericUserId = typeof userId === 'string' ? parseInt(userId, 10) : userId;
-        
+
         this.logService.log('Начинается обработка сообщения пользователя', {
           characterId: character.id,
           userId: numericUserId,
@@ -172,7 +172,7 @@ export class MessageProcessingCoordinator {
     try {
       // Преобразуем userId в number для внутреннего использования
       const numericUserId = typeof userId === 'string' ? parseInt(userId, 10) : userId;
-      
+
       // Передаем анализ в CharacterBehaviorService
       await this.characterBehaviorService.processUserMessageWithAnalysis(
         characterId,
@@ -201,7 +201,7 @@ export class MessageProcessingCoordinator {
     try {
       // Преобразуем userId в number для внутреннего использования
       const numericUserId = typeof userId === 'string' ? parseInt(userId, 10) : userId;
-      
+
       // Анализируем ситуацию и выбираем подходящую технику
       const chosenTechnique = await this.manipulationService.analyzeSituationAndChooseTechnique(
         characterId,

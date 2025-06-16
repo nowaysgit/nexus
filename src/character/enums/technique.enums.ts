@@ -13,7 +13,7 @@ export enum ManipulativeTechniqueType {
   SNOWBALL = 'snowball',
   TRIANGULATION = 'triangulation',
   LOVE_BOMBING = 'love_bombing',
-  VALIDATION = 'validation'
+  VALIDATION = 'validation',
 }
 
 /**
@@ -23,7 +23,7 @@ export enum TechniqueIntensity {
   SUBTLE = 'subtle',
   MODERATE = 'moderate',
   MEDIUM = 'medium',
-  AGGRESSIVE = 'aggressive'
+  AGGRESSIVE = 'aggressive',
 }
 
 /**
@@ -35,5 +35,5 @@ export enum TechniquePhase {
   DEVELOPMENT = 'development',
   MONITORING = 'monitoring',
   COMPLETION = 'completion',
-  COOLDOWN = 'cooldown'
+  COOLDOWN = 'cooldown',
 }

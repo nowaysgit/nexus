@@ -9,7 +9,8 @@ import {
   getDialogTestConfig,
   addMockUserServiceToProviders,
   containsDialogModule,
-} from './dialog-test.config';
+  addDialogServiceMocks
+} from './dialog-test.configuration';
 import { mockUserService } from '../mocks/user-service.mock';
 import {
   containsTelegramModule,
@@ -38,6 +39,8 @@ import { MockApiKeyService, MockEncryptionService } from '../mocks';
 import { ApiKeyService } from '../../../src/infrastructure/api-key.service';
 import { EncryptionService } from '../../../src/infrastructure/encryption.service';
 import { MockDialogRepositoryModule } from '../mocks/mock-dialog-repository.module';
+import { MockLogService } from '../mocks/log.service.mock';
+import { MockRollbarService } from '../mocks/rollbar.service.mock';
 
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -56,7 +59,7 @@ export interface TestConfig {
 export * from './logging-test.configuration';
 export * from './llm-test.configuration';
 export * from './telegram-test.configuration';
-export * from './dialog-test.config';
+export * from './dialog-test.configuration';
 
 /**
  * Автоматически добавляет все необходимые моки на основе импортируемых модулей
