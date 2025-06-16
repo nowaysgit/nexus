@@ -7,11 +7,11 @@ import { MockRollbarService } from './rollbar.service.mock';
  * Определяет методы логгера, которые будут использоваться в MockLogService
  */
 interface MockWinstonLogger {
-  info: jest.Mock<void, [string, Record<string, any>?]>;
-  warn: jest.Mock<void, [string, Record<string, any>?]>;
-  error: jest.Mock<void, [string, Record<string, any>?]>;
-  debug: jest.Mock<void, [string, Record<string, any>?]>;
-  verbose: jest.Mock<void, [string, Record<string, any>?]>;
+  info: jest.Mock<void, [message: string, meta?: Record<string, any>]>;
+  warn: jest.Mock<void, [message: string, meta?: Record<string, any>]>;
+  error: jest.Mock<void, [message: string, meta?: Record<string, any>]>;
+  debug: jest.Mock<void, [message: string, meta?: Record<string, any>]>;
+  verbose: jest.Mock<void, [message: string, meta?: Record<string, any>]>;
 }
 
 /**
@@ -43,11 +43,11 @@ export class MockLogService implements LoggerService {
 
   constructor() {
     this.winstonLogger = {
-      info: jest.fn<void, [string, Record<string, any>?]>(),
-      warn: jest.fn<void, [string, Record<string, any>?]>(),
-      error: jest.fn<void, [string, Record<string, any>?]>(),
-      debug: jest.fn<void, [string, Record<string, any>?]>(),
-      verbose: jest.fn<void, [string, Record<string, any>?]>(),
+      info: jest.fn<void, [message: string, meta?: Record<string, any>]>(),
+      warn: jest.fn<void, [message: string, meta?: Record<string, any>]>(),
+      error: jest.fn<void, [message: string, meta?: Record<string, any>]>(),
+      debug: jest.fn<void, [message: string, meta?: Record<string, any>]>(),
+      verbose: jest.fn<void, [message: string, meta?: Record<string, any>]>(),
     };
     this.rollbarService = new MockRollbarService();
   }

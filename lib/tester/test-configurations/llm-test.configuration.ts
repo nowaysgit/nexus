@@ -1,7 +1,9 @@
 import { LLMModule } from '../../../src/llm/llm.module';
 import { LLMProviderManagerService } from '../../../src/llm/services/llm-provider-manager.service';
+import { LLMService } from '../../../src/llm/services/llm.service';
 import { mockLlamaProviderService } from '../mocks/llama-provider.mock';
 import { MockProviderFactory } from '../mocks';
+import { MockLLMService } from '../mocks/llm.service.mock';
 import { TestConfig } from './index';
 
 /**
@@ -42,6 +44,18 @@ export function addLLMMocks(config: TestConfig): TestConfig {
     });
   }
 
+  // Добавляем мок LLMService с типизацией
+  if (
+    !config.providers.some(
+      p => p && ((p as any).provide === LLMService || (p as any) === LLMService),
+    )
+  ) {
+    config.providers.push({
+      provide: LLMService,
+      useClass: MockLLMService,
+    });
+  }
+
   // Переопределяем LLMProviderManagerService для использования мока LlamaProviderService
   if (
     !config.providers.some(
@@ -58,6 +72,28 @@ export function addLLMMocks(config: TestConfig): TestConfig {
           getProvider: jest.fn().mockImplementation(() => mockLlamaProviderService),
           getAvailableProviders: jest.fn().mockImplementation(() => [mockLlamaProviderService]),
           isProviderAvailable: jest.fn().mockImplementation(() => true),
+          getActiveProvider: jest.fn().mockImplementation(() => mockLlamaProviderService),
+          setActiveProvider: jest.fn(),
+          selectBestAvailableProvider: jest.fn().mockImplementation(() => 'llama'),
+          getManagerInfo: jest.fn().mockImplementation(() => ({
+            activeProvider: 'llama',
+            registeredProviders: ['llama'],
+            providersInfo: [
+              {
+                type: 'llama',
+                name: 'Llama Provider',
+                models: ['llama-2'],
+                features: ['text generation'],
+              },
+            ],
+          })),
+          checkAllProvidersAvailability: jest.fn().mockImplementation(() => ({
+            llama: true,
+            openai: false,
+            claude: false,
+            gemini: false,
+            custom: false,
+          })),
           onModuleInit: jest.fn(),
         };
         return manager;

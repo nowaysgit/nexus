@@ -4,11 +4,11 @@ import { Injectable } from '@nestjs/common';
  * Интерфейс для хранения вызовов методов мока
  */
 interface MockCalls {
-  info: Array<[string, Record<string, any>?]>;
-  debug: Array<[string, Record<string, any>?]>;
-  warn: Array<[string | Error, Record<string, any>?]>;
-  error: Array<[Error, Record<string, any>?]>;
-  critical: Array<[Error, Record<string, any>?]>;
+  info: Array<[message: string, extra?: Record<string, any>]>;
+  debug: Array<[message: string, extra?: Record<string, any>]>;
+  warn: Array<[message: string | Error, extra?: Record<string, any>]>;
+  error: Array<[error: Error, extra?: Record<string, any>]>;
+  critical: Array<[error: Error, extra?: Record<string, any>]>;
 }
 
 /**

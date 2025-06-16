@@ -252,7 +252,7 @@ createTestSuite('Specialization Workflow Integration Tests', () => {
 
           expect(response).toBeDefined();
           expect(typeof response).toBe('string');
-          expect(response.length).toBeGreaterThan(0);
+          expect(response).toBe('Интересный вопрос! Давайте обсудим это подробнее.');
 
           // Очистка
           if (character.id) {

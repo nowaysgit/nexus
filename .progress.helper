@@ -109,6 +109,24 @@
               "t": "f",
               "e": ["MockInfrastructureModule"],
               "d": "Глобальный модуль-заглушка, заменяющий InfrastructureModule в тестах. Экспортирует моки EncryptionService и ApiKeyService (MockEncryptionService, MockApiKeyService). Подключается автоматически через prepareImportsForTesting." 
+            },
+            {
+              "p": "/mocks/log.service.mock.ts",
+              "t": "f",
+              "e": ["MockLogService"],
+              "d": "Мок LogService для тестирования с типизированными jest.Mock методами и интерфейсом MockWinstonLogger для улучшения типизации"
+            },
+            {
+              "p": "/mocks/rollbar.service.mock.ts",
+              "t": "f",
+              "e": ["MockRollbarService"],
+              "d": "Мок RollbarService для тестирования с типизированным интерфейсом MockCalls для хранения истории вызовов"
+            },
+            {
+              "p": "/mocks/llm.service.mock.ts",
+              "t": "f",
+              "e": ["MockLLMService"],
+              "d": "Типизированный мок LLMService с полной поддержкой интерфейса ILLMTextResult и правильной типизацией методов"
             }
           ]
         },
@@ -127,6 +145,18 @@
               "t": "f",
               "e": ["containsTelegramModule", "addMockTelegramServiceToProviders", "addTelegrafTokenToProviders", "replaceTelegrafModule", "containsTelegrafModule"],
               "d": "Конфигурация для тестирования Telegram модулей. Содержит функции для проверки наличия TelegramModule и TelegrafModule в импортах, добавления моков и замены TelegrafModule на MockTelegramModule.forRoot()."
+            },
+            {
+              "p": "/test-configurations/logging-test.configuration.ts",
+              "t": "f",
+              "e": ["getLoggingTestProviders", "addLoggingMocks"],
+              "d": "Конфигурация для тестирования модуля логирования с типизированными провайдерами"
+            },
+            {
+              "p": "/test-configurations/llm-test.configuration.ts",
+              "t": "f",
+              "e": ["containsLLMModule", "addLLMMocks"],
+              "d": "Конфигурация для тестирования LLM модулей с использованием типизированного MockLLMService"
             }
           ]
         },

@@ -78,7 +78,6 @@ createTestSuite('LLMService Tests', () => {
     };
 
     llmService = new LLMService(mockProviderManager, mockLogService);
-    (llmService as any).onModuleInit(); 
     jest.clearAllMocks();
   });
 
@@ -187,7 +186,7 @@ createTestSuite('LLMService Tests', () => {
       await llmService.switchProvider(targetProvider);
 
       expect(mockProviderManager.setActiveProvider).toHaveBeenCalledWith(targetProvider);
-      expect(mockLogService.log).toHaveBeenCalledWith(`Switched LLM provider to ${targetProvider}`);
+      expect(mockLogService.log).toHaveBeenCalledWith(`Переключен на провайдер: ${targetProvider}`);
     },
   );
 

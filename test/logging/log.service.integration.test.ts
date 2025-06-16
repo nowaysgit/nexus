@@ -106,11 +106,9 @@ createTestSuite('LogService', () => {
       const lastCallIndex = logService.winstonLogger.info.mock.calls.length - 1;
       const lastCall = logService.winstonLogger.info.mock.calls[lastCallIndex];
       expect(lastCall).toBeDefined();
-      if (lastCall && lastCall.length > 0) {
-        const message = lastCall[0];
-        if (typeof message === 'string') {
-          expect(message).toContain(testMessage);
-        }
+      if (lastCall) {
+        const [message] = lastCall;
+        expect(message).toContain(testMessage);
       }
     },
   );
@@ -177,11 +175,9 @@ createTestSuite('LogService', () => {
       const lastCallIndex = logService.winstonLogger.error.mock.calls.length - 1;
       const lastCall = logService.winstonLogger.error.mock.calls[lastCallIndex];
       expect(lastCall).toBeDefined();
-      if (lastCall && lastCall.length > 0) {
-        const message = lastCall[0];
-        if (typeof message === 'string') {
-          expect(message).toContain('Test error');
-        }
+      if (lastCall) {
+        const [message] = lastCall;
+        expect(message).toContain('Test error');
       }
     },
   );
@@ -225,11 +221,9 @@ createTestSuite('LogService', () => {
 
       expect(lastErrorCall).toBeDefined();
 
-      if (lastErrorCall && lastErrorCall.length > 0) {
-        const message = lastErrorCall[0];
-        if (typeof message === 'string') {
-          expect(message).toContain('CRITICAL: Critical failure');
-        }
+      if (lastErrorCall) {
+        const [message] = lastErrorCall;
+        expect(message).toContain('CRITICAL: Critical failure');
       }
     },
   );
@@ -271,14 +265,10 @@ createTestSuite('LogService', () => {
 
       expect(lastCriticalCall).toBeDefined();
 
-      if (lastCriticalCall && lastCriticalCall.length >= 2) {
+      if (lastCriticalCall) {
         const [error, meta] = lastCriticalCall;
-        if (error instanceof Error) {
-          expect(error.message).toBe('Critical failure for Rollbar');
-        }
-        if (meta && typeof meta === 'object') {
-          expect(meta).toEqual(expect.objectContaining({ userId: '123' }));
-        }
+        expect(error.message).toBe('Critical failure for Rollbar');
+        expect(meta).toEqual(expect.objectContaining({ userId: '123' }));
       }
     },
   );
