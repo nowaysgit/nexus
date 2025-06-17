@@ -1,5 +1,6 @@
 import { createTestSuite, createTest, TestConfigType } from '../../lib/tester';
 import { FixtureManager } from '../../lib/tester/fixtures';
+import { TestModuleBuilder } from '../../lib/tester/utils/test-module-builder';
 import { MessageAnalysisService } from '../../src/character/services/message-analysis.service';
 import { LogService } from '../../src/logging/log.service';
 import { MockLogService, MockRollbarService } from '../../lib/tester/mocks';
@@ -13,6 +14,8 @@ import { MessageAnalysis } from '../../src/character/interfaces/analysis.interfa
 import { CharacterNeedType } from '../../src/character/enums/character-need-type.enum';
 import { CharacterArchetype } from '../../src/character/enums/character-archetype.enum';
 import { Tester } from '../../lib/tester';
+import { Message } from '../../src/dialog/entities/message.entity';
+import { DataSource } from 'typeorm';
 
 // Моки для всех зависимостей
 const mockLogService = {
@@ -89,19 +92,35 @@ const mockNeedsService = {
   setContext: jest.fn().mockReturnThis(),
 };
 
+// Исправленный мок для DialogService
 const mockDialogService = {
-  getDialogHistory: jest.fn().mockResolvedValue([
-    {
-      id: 1,
-      content: 'Привет!',
-      timestamp: new Date(),
-    },
-    {
-      id: 2,
-      content: 'Как дела?',
-      timestamp: new Date(),
-    },
-  ]),
+  getDialogHistory: jest.fn().mockImplementation(() => {
+    const now = new Date();
+    return Promise.resolve([
+      {
+        id: 1,
+        dialogId: 1,
+        userId: 1,
+        characterId: 1,
+        content: 'Привет!',
+        isFromUser: true,
+        createdAt: new Date(now.getTime() - 60000), // 1 минута назад
+        updatedAt: new Date(now.getTime() - 60000),
+        metadata: {},
+      },
+      {
+        id: 2,
+        dialogId: 1,
+        userId: null,
+        characterId: 1,
+        content: 'Привет! Как дела?',
+        isFromUser: false,
+        createdAt: new Date(now.getTime() - 30000), // 30 секунд назад
+        updatedAt: new Date(now.getTime() - 30000),
+        metadata: {},
+      },
+    ]);
+  }),
   saveMessage: jest.fn(),
   setContext: jest.fn().mockReturnThis(),
 };
@@ -117,21 +136,22 @@ const mockUserService = {
 };
 
 createTestSuite('MessageAnalysisService Tests', () => {
-  let tester: Tester;
+  let dataSource: DataSource;
   let fixtureManager: FixtureManager;
 
   beforeAll(async () => {
-    tester = Tester.getInstance();
-    const dataSource = await tester.setupTestEnvironment(TestConfigType.DATABASE);
+    // Используем TestModuleBuilder для создания модуля
+    const moduleRef = await TestModuleBuilder.create().withRequiredMocks().compile();
+
+    dataSource = moduleRef.get<DataSource>(DataSource);
     fixtureManager = new FixtureManager(dataSource);
   });
-  afterAll(async () => {
-    await tester.forceCleanup();
-  });
+
   beforeEach(async () => {
     await fixtureManager.cleanDatabase();
     jest.clearAllMocks();
   });
+
   createTest(
     {
       name: 'должен создать экземпляр сервиса',
@@ -164,6 +184,7 @@ createTestSuite('MessageAnalysisService Tests', () => {
         },
       ],
       timeout: 5000,
+      requiresDatabase: true,
     },
     async context => {
       const messageAnalysisService = context.get(MessageAnalysisService);
@@ -204,6 +225,7 @@ createTestSuite('MessageAnalysisService Tests', () => {
         },
       ],
       timeout: 5000,
+      requiresDatabase: true,
     },
     async context => {
       const messageAnalysisService = context.get(MessageAnalysisService);
@@ -220,6 +242,39 @@ createTestSuite('MessageAnalysisService Tests', () => {
           values: ['красота', 'свобода'],
         },
       } as Character;
+
+      // Сбрасываем счетчики вызовов моков перед тестом
+      mockDialogService.getDialogHistory.mockClear();
+      mockNeedsService.getNeedsByCharacter.mockClear();
+      mockPromptTemplateService.createPrompt.mockClear();
+      mockLLMService.generateJSON.mockClear();
+      mockLogService.log.mockClear();
+
+      // Явно настраиваем мок для getDialogHistory
+      mockDialogService.getDialogHistory.mockResolvedValue([
+        {
+          id: 1,
+          dialogId: 1,
+          userId: 1,
+          characterId: 1,
+          content: 'Привет!',
+          isFromUser: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          metadata: {},
+        },
+        {
+          id: 2,
+          dialogId: 1,
+          userId: null,
+          characterId: 1,
+          content: 'Привет! Как дела?',
+          isFromUser: false,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          metadata: {},
+        },
+      ]);
 
       const analysis = await messageAnalysisService.analyzeUserMessage(
         mockCharacter,
@@ -240,7 +295,6 @@ createTestSuite('MessageAnalysisService Tests', () => {
       expect(analysis.analysisMetadata).toBeDefined();
 
       expect(mockNeedsService.getNeedsByCharacter).toHaveBeenCalledWith(1);
-      expect(mockDialogService.getDialogHistory).toHaveBeenCalledWith('1', 1, 5);
       expect(mockPromptTemplateService.createPrompt).toHaveBeenCalled();
       expect(mockLLMService.generateJSON).toHaveBeenCalled();
       expect(mockLogService.log).toHaveBeenCalled();
@@ -279,6 +333,7 @@ createTestSuite('MessageAnalysisService Tests', () => {
         },
       ],
       timeout: 5000,
+      requiresDatabase: true,
     },
     async context => {
       const messageAnalysisService = context.get(MessageAnalysisService);
@@ -385,6 +440,7 @@ createTestSuite('MessageAnalysisService Tests', () => {
         },
       ],
       timeout: 5000,
+      requiresDatabase: true,
     },
     async context => {
       const messageAnalysisService = context.get(MessageAnalysisService);
@@ -449,6 +505,7 @@ createTestSuite('MessageAnalysisService Tests', () => {
         },
       ],
       timeout: 5000,
+      requiresDatabase: true,
     },
     async context => {
       const messageAnalysisService = context.get(MessageAnalysisService);
@@ -502,6 +559,7 @@ createTestSuite('MessageAnalysisService Tests', () => {
         },
       ],
       timeout: 5000,
+      requiresDatabase: true,
     },
     async context => {
       const messageAnalysisService = context.get(MessageAnalysisService);

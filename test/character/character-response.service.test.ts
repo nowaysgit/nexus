@@ -95,20 +95,56 @@ createTestSuite('CharacterResponseService Unit Tests', () => {
     async context => {
       const service = context.get(CharacterResponseService);
 
-      const character = { id: 1 } as Character;
+      const character = { id: 1, name: 'Anna' } as Character;
+      const emotionalState = { primary: 'радость' } as EmotionalState;
       const error = new Error('LLM failed');
 
       mockLlmService.generateText.mockRejectedValue(error);
+      mockNeedsService.getActiveNeeds.mockResolvedValue([]);
 
-      await expect(
-        service.generateResponse(character, 'Hi', [], {} as EmotionalState, ''),
-      ).rejects.toThrow(error);
+      // Вместо ожидания исключения, проверяем, что сервис возвращает резервный ответ
+      const result = await service.generateResponse(character, 'Hi', [], emotionalState, '');
 
+      // Проверяем, что был возвращен резервный ответ для эмоции "радость"
+      expect(result).toContain('Прости, что-то я отвлеклась!');
+
+      // Проверяем, что ошибка была залогирована
       expect(mockLogService.error).toHaveBeenCalledWith(
-        '[CharacterResponseService] Ошибка при генерации ответа',
-        expect.anything(),
-        error,
+        'Ошибка при генерации ответа персонажа: LLM failed',
       );
+    },
+  );
+
+  createTest(
+    {
+      name: 'should return fallback response based on emotional state',
+      configType: TestConfigType.BASIC,
+      providers,
+    },
+    async context => {
+      const service = context.get(CharacterResponseService);
+
+      // Проверяем разные эмоциональные состояния
+      const character = { id: 1, name: 'Anna' } as Character;
+      const error = new Error('LLM failed');
+
+      mockLlmService.generateText.mockRejectedValue(error);
+      mockNeedsService.getActiveNeeds.mockResolvedValue([]);
+
+      // Тест для эмоции "грусть"
+      const sadState = { primary: 'грусть' } as EmotionalState;
+      const sadResult = await service.generateResponse(character, 'Hi', [], sadState, '');
+      expect(sadResult).toContain('сложно сейчас подобрать слова');
+
+      // Тест для эмоции "злость"
+      const angryState = { primary: 'злость' } as EmotionalState;
+      const angryResult = await service.generateResponse(character, 'Hi', [], angryState, '');
+      expect(angryResult).toContain('нужно немного остыть');
+
+      // Тест для нейтральной эмоции
+      const neutralState = { primary: 'нейтральность' } as EmotionalState;
+      const neutralResult = await service.generateResponse(character, 'Hi', [], neutralState, '');
+      expect(neutralResult).toContain('я немного задумалась');
     },
   );
 });

@@ -169,7 +169,10 @@ export class MockTelegramModule {
         },
         {
           provide: TelegramService,
-          useClass: TelegramService,
+          useFactory: (bot, configService, logService) => {
+            return new TelegramService(bot, configService, logService);
+          },
+          inject: [TELEGRAF_TOKEN, ConfigService, LogService],
         },
       ],
       exports: [

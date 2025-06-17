@@ -19,7 +19,7 @@ import { CharacterMemory } from '../../src/character/entities/character-memory.e
 import { Repository } from 'typeorm';
 import { MockLogService } from '../../lib/tester/mocks';
 import { ActionType } from '../../src/character/enums/action-type.enum';
-import { ActionContext, ActionResult } from '../../src/character/services/action.service';
+import { ActionResult } from '../../src/character/services/action.service';
 
 jest.mock('../../src/common/utils/error-handling/error-handling.utils', () => ({
   withErrorHandling: jest.fn((fn: () => unknown) => fn()),
@@ -207,25 +207,56 @@ describe('CharacterBehaviorService Tests', () => {
       },
     ];
 
+    // Создаем контекст для триггера действия
+    const actionTriggerContext = {
+      characterId,
+      userId,
+      triggerType,
+      triggerData: {},
+      timestamp: new Date(),
+      motivations,
+    };
+
     // Настраиваем моки
     mockCharacterService.findOneById.mockResolvedValue(character);
-    mockActionService.execute.mockResolvedValue({
-      success: true,
-      message: 'Действие успешно выполнено',
-    } as ActionResult);
 
-    // Вызываем тестируемый метод
-    await service.processActionTrigger(characterId, triggerType, motivations);
+    // Мокируем selectActionForMotivation, чтобы возвращал действие
+    const mockAction = {
+      type: ActionType.INITIATE_CONVERSATION,
+      description: 'Тестовое действие',
+      priority: 8,
+      relatedNeeds: [CharacterNeedType.COMMUNICATION],
+      status: 'planned',
+      metadata: {},
+    };
 
-    // Проверяем, что execute был вызван
-    expect(mockActionService.execute).toHaveBeenCalled();
+    // Используем jest.spyOn для приватного метода
+    jest.spyOn(service as any, 'selectActionForMotivation').mockResolvedValue(mockAction);
+
+    // Мокируем determineAndPerformAction вместо execute
+    mockActionService.determineAndPerformAction.mockResolvedValue({
+      type: ActionType.INITIATE_CONVERSATION,
+      description: 'Тестовое действие выполнено',
+      status: 'completed',
+    });
+
+    // Вызываем тестируемый метод с правильным объектом контекста
+    await service.processActionTrigger(actionTriggerContext);
+
+    // Проверяем, что determineAndPerformAction был вызван
+    expect(mockActionService.determineAndPerformAction).toHaveBeenCalled();
+
+    // Проверяем, что determineAndPerformAction был вызван хотя бы один раз
+    expect(mockActionService.determineAndPerformAction).toHaveBeenCalledTimes(1);
 
     // Проверяем параметры вызова
-    const callArgs = mockActionService.execute.mock.calls[0] as [ActionContext];
-    expect(callArgs[0].character).toEqual(character); // Первый параметр должен содержать character
-
-    // Проверяем, что action имеет правильный тип
-    expect(callArgs[0].action).toBeDefined();
-    expect(callArgs[0].action.type).toBe(ActionType.INITIATE_CONVERSATION);
+    expect(mockActionService.determineAndPerformAction).toHaveBeenCalledWith(
+      character,
+      expect.objectContaining({
+        characterId: characterId,
+        userId: userId,
+        triggerType: triggerType,
+      }),
+    );
   });
 });

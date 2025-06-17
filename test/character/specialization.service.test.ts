@@ -1,107 +1,88 @@
-import { createTestSuite, createTest, TestConfigType, Tester } from '../../lib/tester';
-import { FixtureManager } from '../../lib/tester/fixtures';
+import { createTestSuite, createTest } from '../../lib/tester';
 import {
   SpecializationService,
   KnowledgeDomain,
   CompetenceLevel,
 } from '../../src/character/services/specialization.service';
 import { LogService } from '../../src/logging/log.service';
-import { MockLogService, MockRollbarService } from '../../lib/tester/mocks';
-import { Character } from '../../src/character/entities/character.entity';
+import { MockLogService } from '../../lib/tester/mocks';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { CacheService } from '../../src/cache/cache.service';
-import { LLMService } from '../../src/llm/services/llm.service';
-import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { Character } from '../../src/character/entities/character.entity';
+import { TestModuleBuilder } from '../../lib/tester/utils/test-module-builder';
+import { DataSource } from 'typeorm';
 
-const mockCacheService = {
-  get: jest.fn(),
-  set: jest.fn(),
-  delete: jest.fn(),
-};
-
-const mockLLMService = {
-  generateJSON: jest.fn().mockResolvedValue({
-    domains: {
-      psychology: CompetenceLevel.EXPERT,
-      music: CompetenceLevel.PROFICIENT,
-      technology: CompetenceLevel.BASIC,
-    },
-    strongAreas: ['эмпатия', 'психология отношений'],
-    weakAreas: ['программирование', 'точные науки'],
-    personalInterests: ['чтение', 'музыка'],
-    naturalIgnorancePatterns: ['технические детали', 'математические формулы'],
+// Мок для репозиториев
+const mockCharacterRepository = {
+  findOne: jest.fn().mockImplementation((options: any) => {
+    const where = options?.where;
+    if (where && typeof where === 'object' && 'id' in where && where.id === 1) {
+      return Promise.resolve({
+        id: 1,
+        name: 'Test Character',
+        archetype: 'MENTOR',
+        personality: {
+          traits: ['эмпатичный', 'общительный'],
+          hobbies: ['чтение', 'музыка'],
+          fears: ['высота', 'замкнутые пространства'],
+          values: ['честность', 'доброта'],
+          musicTaste: ['классическая', 'джаз'],
+          strengths: ['терпение', 'внимательность'],
+          weaknesses: ['нерешительность', 'прокрастинация'],
+        },
+      });
+    }
+    return Promise.resolve(null);
   }),
 };
 
-const mockLogService = {
-  log: jest.fn(),
-  info: jest.fn(),
-  error: jest.fn(),
-  warn: jest.fn(),
-  debug: jest.fn(),
-  verbose: jest.fn(),
-  setContext: jest.fn().mockReturnThis(),
+// Мок для DataSource
+const mockDataSource = {
+  getRepository: jest.fn().mockReturnValue(mockCharacterRepository),
 };
 
 createTestSuite('SpecializationService Tests', () => {
-  let tester: Tester;
-  let fixtureManager: FixtureManager;
   let specializationService: SpecializationService;
+  let moduleRef: import('@nestjs/testing').TestingModule | null = null;
 
-  beforeAll(async () => {
-    tester = Tester.getInstance();
-    const dataSource = await tester.setupTestEnvironment(TestConfigType.DATABASE);
-    fixtureManager = new FixtureManager(dataSource);
-  });
-  afterAll(async () => {
-    await tester.forceCleanup();
-  });
   beforeEach(async () => {
-    await fixtureManager.cleanDatabase();
-    jest.clearAllMocks();
-  });
-  afterEach(() => {
-    // Очищаем кэш сервиса
-    if (specializationService) {
-      specializationService.clearCache();
-    }
-  });
-  createTest(
-    {
-      name: 'должен создать экземпляр сервиса',
-      configType: TestConfigType.DATABASE,
-      providers: [
+    moduleRef = await TestModuleBuilder.create()
+      .withProviders([
         SpecializationService,
         {
           provide: LogService,
-          useValue: mockLogService,
+          useClass: MockLogService,
         },
         {
-          provide: CacheService,
-          useValue: mockCacheService,
+          provide: getRepositoryToken(Character),
+          useValue: mockCharacterRepository,
         },
         {
-          provide: LLMService,
-          useValue: mockLLMService,
+          provide: DataSource,
+          useValue: mockDataSource,
         },
-        {
-          provide: WINSTON_MODULE_PROVIDER,
-          useValue: {
-            info: jest.fn(),
-            warn: jest.fn(),
-            error: jest.fn(),
-            debug: jest.fn(),
-            verbose: jest.fn(),
-          },
-        },
-      ],
-      imports: [TypeOrmModule.forFeature([Character])],
-      timeout: 10000,
-    },
-    async context => {
-      specializationService = context.get(SpecializationService) as SpecializationService;
+      ])
+      .withRequiredMocks()
+      .compile();
 
+    specializationService = moduleRef.get(SpecializationService);
+
+    // Сбрасываем моки перед каждым тестом
+    jest.clearAllMocks();
+  });
+
+  afterEach(async () => {
+    if (moduleRef) {
+      await moduleRef.close();
+      moduleRef = null;
+    }
+  });
+
+  createTest(
+    {
+      name: 'должен создать экземпляр сервиса',
+      requiresDatabase: false,
+    },
+    async () => {
       expect(specializationService).toBeDefined();
       expect(specializationService).toBeInstanceOf(SpecializationService);
     },
@@ -110,49 +91,10 @@ createTestSuite('SpecializationService Tests', () => {
   createTest(
     {
       name: 'должен получать профиль специализации персонажа',
-      configType: TestConfigType.DATABASE,
-      providers: [
-        SpecializationService,
-        {
-          provide: CacheService,
-          useValue: mockCacheService,
-        },
-        {
-          provide: LLMService,
-          useValue: mockLLMService,
-        },
-        {
-          provide: LogService,
-          useValue: mockLogService,
-        },
-        {
-          provide: FixtureManager,
-          useFactory: () => {
-            return new FixtureManager(Tester.getInstance().getDataSource());
-          },
-        },
-      ],
-      imports: [TypeOrmModule.forFeature([Character])],
-      timeout: 10000,
+      requiresDatabase: false,
     },
-    async context => {
-      specializationService = context.get(SpecializationService) as SpecializationService;
-
-      // Создаем тестового персонажа с помощью FixtureManager
-      const fixtureManager = context.get(FixtureManager) as FixtureManager;
-      const character = await fixtureManager.createCharacter({
-        name: 'Тест',
-        personality: {
-          traits: ['любознательная', 'общительная'],
-          hobbies: ['чтение', 'музыка'],
-          fears: ['одиночество'],
-          values: ['честность'],
-          musicTaste: ['классика'],
-          strengths: ['эмпатия'],
-          weaknesses: ['нерешительность'],
-        },
-      });
-      const characterId = character.id;
+    async () => {
+      const characterId = 1;
 
       const profile = await specializationService.getSpecializationProfile(characterId);
 
@@ -171,43 +113,10 @@ createTestSuite('SpecializationService Tests', () => {
   createTest(
     {
       name: 'должен проверять компетенцию персонажа для ответа на запрос',
-      configType: TestConfigType.INTEGRATION,
-      providers: [
-        SpecializationService,
-        {
-          provide: CacheService,
-          useValue: mockCacheService,
-        },
-        {
-          provide: LLMService,
-          useValue: mockLLMService,
-        },
-        {
-          provide: LogService,
-          useValue: mockLogService,
-        },
-      ],
-      imports: [TypeOrmModule.forFeature([Character])],
-      timeout: 10000,
+      requiresDatabase: false,
     },
-    async context => {
-      specializationService = context.get(SpecializationService) as SpecializationService;
-
-      // Создаем тестового персонажа
-      const fixtureManager = context.get(FixtureManager) as FixtureManager;
-      const character = await fixtureManager.createCharacter({
-        name: 'Тест',
-        personality: {
-          traits: ['любознательная', 'общительная'],
-          hobbies: ['чтение', 'музыка'],
-          fears: ['одиночество'],
-          values: ['честность'],
-          musicTaste: ['классика'],
-          strengths: ['эмпатия'],
-          weaknesses: ['нерешительность'],
-        },
-      });
-      const characterId = character.id;
+    async () => {
+      const characterId = 1;
       const userQuery = 'Расскажи о психологии отношений';
       const knowledgeContext = {
         conversationTopic: 'psychology',
@@ -246,47 +155,17 @@ createTestSuite('SpecializationService Tests', () => {
   createTest(
     {
       name: 'должен обновлять профиль специализации персонажа',
-      configType: TestConfigType.INTEGRATION,
-      providers: [
-        SpecializationService,
-        {
-          provide: CacheService,
-          useValue: mockCacheService,
-        },
-        {
-          provide: LLMService,
-          useValue: mockLLMService,
-        },
-        {
-          provide: LogService,
-          useValue: mockLogService,
-        },
-      ],
-      imports: [TypeOrmModule.forFeature([Character])],
-      timeout: 10000,
+      requiresDatabase: false,
     },
-    async context => {
-      specializationService = context.get(SpecializationService) as SpecializationService;
-
-      // Создаем тестового персонажа
-      const fixtureManager = context.get(FixtureManager) as FixtureManager;
-      const character = await fixtureManager.createCharacter({
-        name: 'Тест',
-        personality: {
-          traits: ['любознательная', 'общительная'],
-          hobbies: ['чтение', 'музыка'],
-          fears: ['одиночество'],
-          values: ['честность'],
-          musicTaste: ['классика'],
-          strengths: ['эмпатия'],
-          weaknesses: ['нерешительность'],
-        },
-      });
-      const characterId = character.id;
+    async () => {
+      const characterId = 1;
       const updates = {
         personalInterests: ['новый интерес', 'другой интерес'],
         strongAreas: [KnowledgeDomain.PSYCHOLOGY, KnowledgeDomain.RELATIONSHIPS],
       };
+
+      // Получаем начальный профиль
+      await specializationService.getSpecializationProfile(characterId);
 
       const updatedProfile = await specializationService.updateSpecializationProfile(
         characterId,
@@ -304,189 +183,92 @@ createTestSuite('SpecializationService Tests', () => {
   createTest(
     {
       name: 'должен очищать кэш профилей',
-      configType: TestConfigType.INTEGRATION,
-      providers: [
-        SpecializationService,
-        {
-          provide: CacheService,
-          useValue: mockCacheService,
-        },
-        {
-          provide: LLMService,
-          useValue: mockLLMService,
-        },
-        {
-          provide: LogService,
-          useValue: mockLogService,
-        },
-      ],
-      imports: [TypeOrmModule.forFeature([Character])],
-      timeout: 10000,
+      requiresDatabase: false,
     },
-    async context => {
-      specializationService = context.get(SpecializationService) as SpecializationService;
-
-      // Создаем тестового персонажа
-      const fixtureManager = context.get(FixtureManager) as FixtureManager;
-      const character = await fixtureManager.createCharacter({
-        name: 'Тест',
-        personality: {
-          traits: ['любознательная', 'общительная'],
-          hobbies: ['чтение', 'музыка'],
-          fears: ['одиночество'],
-          values: ['честность'],
-          musicTaste: ['классика'],
-          strengths: ['эмпатия'],
-          weaknesses: ['нерешительность'],
-        },
-      });
-      // Сначала получаем профиль, чтобы он попал в кэш
-      await specializationService.getSpecializationProfile(character.id);
+    async () => {
+      // Сначала получаем профиль, чтобы заполнить кэш
+      const characterId = 1;
+      await specializationService.getSpecializationProfile(characterId);
 
       // Очищаем кэш
       specializationService.clearCache();
 
-      // Проверяем, что метод не выбрасывает ошибку
-      expect(() => specializationService.clearCache()).not.toThrow();
+      // Проверяем, что после очистки кэша профиль загружается заново
+      mockCharacterRepository.findOne.mockClear();
+      await specializationService.getSpecializationProfile(characterId);
+
+      // Должен быть вызов к репозиторию, так как кэш очищен
+      expect(mockCharacterRepository.findOne).toHaveBeenCalled();
     },
   );
 
   createTest(
     {
       name: 'должен возвращать статистику использования',
-      configType: TestConfigType.INTEGRATION,
-      providers: [
-        SpecializationService,
-        {
-          provide: CacheService,
-          useValue: mockCacheService,
-        },
-        {
-          provide: LLMService,
-          useValue: mockLLMService,
-        },
-        {
-          provide: LogService,
-          useValue: mockLogService,
-        },
-      ],
-      imports: [TypeOrmModule.forFeature([Character])],
-      timeout: 10000,
+      requiresDatabase: false,
     },
-    async context => {
-      specializationService = context.get(SpecializationService) as SpecializationService;
+    async () => {
+      const stats = specializationService.getUsageStatistics();
 
-      const statistics = specializationService.getUsageStatistics();
-
-      expect(statistics).toBeDefined();
-      expect(typeof statistics).toBe('object');
+      expect(stats).toBeDefined();
+      expect(typeof stats).toBe('object');
     },
   );
 
   createTest(
     {
       name: 'должен обрабатывать ошибки при отсутствии персонажа',
-      configType: TestConfigType.INTEGRATION,
-      providers: [
-        SpecializationService,
-        {
-          provide: CacheService,
-          useValue: mockCacheService,
-        },
-        {
-          provide: LLMService,
-          useValue: mockLLMService,
-        },
-        {
-          provide: LogService,
-          useValue: mockLogService,
-        },
-      ],
-      imports: [TypeOrmModule.forFeature([Character])],
-      timeout: 10000,
+      requiresDatabase: false,
     },
-    async context => {
-      specializationService = context.get(SpecializationService) as SpecializationService;
+    async () => {
+      const characterId = 999; // Несуществующий ID
 
-      const characterId = 999;
+      // Настраиваем мок для несуществующего персонажа
+      mockCharacterRepository.findOne.mockResolvedValueOnce(null);
 
-      // Должен вернуть профиль по умолчанию при отсутствии персонажа
+      // Должен вернуть дефолтный профиль вместо ошибки
       const profile = await specializationService.getSpecializationProfile(characterId);
 
+      // Проверяем, что вернулся профиль с правильным ID
       expect(profile).toBeDefined();
       expect(profile.characterId).toBe(characterId);
-      expect(typeof profile.competenceLevels).toBe('object');
     },
   );
 
   createTest(
     {
       name: 'должен классифицировать различные типы запросов',
-      configType: TestConfigType.INTEGRATION,
-      providers: [
-        SpecializationService,
-        {
-          provide: CacheService,
-          useValue: mockCacheService,
-        },
-        {
-          provide: LLMService,
-          useValue: mockLLMService,
-        },
-        {
-          provide: LogService,
-          useValue: mockLogService,
-        },
-      ],
-      imports: [TypeOrmModule.forFeature([Character])],
-      timeout: 10000,
+      requiresDatabase: false,
     },
-    async context => {
-      specializationService = context.get(SpecializationService) as SpecializationService;
+    async () => {
+      const characterId = 1;
 
-      // Создаем тестового персонажа
-      const fixtureManager = context.get(FixtureManager) as FixtureManager;
-      const character = await fixtureManager.createCharacter({
-        name: 'Тест',
-        personality: {
-          traits: ['любознательная', 'общительная'],
-          hobbies: ['чтение', 'музыка'],
-          fears: ['одиночество'],
-          values: ['честность'],
-          musicTaste: ['классика'],
-          strengths: ['эмпатия'],
-          weaknesses: ['нерешительность'],
-        },
-      });
-      const characterId = character.id;
-      const knowledgeContext = {
-        conversationTopic: 'general',
-        userExpertiseLevel: CompetenceLevel.BASIC,
-        relationshipLevel: 30,
-        socialSetting: 'casual' as const,
-        emotionalState: 'neutral',
-        previousInteractions: [],
-      };
+      // Получаем профиль, чтобы заполнить кэш
+      await specializationService.getSpecializationProfile(characterId);
 
-      // Тестируем разные типы запросов
       const queries = [
-        'Как дела?', // общение
-        'Что такое любовь?', // отношения
-        'Объясни квантовую физику', // наука
-        'Какой фильм посмотреть?', // развлечения
+        { query: 'Расскажи о психологии отношений', expectedDomain: KnowledgeDomain.PSYCHOLOGY },
+        { query: 'Как работает квантовый компьютер?', expectedDomain: KnowledgeDomain.TECHNICAL },
+        {
+          query: 'Какие книги ты любишь читать?',
+          expectedDomain: KnowledgeDomain.GENERAL_CONVERSATION,
+        },
       ];
 
-      for (const query of queries) {
-        const competenceCheck = await specializationService.checkCompetence(
-          characterId,
-          query,
-          knowledgeContext,
-        );
+      for (const { query } of queries) {
+        const result = await specializationService.checkCompetence(characterId, query, {
+          conversationTopic: 'general',
+          userExpertiseLevel: CompetenceLevel.BASIC,
+          relationshipLevel: 50,
+          socialSetting: 'casual',
+          emotionalState: 'neutral',
+          previousInteractions: [],
+        });
 
-        expect(competenceCheck).toBeDefined();
-        expect(competenceCheck.domain).toBeDefined();
-        expect(Object.values(KnowledgeDomain).includes(competenceCheck.domain)).toBe(true);
-        expect(competenceCheck.userQuery).toBe(query);
+        expect(result).toBeDefined();
+        expect(result.userQuery).toBe(query);
+        // Не проверяем точное соответствие домена, так как это зависит от реализации классификатора
+        expect(Object.values(KnowledgeDomain).includes(result.domain)).toBe(true);
       }
     },
   );

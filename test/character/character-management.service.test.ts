@@ -94,7 +94,7 @@ createTestSuite('CharacterManagementService Unit Tests', () => {
         fullName: 'Test Character',
         biography: 'Test Bio',
       };
-      const userId = 1;
+      const userId = '123e4567-e89b-12d3-a456-426614174000';
       const mockCharacter = { id: 1, ...createDto, userId, isActive: true };
 
       mockCharacterRepository.create.mockReturnValue(mockCharacter);

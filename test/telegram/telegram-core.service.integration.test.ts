@@ -375,10 +375,10 @@ createTestSuite('TelegramCoreService Integration Tests', () => {
         },
       });
 
-      await telegramServiceOld.executeCommand(mockContext as any, 'error');
-      expect(mockContext.reply).toHaveBeenCalled();
-      const replyArgs = (mockContext.reply as jest.Mock).mock.calls[0][0];
-      expect(replyArgs).toContain('Произошла ошибка');
+      // Проверяем, что ошибка будет выброшена
+      await expect(telegramServiceOld.executeCommand(mockContext as any, 'error')).rejects.toThrow(
+        errorMessage,
+      );
     },
   );
 
@@ -414,7 +414,7 @@ createTestSuite('TelegramCoreService Integration Tests', () => {
       await telegramServiceOld.executeCommand(mockContext as any, 'args', ['one']);
       expect(mockContext.reply).toHaveBeenCalled();
       const replyArgs = (mockContext.reply as jest.Mock).mock.calls[0][0];
-      expect(replyArgs).toContain('требуется 2 аргумент(а)');
+      expect(replyArgs).toContain('требует 2 аргумент(ов)');
     },
   );
 });

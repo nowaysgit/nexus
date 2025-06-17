@@ -8,7 +8,7 @@ import { FixtureManager } from '../../lib/tester/fixtures/fixture-manager';
 import { CharacterService } from '../../src/character/services/character.service';
 import { MessageProcessingCoordinator } from '../../src/character/services/message-processing-coordinator.service';
 import { CharacterResponseService } from '../../src/character/services/character-response.service';
-import { DialogService } from '../../src/dialog/services/dialog.service';
+import { DialogService, DialogMessageType } from '../../src/dialog/services/dialog.service';
 import { UserService } from '../../src/user/services/user.service';
 import { LLMService } from '../../src/llm/services/llm.service';
 import { CharacterArchetype } from '../../src/character/enums/character-archetype.enum';
@@ -22,6 +22,8 @@ import { MessageQueueModule } from '../../src/message-queue/message-queue.module
 import { ValidationModule } from '../../src/validation/validation.module';
 import { MonitoringModule } from '../../src/monitoring/monitoring.module';
 import { PromptTemplateModule } from '../../src/prompt-template/prompt-template.module';
+import { v4 as uuidv4 } from 'uuid';
+import { Message } from '../../src/dialog/entities/message.entity';
 
 createTestSuite('Character Workflow Integration Tests', () => {
   let moduleRef: TestingModule;
@@ -71,10 +73,11 @@ createTestSuite('Character Workflow Integration Tests', () => {
       name: 'полный рабочий процесс взаимодействия персонажа',
       configType: TestConfigType.INTEGRATION,
       requiresDatabase: true,
+      timeout: 30000, // Увеличиваем таймаут для интеграционного теста
     },
     async () => {
-      const userService = moduleRef.get<UserService>(UserService);
-      const characterService = moduleRef.get<CharacterService>(CharacterService);
+      const _userService = moduleRef.get<UserService>(UserService);
+      const _characterService = moduleRef.get<CharacterService>(CharacterService);
       const dialogService = moduleRef.get<DialogService>(DialogService);
       const messageCoordinator = moduleRef.get<MessageProcessingCoordinator>(
         MessageProcessingCoordinator,
@@ -82,6 +85,7 @@ createTestSuite('Character Workflow Integration Tests', () => {
       const responseService = moduleRef.get<CharacterResponseService>(CharacterResponseService);
       const llmService = moduleRef.get<LLMService>(LLMService);
 
+      // Мокаем LLM для генерации ответа
       jest.spyOn(llmService, 'generateText').mockResolvedValue({
         text: 'Привет! Меня зовут Алиса, и я рада с тобой познакомиться. Как дела?',
         requestInfo: {
@@ -93,18 +97,20 @@ createTestSuite('Character Workflow Integration Tests', () => {
         },
       });
 
-      // Шаг 1. Создание пользователя
+      // Шаг 1. Создание пользователя с уникальным telegramId
+      const telegramId = uuidv4(); // Используем UUID для гарантии уникальности
       const userData = {
-        telegramId: '123456789',
+        telegramId,
         username: 'testuser',
         firstName: 'Тест',
         lastName: 'Пользователь',
-        email: 'test@example.com', // Добавляем email для уникальности
+        email: `test-${telegramId}@example.com`,
       };
 
-      const user = await userService.createUser(userData);
+      const user = await fixtureManager.createUser(userData);
       expect(user).toBeDefined();
       expect(user.id).toBeDefined();
+      expect(user.telegramId).toBe(telegramId);
 
       // Шаг 2. Создание персонажа
       const characterData = {
@@ -113,7 +119,7 @@ createTestSuite('Character Workflow Integration Tests', () => {
         archetype: CharacterArchetype.CAREGIVER,
         biography: 'Дружелюбная девушка, которая любит общаться',
         appearance: 'Привлекательная девушка с добрыми глазами',
-        userId: user.id, // Явно указываем userId
+        user: user,
         personality: {
           traits: ['дружелюбная', 'общительная', 'любознательная'],
           hobbies: ['чтение', 'музыка', 'путешествия'],
@@ -126,25 +132,36 @@ createTestSuite('Character Workflow Integration Tests', () => {
         isActive: true,
       };
 
-      const character = await characterService.create(characterData);
+      const character = await fixtureManager.createCharacter(characterData);
       expect(character).toBeDefined();
       expect(character.id).toBeDefined();
 
-      // Шаг 3. Создание диалога
-      if (!user.telegramId) {
-        throw new Error('telegramId не определен');
-      }
+      // Шаг 3. Создание диалога через FixtureManager
+      const dialog = await fixtureManager.createDialog({
+        telegramId,
+        characterId: character.id,
+        userId: typeof user.id === 'string' ? parseInt(user.id, 10) : user.id,
+        user: user,
+        character: character,
+        isActive: true,
+        lastInteractionDate: new Date(),
+      });
 
-      const dialog = await dialogService.getOrCreateDialog(user.telegramId, character.id);
       expect(dialog).toBeDefined();
       expect(dialog.id).toBeDefined();
+      expect(dialog.telegramId).toBe(telegramId);
+      expect(dialog.characterId).toBe(character.id);
+
+      // Проверяем, что диалог создан и может быть найден
+      const foundDialog = await dialogService.findActiveDialogByParticipants(
+        character.id,
+        telegramId,
+      );
+      expect(foundDialog).toBeDefined();
+      expect(foundDialog.id).toBe(dialog.id);
 
       // Шаг 4. Обработка входящего сообщения пользователя
       const userMessage = 'Привет! Как тебя зовут?';
-
-      // Проверяем, что character и user.id существуют перед вызовом
-      expect(character).not.toBeNull();
-      expect(user.id).not.toBeNull();
 
       const analysisResult = await messageCoordinator.processUserMessage(
         character,
@@ -162,48 +179,52 @@ createTestSuite('Character Workflow Integration Tests', () => {
         description: 'Спокойное нейтральное состояние',
       });
       expect(response).toBeDefined();
-      expect(response.length).toBeGreaterThan(0); // Изменено с 50 на 0, так как это мок
+      expect(response.length).toBeGreaterThan(0);
 
       // Шаг 6. Сохранение сообщений в диалог
-      // Проверяем, что user.telegramId и character.id существуют перед вызовом
-      expect(user.telegramId).not.toBeNull();
-      expect(character.id).not.toBeNull();
+      // Сначала сохраняем сообщение пользователя
+      const userMessageEntity = await dialogService.createMessage({
+        dialogId: dialog.id,
+        content: userMessage,
+        type: DialogMessageType.USER,
+      });
 
-      const userMessageEntity = await dialogService.saveUserMessage(
-        user.telegramId,
-        character.id,
-        userMessage,
-      );
       expect(userMessageEntity).toBeDefined();
       expect(userMessageEntity.id).toBeDefined();
+      expect(userMessageEntity.content).toBe(userMessage);
+      expect(userMessageEntity.isFromUser).toBe(true);
 
-      // Проверяем, что dialog.id существует перед вызовом
-      expect(dialog).not.toBeNull();
-      expect(dialog.id).not.toBeNull();
-
+      // Затем сохраняем ответ персонажа
       const characterMessageEntity = await dialogService.saveCharacterMessageDirect(
         dialog.id,
         response,
       );
+
       expect(characterMessageEntity).toBeDefined();
       expect(characterMessageEntity.id).toBeDefined();
+      expect(characterMessageEntity.content).toBe(response);
+      expect(characterMessageEntity.isFromUser).toBe(false);
 
       // Шаг 7. Проверка сохранённых сообщений
       const messagesResult = await dialogService.getDialogMessages(dialog.id, 1, 100);
-
-      // Проверяем, что messagesResult существует и имеет правильную структуру
       expect(messagesResult).toBeDefined();
 
-      const messagesArray = Array.isArray(messagesResult)
-        ? messagesResult
-        : messagesResult && typeof messagesResult === 'object' && 'messages' in messagesResult
-          ? (messagesResult as { messages: unknown[] }).messages
-          : [];
+      // Проверяем, что сообщения сохранены и могут быть получены
+      const messages = Array.isArray(messagesResult) ? messagesResult : messagesResult.messages;
 
-      expect(Array.isArray(messagesArray)).toBe(true);
-      expect(messagesArray.length).toBeGreaterThanOrEqual(2);
+      expect(Array.isArray(messages)).toBe(true);
+      expect(messages.length).toBe(2);
+
+      // Проверяем содержимое сообщений
+      const messageContents = messages.map((m: Message) => m.content);
+      expect(messageContents).toContain(userMessage);
+      expect(messageContents).toContain(response);
+
+      // Проверяем, что сообщения также можно получить через getDialogHistory
+      const historyMessages = await dialogService.getDialogHistory(telegramId, character.id);
+      expect(historyMessages).toBeDefined();
+      expect(Array.isArray(historyMessages)).toBe(true);
+      expect(historyMessages.length).toBe(2);
     },
   );
-
-  // TODO: добавить отдельные проверки на обработку ошибок при необходимости, используя createTest
 });

@@ -628,16 +628,28 @@ export class DialogService implements IMessagingService {
         } else {
           // Новый вариант с объектом данных
           const data = dataOrTelegramId as CreateDialogData;
+
+          // Проверяем, является ли userId числом или строкой
+          let userId = data.userId;
+          if (typeof userId === 'string') {
+            // Пытаемся преобразовать в число
+            userId = parseInt(userId, 10);
+            if (isNaN(userId)) {
+              throw new Error(`Невозможно преобразовать userId в число: ${data.userId}`);
+            }
+          }
+
           dialog = this.dialogRepository.create({
             telegramId: data.telegramId,
             characterId: data.characterId,
-            userId: typeof data.userId === 'string' ? toNumeric(data.userId) : data.userId,
+            userId: userId,
             title: data.title || null,
             isActive: true,
             lastInteractionDate: new Date(),
           });
         }
 
+        // Сохраняем диалог
         return await this.dialogRepository.save(dialog as Dialog);
       },
       'создании нового диалога',

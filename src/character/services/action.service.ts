@@ -199,33 +199,14 @@ export class ActionService implements ActionHandler, OnModuleInit {
         if (!canExecute) {
           return {
             success: false,
-            message: `Не удается выполнить действие типа ${context.action.type}`,
+            message: `Действие ${context.action.type} не может быть выполнено`,
           };
         }
 
-        this.logService.log(
-          `Выполнение действия ${context.action.type} для персонажа ${context.character.id}`,
-        );
-
-        // Регистрируем действие если оно новое
-        const actionId = (context.action.metadata?.id as string) || this.generateActionId();
-        if (!this.actionRegistry.has(actionId)) {
-          const action: CharacterAction = {
-            ...context.action,
-            status: 'in_progress',
-            startTime: new Date(),
-            metadata: { ...context.action.metadata, id: actionId },
-          };
-          this.registerAction(action);
-        }
-
-        // Устанавливаем текущее действие для персонажа
-        this.characterCurrentActions.set(context.character.id.toString(), actionId);
-
-        const actionType = context.action.type;
         let result: ActionResult;
+        const actionType = context.action.type;
 
-        // Выполняем действие в зависимости от типа
+        // Выполнение действия в зависимости от типа
         switch (actionType) {
           case ActionType.SEND_MESSAGE:
           case ActionType.SHARE_STORY:
@@ -249,28 +230,29 @@ export class ActionService implements ActionHandler, OnModuleInit {
             break;
 
           default:
-            result = await this.executeGenericAction(context);
+            // Для всех остальных типов действий используем выполнение с ресурсами
+            result = await this.executeActionWithResources(context);
+            break;
         }
 
-        // Обновляем статус действия
-        const action = this.actionRegistry.get(actionId);
-        if (action) {
-          action.status = result.success ? 'completed' : 'failed';
-          action.endTime = new Date();
+        // Сохраняем действие в память персонажа
+        await this.saveActionToMemory(context, result);
+
+        // Обновляем состояние персонажа после выполнения действия
+        await this.updateCharacterStateAfterAction(context);
+
+        // Убедимся, что результат содержит необходимые поля
+        if (!result.resourceCost && context.action.metadata?.resourceCost) {
+          result.resourceCost = context.action.metadata.resourceCost as number;
         }
 
-        // Сохраняем действие в памяти
-        if (result.success && this.memoryService) {
-          await this.saveActionToMemory(context, result);
-        }
-
-        // Очищаем текущее действие для персонажа
-        this.characterCurrentActions.delete(context.character.id.toString());
-
-        if (result.success) {
-          this.logService.log(`Действие ${actionType} успешно выполнено`);
-        } else {
-          this.logService.warn(`Действие ${actionType} не выполнено: ${result.message}`);
+        // Проверяем наличие потенциальной награды и её влияние на потребности
+        const potentialReward = context.action.metadata?.potentialReward as Record<string, unknown> | undefined;
+        if (!result.needsImpact && potentialReward && typeof potentialReward === 'object') {
+          const needsImpact = potentialReward.needsImpact as Record<string, number> | undefined;
+          if (needsImpact) {
+            result.needsImpact = needsImpact;
+          }
         }
 
         return result;
@@ -278,10 +260,7 @@ export class ActionService implements ActionHandler, OnModuleInit {
       `выполнении действия ${context.action.type}`,
       this.logService,
       { characterId: context.character.id, actionType: context.action.type },
-      {
-        success: false,
-        message: `Произошла ошибка при выполнении действия ${context.action.type}`,
-      },
+      { success: false, message: 'Ошибка при выполнении действия' },
     );
   }
 
@@ -1308,9 +1287,42 @@ export class ActionService implements ActionHandler, OnModuleInit {
   /**
    * Обновляет состояние персонажа после выполнения действия
    */
-  private async updateCharacterStateAfterAction(_context: ActionContext): Promise<void> {
-    // Обновление состояния персонажа
-    // Здесь могут быть вызовы других сервисов
+  private async updateCharacterStateAfterAction(context: ActionContext): Promise<void> {
+    try {
+      if (!context.action.relatedNeeds || !Array.isArray(context.action.relatedNeeds)) {
+        return;
+      }
+
+      const characterId = context.character.id;
+
+      for (const need of context.action.relatedNeeds) {
+        if (typeof need === 'object' && need !== null) {
+          // Безопасное приведение типов с проверкой
+          const typedNeed = need as { needType?: string; impact?: number };
+          const needType = typedNeed.needType;
+          const impact = typedNeed.impact;
+
+          if (needType && typeof impact === 'number') {
+            await this.needsService.updateNeed(characterId, {
+              type: needType as CharacterNeedType,
+              change: impact,
+              reason: `Влияние действия ${context.action.type}`,
+            });
+          }
+        } else if (typeof need === 'string') {
+          await this.needsService.updateNeed(characterId, {
+            type: need,
+            change: -10,
+            reason: `Влияние действия ${context.action.type}`,
+          });
+        }
+      }
+    } catch (error) {
+      this.logService.error('Ошибка при обновлении состояния персонажа', {
+        error: error instanceof Error ? error.message : String(error),
+        characterId: context.character.id,
+      });
+    }
   }
 
   /**

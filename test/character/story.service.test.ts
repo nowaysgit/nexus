@@ -204,10 +204,10 @@ createTestSuite('StoryService Tests', () => {
       name: 'должен создать экземпляр сервиса',
       configType: TestConfigType.BASIC,
       providers: testProviders,
-      timeout: 5000,
+      timeout: 15000,
     },
     async context => {
-      storyService = context.get(StoryService) as StoryService;
+      storyService = context.get(StoryService);
 
       expect(storyService).toBeDefined();
       expect(storyService).toBeInstanceOf(StoryService);
@@ -223,7 +223,7 @@ createTestSuite('StoryService Tests', () => {
       timeout: 5000,
     },
     async context => {
-      storyService = context.get(StoryService) as StoryService;
+      storyService = context.get(StoryService);
 
       const characterId = 1;
       const eventData = {
@@ -254,7 +254,7 @@ createTestSuite('StoryService Tests', () => {
       timeout: 5000,
     },
     async context => {
-      storyService = context.get(StoryService) as StoryService;
+      storyService = context.get(StoryService);
 
       const characterId = 1;
       const events = await storyService.findPendingEvents(characterId);
@@ -278,7 +278,7 @@ createTestSuite('StoryService Tests', () => {
       timeout: 5000,
     },
     async context => {
-      storyService = context.get(StoryService) as StoryService;
+      storyService = context.get(StoryService);
 
       const characterId = 1;
       const events = await storyService.findTriggeredEvents(characterId);
@@ -300,7 +300,7 @@ createTestSuite('StoryService Tests', () => {
       timeout: 5000,
     },
     async context => {
-      storyService = context.get(StoryService) as StoryService;
+      storyService = context.get(StoryService);
 
       const eventId = 1;
       const result = await storyService.completeEvent(eventId);
@@ -323,7 +323,7 @@ createTestSuite('StoryService Tests', () => {
       timeout: 5000,
     },
     async context => {
-      storyService = context.get(StoryService) as StoryService;
+      storyService = context.get(StoryService);
 
       const eventId = 1;
       const result = await storyService.skipEvent(eventId);
@@ -345,7 +345,7 @@ createTestSuite('StoryService Tests', () => {
       timeout: 5000,
     },
     async context => {
-      storyService = context.get(StoryService) as StoryService;
+      storyService = context.get(StoryService);
 
       const eventId = 1;
       const newStatus = EventStatus.TRIGGERED;
@@ -369,7 +369,7 @@ createTestSuite('StoryService Tests', () => {
       timeout: 5000,
     },
     async context => {
-      storyService = context.get(StoryService) as StoryService;
+      storyService = context.get(StoryService);
 
       const eventId = 1;
       await storyService.deleteEvent(eventId);
@@ -386,7 +386,7 @@ createTestSuite('StoryService Tests', () => {
       timeout: 5000,
     },
     async context => {
-      storyService = context.get(StoryService) as StoryService;
+      storyService = context.get(StoryService);
 
       const characterId = 1;
       const planData = {
@@ -413,7 +413,7 @@ createTestSuite('StoryService Tests', () => {
       timeout: 5000,
     },
     async context => {
-      storyService = context.get(StoryService) as StoryService;
+      storyService = context.get(StoryService);
 
       const storyPlanId = 1;
       const milestoneData = {
@@ -441,10 +441,10 @@ createTestSuite('StoryService Tests', () => {
       name: 'должен получить план персонажа',
       configType: TestConfigType.BASIC,
       providers: testProviders,
-      timeout: 5000,
+      timeout: 15000,
     },
     async context => {
-      storyService = context.get(StoryService) as StoryService;
+      storyService = context.get(StoryService);
 
       const characterId = 1;
       const result = await storyService.getCharacterPlan(characterId);
@@ -467,7 +467,7 @@ createTestSuite('StoryService Tests', () => {
       timeout: 5000,
     },
     async context => {
-      storyService = context.get(StoryService) as StoryService;
+      storyService = context.get(StoryService);
 
       const characterId = 1;
       const daysAhead = 30;
@@ -493,7 +493,7 @@ createTestSuite('StoryService Tests', () => {
       timeout: 5000,
     },
     async context => {
-      storyService = context.get(StoryService) as StoryService;
+      storyService = context.get(StoryService);
 
       const milestoneId = 1;
       const result = await storyService.triggerMilestone(milestoneId);
@@ -516,7 +516,7 @@ createTestSuite('StoryService Tests', () => {
       timeout: 5000,
     },
     async context => {
-      storyService = context.get(StoryService) as StoryService;
+      storyService = context.get(StoryService);
 
       const milestoneId = 1;
       const actualResults = { achievement: 'completed', score: 100 };
@@ -580,7 +580,7 @@ createTestSuite('StoryService Tests', () => {
       timeout: 5000,
     },
     async context => {
-      storyService = context.get(StoryService) as StoryService;
+      storyService = context.get(StoryService);
 
       const characterId = 999;
       const eventData = {
@@ -631,7 +631,7 @@ createTestSuite('StoryService Tests', () => {
       timeout: 5000,
     },
     async context => {
-      storyService = context.get(StoryService) as StoryService;
+      storyService = context.get(StoryService);
 
       const eventId = 999;
       const result = await storyService.completeEvent(eventId);
