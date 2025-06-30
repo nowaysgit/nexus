@@ -6,7 +6,7 @@ import { AccessKey } from '../entities/access-key.entity';
 import { PsychologicalTest, PersonalityType } from '../entities/psychological-test.entity';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
-import { withErrorHandling } from '../../common/utils/error-handling/error-handling.utils';
+import { BaseService } from '../../common/base/base.service';
 import { CacheService } from '../../cache/cache.service';
 import { LogService } from '../../logging/log.service';
 import * as crypto from 'crypto';
@@ -31,7 +31,7 @@ export interface PaginatedResult<T> {
  * Включает функционал: базовый CRUD, кэширование, ключи доступа, психологические тесты
  */
 @Injectable()
-export class UserService {
+export class UserService extends BaseService {
   private readonly cacheTimeout = 5 * 60 * 1000; // 5 минут
 
   constructor(
@@ -42,9 +42,9 @@ export class UserService {
     @InjectRepository(PsychologicalTest)
     private readonly testRepository: Repository<PsychologicalTest>,
     private readonly cacheService: CacheService,
-    private readonly logService: LogService,
+    logService: LogService,
   ) {
-    this.logService.setContext(UserService.name);
+    super(logService);
   }
 
   // ========================================
@@ -52,77 +52,63 @@ export class UserService {
   // ========================================
 
   async createUser(createUserDto: CreateUserDto): Promise<User> {
-    return withErrorHandling(
-      async () => {
-        const user = this.userRepository.create(createUserDto);
-        const savedUser = await this.userRepository.save(user);
-        await this.cacheUser(savedUser);
-        return savedUser;
-      },
-      'создании пользователя',
-      this.logService,
-      { dto: createUserDto },
-    );
+    return this.withErrorHandling('создании пользователя', async () => {
+      const user = this.userRepository.create(createUserDto);
+      const savedUser = await this.userRepository.save(user);
+      await this.cacheUser(savedUser);
+      return savedUser;
+    });
   }
 
   async findAllPaginated(options: PaginationOptions = {}): Promise<PaginatedResult<User>> {
-    return withErrorHandling(
-      async () => {
-        const { page = 1, limit = 10, sortBy = 'createdAt', sortOrder = 'DESC' } = options;
-        const skip = (page - 1) * limit;
+    return this.withErrorHandling('получении списка пользователей с пагинацией', async () => {
+      const { page = 1, limit = 10, sortBy = 'createdAt', sortOrder = 'DESC' } = options;
+      const skip = (page - 1) * limit;
 
-        const [data, total] = await this.userRepository.findAndCount({
-          skip,
-          take: limit,
-          order: { [sortBy]: sortOrder },
-        });
+      const [data, total] = await this.userRepository.findAndCount({
+        skip,
+        take: limit,
+        order: { [sortBy]: sortOrder },
+      });
 
-        return {
-          data,
-          total,
-          page,
-          limit,
-          totalPages: Math.ceil(total / limit),
-        };
-      },
-      'получении списка пользователей с пагинацией',
-      this.logService,
-      { options },
-    );
+      return {
+        data,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      };
+    });
   }
 
   async findUserById(id: string, relations: string[] = []): Promise<User> {
-    return withErrorHandling(
-      async () => {
-        // Пытаемся получить из кэша
-        const cachedUser = await this.getCachedUser(id);
-        if (cachedUser) {
-          return cachedUser;
-        }
+    return this.withErrorHandling(`получении пользователя с ID ${id}`, async () => {
+      // Пытаемся получить из кэша
+      const cachedUser = await this.getCachedUser(id);
+      if (cachedUser) {
+        return cachedUser;
+      }
 
-        // Если пользователя нет в кэше, запрашиваем из БД
-        const user = await this.userRepository.findOne({
-          where: { id },
-          relations,
-        });
+      // Если пользователя нет в кэше, запрашиваем из БД
+      const user = await this.userRepository.findOne({
+        where: { id },
+        relations,
+      });
 
-        if (!user) {
-          throw new NotFoundException(`Пользователь с ID ${id} не найден`);
-        }
+      if (!user) {
+        throw new NotFoundException(`Пользователь с ID ${id} не найден`);
+      }
 
-        // Кэшируем найденного пользователя
-        await this.cacheUser(user);
+      // Кэшируем найденного пользователя
+      await this.cacheUser(user);
 
-        return user;
-      },
-      `получении пользователя с ID ${id}`,
-      this.logService,
-      { id, relations },
-    );
+      return user;
+    });
   }
 
   async findByTelegramId(telegramId: string): Promise<User> {
-    return withErrorHandling(
+    return this.withErrorHandling(
+      `получении пользователя с Telegram ID ${telegramId}`,
       async () => {
         // Пытаемся получить из кэша
         const cachedUser = await this.getCachedUserByTelegramId(telegramId);
@@ -144,78 +130,60 @@ export class UserService {
 
         return user;
       },
-      `получении пользователя с Telegram ID ${telegramId}`,
-      this.logService,
-      { telegramId },
     );
   }
 
   async updateUser(id: string, updateUserDto: UpdateUserDto): Promise<User> {
-    return withErrorHandling(
-      async () => {
-        // Обновляем пользователя
-        await this.userRepository.update(id, updateUserDto as Partial<User>);
+    return this.withErrorHandling('обновлении пользователя', async () => {
+      // Обновляем пользователя
+      await this.userRepository.update(id, updateUserDto as Partial<User>);
 
-        // Получаем обновленного пользователя напрямую из БД, минуя кэш
-        const updatedUser = await this.userRepository.findOne({ where: { id } });
-        if (!updatedUser) {
-          throw new NotFoundException(`Пользователь с ID ${id} не найден`);
-        }
+      // Получаем обновленного пользователя напрямую из БД, минуя кэш
+      const updatedUser = await this.userRepository.findOne({ where: { id } });
+      if (!updatedUser) {
+        throw new NotFoundException(`Пользователь с ID ${id} не найден`);
+      }
 
-        // Инвалидируем кэш после обновления
-        await this.invalidateUserCache(updatedUser);
+      // Инвалидируем кэш после обновления
+      await this.invalidateUserCache(updatedUser);
 
-        // Кэшируем обновленного пользователя
-        await this.cacheUser(updatedUser);
+      // Кэшируем обновленного пользователя
+      await this.cacheUser(updatedUser);
 
-        return updatedUser;
-      },
-      'обновлении пользователя',
-      this.logService,
-      { id, dto: updateUserDto },
-    );
+      return updatedUser;
+    });
   }
 
   async updateLastActivity(id: string): Promise<User> {
-    return withErrorHandling(
-      async () => {
-        const now = new Date();
-        await this.userRepository.update(id, { lastActivity: now });
+    return this.withErrorHandling('обновлении последней активности пользователя', async () => {
+      const now = new Date();
+      await this.userRepository.update(id, { lastActivity: now });
 
-        // Получаем обновленного пользователя напрямую из БД, минуя кэш
-        const updatedUser = await this.userRepository.findOne({ where: { id } });
-        if (!updatedUser) {
-          throw new NotFoundException(`Пользователь с ID ${id} не найден`);
-        }
+      // Получаем обновленного пользователя напрямую из БД, минуя кэш
+      const updatedUser = await this.userRepository.findOne({ where: { id } });
+      if (!updatedUser) {
+        throw new NotFoundException(`Пользователь с ID ${id} не найден`);
+      }
 
-        // Инвалидируем и обновляем кэш
-        await this.invalidateUserCache(updatedUser);
-        await this.cacheUser(updatedUser);
+      // Инвалидируем и обновляем кэш
+      await this.invalidateUserCache(updatedUser);
+      await this.cacheUser(updatedUser);
 
-        return updatedUser;
-      },
-      'обновлении последней активности пользователя',
-      this.logService,
-      { id },
-    );
+      return updatedUser;
+    });
   }
 
   async updateCommunicationStyle(id: string, style: Record<string, number>): Promise<User> {
-    return withErrorHandling(
-      async () => {
-        await this.userRepository.update(id, { communicationStyle: style });
-        const updatedUser = await this.findUserById(id);
+    return this.withErrorHandling('обновлении стиля общения пользователя', async () => {
+      await this.userRepository.update(id, { communicationStyle: style });
+      const updatedUser = await this.findUserById(id);
 
-        // Инвалидируем и обновляем кэш
-        await this.invalidateUserCache(updatedUser);
-        await this.cacheUser(updatedUser);
+      // Инвалидируем и обновляем кэш
+      await this.invalidateUserCache(updatedUser);
+      await this.cacheUser(updatedUser);
 
-        return updatedUser;
-      },
-      'обновлении стиля общения пользователя',
-      this.logService,
-      { id, style },
-    );
+      return updatedUser;
+    });
   }
 
   // ========================================
@@ -259,77 +227,62 @@ export class UserService {
   // ========================================
 
   async generateAccessKey(userId: string): Promise<string> {
-    return withErrorHandling(
-      async () => {
-        const user = await this.findUserById(userId);
-        const key = crypto.randomBytes(16).toString('hex');
+    return this.withErrorHandling('генерации ключа доступа', async () => {
+      const user = await this.findUserById(userId);
+      const key = crypto.randomBytes(16).toString('hex');
 
-        const accessKey = this.accessKeyRepository.create({
-          key,
-          user,
-          userId: user.id,
-          isActive: true,
-        });
+      const accessKey = this.accessKeyRepository.create({
+        key,
+        user,
+        userId: user.id,
+        isActive: true,
+      });
 
-        await this.accessKeyRepository.save(accessKey);
-        this.logService.log(`Создан ключ доступа для пользователя ${userId}`);
+      await this.accessKeyRepository.save(accessKey);
+      this.logInfo(`Создан ключ доступа для пользователя ${userId}`);
 
-        return key;
-      },
-      'генерации ключа доступа',
-      this.logService,
-      { userId },
-    );
+      return key;
+    });
   }
 
   async activateAccessKey(key: string, telegramId: string): Promise<boolean> {
-    return withErrorHandling(
-      async () => {
-        const accessKey = await this.accessKeyRepository.findOne({
-          where: { key, isActive: true },
-          relations: ['user'],
-        });
+    return this.withErrorHandling('активации ключа доступа', async () => {
+      const accessKey = await this.accessKeyRepository.findOne({
+        where: { key, isActive: true },
+        relations: ['user'],
+      });
 
-        if (!accessKey) {
-          return false;
-        }
+      if (!accessKey) {
+        return false;
+      }
 
-        // Обновляем пользователя
-        await this.userRepository.update(accessKey.user.id, {
-          telegramId,
-          hasActivatedKey: true,
-        });
+      // Обновляем пользователя
+      await this.userRepository.update(accessKey.user.id, {
+        telegramId,
+        hasActivatedKey: true,
+      });
 
-        // Деактивируем ключ
-        accessKey.isActive = false;
-        accessKey.isUsed = true;
-        accessKey.usedAt = new Date();
-        await this.accessKeyRepository.save(accessKey);
+      // Деактивируем ключ
+      accessKey.isActive = false;
+      accessKey.isUsed = true;
+      accessKey.usedAt = new Date();
+      await this.accessKeyRepository.save(accessKey);
 
-        // Инвалидируем кэш
-        await this.invalidateUserCache(accessKey.user);
+      // Инвалидируем кэш
+      await this.invalidateUserCache(accessKey.user);
 
-        this.logService.log(`Активирован ключ доступа для Telegram ID ${telegramId}`);
-        return true;
-      },
-      'активации ключа доступа',
-      this.logService,
-      { key, telegramId },
-    );
+      this.logInfo(`Активирован ключ доступа для Telegram ID ${telegramId}`);
+      return true;
+    });
   }
 
   async hasActivatedKey(telegramId: string): Promise<boolean> {
-    return withErrorHandling(
-      async () => {
-        const user = await this.userRepository.findOne({
-          where: { telegramId, hasActivatedKey: true },
-        });
-        return !!user;
-      },
-      'проверки активации ключа',
-      this.logService,
-      { telegramId },
-    );
+    return this.withErrorHandling('проверки активации ключа', async () => {
+      const user = await this.userRepository.findOne({
+        where: { telegramId, hasActivatedKey: true },
+      });
+      return !!user;
+    });
   }
 
   // ========================================
@@ -345,94 +298,69 @@ export class UserService {
       additionalNotes?: string;
     },
   ): Promise<void> {
-    return withErrorHandling(
-      async () => {
-        const user = await this.findByTelegramId(telegramId);
+    return this.withErrorHandling('сохранении результата теста', async () => {
+      const user = await this.findByTelegramId(telegramId);
 
-        const test = this.testRepository.create({
-          userId: user.id,
-          user,
-          answers: testData.answers,
-          scores: testData.scores,
-          personalityType: testData.personalityType,
-          additionalNotes: testData.additionalNotes,
-        });
+      const test = this.testRepository.create({
+        userId: user.id,
+        user,
+        answers: testData.answers,
+        scores: testData.scores,
+        personalityType: testData.personalityType,
+        additionalNotes: testData.additionalNotes,
+      });
 
-        await this.testRepository.save(test);
-        this.logService.log(`Сохранен результат теста для пользователя ${user.id}`);
-      },
-      'сохранении результата теста',
-      this.logService,
-      { telegramId, testData },
-    );
+      await this.testRepository.save(test);
+      this.logInfo(`Сохранен результат теста для пользователя ${user.id}`);
+    });
   }
 
   async getTestResult(telegramId: string): Promise<PsychologicalTest | null> {
-    return withErrorHandling(
-      async () => {
-        const user = await this.findByTelegramId(telegramId);
-        const test = await this.testRepository.findOne({
-          where: { userId: user.id },
-          order: { createdAt: 'DESC' },
-        });
+    return this.withErrorHandling('получении результата теста', async () => {
+      const user = await this.findByTelegramId(telegramId);
+      const test = await this.testRepository.findOne({
+        where: { userId: user.id },
+        order: { createdAt: 'DESC' },
+      });
 
-        return test || null;
-      },
-      'получении результата теста',
-      this.logService,
-      { telegramId },
-    );
+      return test || null;
+    });
   }
 
   async markTestCompleted(id: string): Promise<User> {
-    return withErrorHandling(
-      async () => {
-        const now = new Date();
-        await this.userRepository.update(id, { hasCompletedTest: true, testCompletedAt: now });
+    return this.withErrorHandling('отметке завершения теста пользователя', async () => {
+      const now = new Date();
+      await this.userRepository.update(id, { hasCompletedTest: true, testCompletedAt: now });
 
-        // Получаем обновленного пользователя напрямую из БД, минуя кэш
-        const updatedUser = await this.userRepository.findOne({ where: { id } });
-        if (!updatedUser) {
-          throw new NotFoundException(`Пользователь с ID ${id} не найден`);
-        }
+      // Получаем обновленного пользователя напрямую из БД, минуя кэш
+      const updatedUser = await this.userRepository.findOne({ where: { id } });
+      if (!updatedUser) {
+        throw new NotFoundException(`Пользователь с ID ${id} не найден`);
+      }
 
-        // Инвалидируем и обновляем кэш
-        await this.invalidateUserCache(updatedUser);
-        await this.cacheUser(updatedUser);
+      // Инвалидируем и обновляем кэш
+      await this.invalidateUserCache(updatedUser);
+      await this.cacheUser(updatedUser);
 
-        return updatedUser;
-      },
-      'отметке завершения теста пользователя',
-      this.logService,
-      { id },
-    );
+      return updatedUser;
+    });
   }
 
   async hasCompletedTest(telegramId: string): Promise<boolean> {
-    return withErrorHandling(
-      async () => {
-        const user = await this.userRepository.findOne({
-          where: { telegramId, hasCompletedTest: true },
-        });
-        return !!user;
-      },
-      'проверки завершения теста',
-      this.logService,
-      { telegramId },
-    );
+    return this.withErrorHandling('проверки завершения теста', async () => {
+      const user = await this.userRepository.findOne({
+        where: { telegramId, hasCompletedTest: true },
+      });
+      return !!user;
+    });
   }
 
   async remove(id: string): Promise<void> {
-    return withErrorHandling(
-      async () => {
-        const user = await this.findUserById(id);
-        await this.userRepository.delete(id);
-        await this.invalidateUserCache(user);
-      },
-      'удалении пользователя',
-      this.logService,
-      { id },
-    );
+    return this.withErrorHandling('удалении пользователя', async () => {
+      const user = await this.findUserById(id);
+      await this.userRepository.delete(id);
+      await this.invalidateUserCache(user);
+    });
   }
 
   /**
@@ -440,19 +368,13 @@ export class UserService {
    * Полезно для создания диалогов
    */
   async getUserIdByTelegramId(telegramId: string): Promise<number | null> {
-    return withErrorHandling(
-      async () => {
-        const user = await this.userRepository.findOne({
-          where: { telegramId },
-          select: ['id'],
-        });
+    return this.withErrorHandling(`получении userId по Telegram ID ${telegramId}`, async () => {
+      const user = await this.userRepository.findOne({
+        where: { telegramId },
+        select: ['id'],
+      });
 
-        return user ? parseInt(user.id.toString()) : null;
-      },
-      `получении userId по Telegram ID ${telegramId}`,
-      this.logService,
-      { telegramId },
-      null,
-    );
+      return user ? parseInt(user.id.toString()) : null;
+    });
   }
 }

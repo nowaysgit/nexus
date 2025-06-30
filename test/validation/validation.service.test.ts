@@ -66,7 +66,7 @@ createTestSuite('ValidationService Tests', () => {
       ],
     },
     async context => {
-      const service = context.get(ValidationService) as ValidationService;
+      const service = context.get(ValidationService);
       expect(service).toBeDefined();
     },
   );
@@ -87,7 +87,7 @@ createTestSuite('ValidationService Tests', () => {
       ],
     },
     async context => {
-      const service = context.get(ValidationService) as ValidationService;
+      const service = context.get(ValidationService);
 
       const validData = {
         name: 'Test User',
@@ -120,7 +120,7 @@ createTestSuite('ValidationService Tests', () => {
       ],
     },
     async context => {
-      const service = context.get(ValidationService) as ValidationService;
+      const service = context.get(ValidationService);
 
       // Пропускаем поле name, которое обязательно
       const invalidData = {
@@ -158,7 +158,7 @@ createTestSuite('ValidationService Tests', () => {
       ],
     },
     async context => {
-      const service = context.get(ValidationService) as ValidationService;
+      const service = context.get(ValidationService);
 
       const dataArray = [
         { name: 'User 1', age: 20, email: 'user1@example.com' },
@@ -193,7 +193,7 @@ createTestSuite('ValidationService Tests', () => {
       ],
     },
     async context => {
-      const service = context.get(ValidationService) as ValidationService;
+      const service = context.get(ValidationService);
 
       // Успешная валидация
       const successFn = jest.fn().mockReturnValue(true);
@@ -231,7 +231,7 @@ createTestSuite('ValidationService Tests', () => {
       ],
     },
     async context => {
-      const service = context.get(ValidationService) as ValidationService;
+      const service = context.get(ValidationService);
 
       const validData = {
         name: 'Test User',
@@ -272,7 +272,7 @@ createTestSuite('ValidationService Tests', () => {
       ],
     },
     async context => {
-      const service = context.get(ValidationService) as ValidationService;
+      const service = context.get(ValidationService);
 
       const validMessage = 'Hello world!';
       const result = await service.validateMessage(validMessage);
@@ -312,7 +312,7 @@ createTestSuite('ValidationService Tests', () => {
       ],
     },
     async context => {
-      const service = context.get(ValidationService) as ValidationService;
+      const service = context.get(ValidationService);
 
       const validCharacterData = {
         name: 'Alice',
@@ -369,7 +369,7 @@ createTestSuite('ValidationService Tests', () => {
       ],
     },
     async context => {
-      const service = context.get(ValidationService) as ValidationService;
+      const service = context.get(ValidationService);
 
       const dangerousInput = '<script>alert("xss")</script>Clean text<div>HTML tag</div>';
       const sanitized = service.sanitizeInput(dangerousInput);
@@ -397,7 +397,7 @@ createTestSuite('ValidationService Tests', () => {
       ],
     },
     async context => {
-      const service = context.get(ValidationService) as ValidationService;
+      const service = context.get(ValidationService);
 
       const validRequest = {
         method: 'POST',
@@ -455,7 +455,7 @@ createTestSuite('ValidationService Tests', () => {
       ],
     },
     async context => {
-      const service = context.get(ValidationService) as ValidationService;
+      const service = context.get(ValidationService);
 
       const config = {
         apiTimeout: 20000, // Больше 10000, должно генерировать предупреждение
@@ -490,7 +490,7 @@ createTestSuite('ValidationService Tests', () => {
       ],
     },
     async context => {
-      const service = context.get(ValidationService) as ValidationService;
+      const service = context.get(ValidationService);
 
       const rules = service.getValidationRules();
 
@@ -525,7 +525,7 @@ createTestSuite('ValidationService Tests', () => {
       ],
     },
     async context => {
-      const service = context.get(ValidationService) as ValidationService;
+      const service = context.get(ValidationService);
 
       // Создаем мок для методов, которые бросают исключения
       const validateDtoSpy = jest.spyOn(service as any, 'validateDto');

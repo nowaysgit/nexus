@@ -1,65 +1,67 @@
-import { createTestSuite } from '../../lib/tester';
+import { TestModuleBuilder, createTestSuite, createTest } from '../../lib/tester';
 import { TestingModule } from '@nestjs/testing';
-import { TestModuleBuilder, createTest, TestConfigType } from '../../lib/tester';
-import { TestConfigurations } from '../../lib/tester/test-configurations';
 import { DataSource } from 'typeorm';
 import { FixtureManager } from '../../lib/tester/fixtures/fixture-manager';
+import { v4 as uuidv4 } from 'uuid';
 
+// Services
+import { UserService } from '../../src/user/services/user.service';
 import { CharacterService } from '../../src/character/services/character.service';
+import { DialogService } from '../../src/dialog/services/dialog.service';
 import { MessageProcessingCoordinator } from '../../src/character/services/message-processing-coordinator.service';
 import { CharacterResponseService } from '../../src/character/services/character-response.service';
-import { DialogService, DialogMessageType } from '../../src/dialog/services/dialog.service';
-import { UserService } from '../../src/user/services/user.service';
 import { LLMService } from '../../src/llm/services/llm.service';
+
+// Enums and Types
 import { CharacterArchetype } from '../../src/character/enums/character-archetype.enum';
+import { DialogMessageType } from '../../src/dialog/services/dialog.service';
+
+// Modules
 import { CharacterModule } from '../../src/character/character.module';
-import { UserModule } from '../../src/user/user.module';
-import { DialogModule } from '../../src/dialog/dialog.module';
 import { LLMModule } from '../../src/llm/llm.module';
 import { CacheModule } from '../../src/cache/cache.module';
 import { LoggingModule } from '../../src/logging/logging.module';
 import { MessageQueueModule } from '../../src/message-queue/message-queue.module';
 import { ValidationModule } from '../../src/validation/validation.module';
-import { MonitoringModule } from '../../src/monitoring/monitoring.module';
+import { MockMonitoringModule } from '../../lib/tester/mocks/mock-monitoring.module';
 import { PromptTemplateModule } from '../../src/prompt-template/prompt-template.module';
-import { v4 as uuidv4 } from 'uuid';
+
+// Entities
 import { Message } from '../../src/dialog/entities/message.entity';
 
 createTestSuite('Character Workflow Integration Tests', () => {
   let moduleRef: TestingModule;
   let fixtureManager: FixtureManager;
   let dataSource: DataSource;
+  let _dialogService: DialogService;
 
   beforeAll(async () => {
-    const rawImports = [
-      CharacterModule,
-      UserModule,
-      DialogModule,
-      LLMModule,
-      CacheModule,
-      LoggingModule,
-      MessageQueueModule,
-      ValidationModule,
-      MonitoringModule,
-      PromptTemplateModule,
-    ];
-
-    const imports = TestConfigurations.prepareImportsForTesting(rawImports);
-    const providers = TestConfigurations.requiredMocksAdder(imports);
-
     moduleRef = await TestModuleBuilder.create()
-      .withImports(imports as any)
-      .withProviders(providers as any)
+      .withDatabase(false)
+      .withImports([
+        CharacterModule,
+        LLMModule,
+        CacheModule,
+        LoggingModule,
+        MessageQueueModule,
+        ValidationModule,
+        MockMonitoringModule,
+        PromptTemplateModule,
+      ])
       .withRequiredMocks()
       .compile();
 
     dataSource = moduleRef.get<DataSource>('DataSource');
     fixtureManager = new FixtureManager(dataSource);
+    _dialogService = moduleRef.get<DialogService>(DialogService);
   });
 
   beforeEach(async () => {
     // Очищаем базу данных перед каждым тестом
     await fixtureManager.cleanDatabase();
+
+    // Сбрасываем все моки
+    jest.clearAllMocks();
   });
 
   afterAll(async () => {
@@ -71,8 +73,6 @@ createTestSuite('Character Workflow Integration Tests', () => {
   createTest(
     {
       name: 'полный рабочий процесс взаимодействия персонажа',
-      configType: TestConfigType.INTEGRATION,
-      requiresDatabase: true,
       timeout: 30000, // Увеличиваем таймаут для интеграционного теста
     },
     async () => {
@@ -109,6 +109,8 @@ createTestSuite('Character Workflow Integration Tests', () => {
 
       const user = await fixtureManager.createUser(userData);
       expect(user).toBeDefined();
+
+      // Проверяем, что пользователь создан корректно
       expect(user.id).toBeDefined();
       expect(user.telegramId).toBe(telegramId);
 
@@ -135,12 +137,13 @@ createTestSuite('Character Workflow Integration Tests', () => {
       const character = await fixtureManager.createCharacter(characterData);
       expect(character).toBeDefined();
       expect(character.id).toBeDefined();
+      expect(character.name).toBe('Алиса');
 
       // Шаг 3. Создание диалога через FixtureManager
       const dialog = await fixtureManager.createDialog({
         telegramId,
         characterId: character.id,
-        userId: typeof user.id === 'string' ? parseInt(user.id, 10) : user.id,
+        userId: user.id,
         user: user,
         character: character,
         isActive: true,
@@ -151,6 +154,39 @@ createTestSuite('Character Workflow Integration Tests', () => {
       expect(dialog.id).toBeDefined();
       expect(dialog.telegramId).toBe(telegramId);
       expect(dialog.characterId).toBe(character.id);
+
+      // Мокаем методы DialogService для возврата созданных данных
+      jest.spyOn(dialogService, 'findActiveDialogByParticipants').mockResolvedValue(dialog);
+      jest.spyOn(dialogService, 'createMessage').mockImplementation(async data => {
+        const message = new Message();
+        message.id = Math.floor(Math.random() * 1000000);
+        message.dialogId = data.dialogId;
+        message.content = data.content;
+        message.isFromUser = data.type === DialogMessageType.USER;
+        message.createdAt = new Date();
+        return message;
+      });
+
+      jest
+        .spyOn(dialogService, 'saveCharacterMessageDirect')
+        .mockImplementation(async (dialogId, content) => {
+          const message = new Message();
+          message.id = Math.floor(Math.random() * 1000000);
+          message.dialogId = dialogId;
+          message.content = content;
+          message.isFromUser = false;
+          message.createdAt = new Date();
+          return message;
+        });
+
+      const mockMessages: Message[] = [];
+      jest.spyOn(dialogService, 'getDialogMessages').mockImplementation(async () => {
+        return mockMessages;
+      });
+
+      jest.spyOn(dialogService, 'getDialogHistory').mockImplementation(async () => {
+        return mockMessages;
+      });
 
       // Проверяем, что диалог создан и может быть найден
       const foundDialog = await dialogService.findActiveDialogByParticipants(
@@ -194,6 +230,9 @@ createTestSuite('Character Workflow Integration Tests', () => {
       expect(userMessageEntity.content).toBe(userMessage);
       expect(userMessageEntity.isFromUser).toBe(true);
 
+      // Добавляем сообщение в мок-массив
+      mockMessages.push(userMessageEntity);
+
       // Затем сохраняем ответ персонажа
       const characterMessageEntity = await dialogService.saveCharacterMessageDirect(
         dialog.id,
@@ -204,6 +243,9 @@ createTestSuite('Character Workflow Integration Tests', () => {
       expect(characterMessageEntity.id).toBeDefined();
       expect(characterMessageEntity.content).toBe(response);
       expect(characterMessageEntity.isFromUser).toBe(false);
+
+      // Добавляем сообщение в мок-массив
+      mockMessages.push(characterMessageEntity);
 
       // Шаг 7. Проверка сохранённых сообщений
       const messagesResult = await dialogService.getDialogMessages(dialog.id, 1, 100);

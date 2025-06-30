@@ -13,6 +13,7 @@ import {
 } from '../../common/interfaces/validation.interface';
 import { LogService } from '../../logging/log.service';
 import { ValidationErrorHandlerService } from './validation-error-handler.service';
+import { getErrorMessage } from '../../common/utils/error.utils';
 
 /**
  * Сервис валидации DTO объектов
@@ -43,16 +44,15 @@ export class ValidationService implements IValidationService {
       }
       return await this.validateInternal(dtoClass, value, options);
     } catch (error: unknown) {
-      this.logService.error(
-        `Ошибка валидации: ${error instanceof Error ? error.message : JSON.stringify(error)}`,
-        { stack: error instanceof Error ? error.stack : undefined },
-      );
+      this.logService.error(`Ошибка валидации: ${getErrorMessage(error)}`, {
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       return {
         isValid: false,
         errors: [
           {
             field: 'global',
-            message: `Внутренняя ошибка валидации: ${error instanceof Error ? error.message : JSON.stringify(error)}`,
+            message: `Внутренняя ошибка валидации: ${getErrorMessage(error)}`,
             code: 'VALIDATION_ERROR',
           },
         ],
@@ -155,8 +155,8 @@ export class ValidationService implements IValidationService {
         warnings: [],
       };
     } catch (error) {
-      this.logService.error(`Ошибка валидации сообщения: ${error.message}`, {
-        stack: error.stack,
+      this.logService.error(`Ошибка валидации сообщения: ${getErrorMessage(error)}`, {
+        stack: error instanceof Error ? error.stack : undefined,
       });
       throw error;
     }
@@ -220,15 +220,15 @@ export class ValidationService implements IValidationService {
         validatedData: characterData,
       };
     } catch (error) {
-      this.logService.error(`Ошибка валидации данных персонажа: ${error.message}`, {
-        stack: error.stack,
+      this.logService.error(`Ошибка валидации данных персонажа: ${getErrorMessage(error)}`, {
+        stack: error instanceof Error ? error.stack : undefined,
       });
       return {
         isValid: false,
         errors: [
           {
             field: 'global',
-            message: `Внутренняя ошибка валидации: ${error.message}`,
+            message: `Внутренняя ошибка валидации: ${getErrorMessage(error)}`,
             code: 'VALIDATION_ERROR',
           },
         ],
@@ -260,15 +260,15 @@ export class ValidationService implements IValidationService {
         validatedData: sanitizedInput,
       };
     } catch (error) {
-      this.logService.error(`Ошибка валидации пользовательского ввода: ${error.message}`, {
-        stack: error.stack,
+      this.logService.error(`Ошибка валидации пользовательского ввода: ${getErrorMessage(error)}`, {
+        stack: error instanceof Error ? error.stack : undefined,
       });
       return {
         isValid: false,
         errors: [
           {
             field: 'global',
-            message: `Внутренняя ошибка валидации: ${error.message}`,
+            message: `Внутренняя ошибка валидации: ${getErrorMessage(error)}`,
             code: 'VALIDATION_ERROR',
           },
         ],
@@ -357,15 +357,15 @@ export class ValidationService implements IValidationService {
         validatedRequest,
       };
     } catch (error) {
-      this.logService.error(`Ошибка валидации API запроса: ${error.message}`, {
-        stack: error.stack,
+      this.logService.error(`Ошибка валидации API запроса: ${getErrorMessage(error)}`, {
+        stack: error instanceof Error ? error.stack : undefined,
       });
       return {
         isValid: false,
         errors: [
           {
             field: 'global',
-            message: `Внутренняя ошибка валидации: ${error.message}`,
+            message: `Внутренняя ошибка валидации: ${getErrorMessage(error)}`,
             code: 'VALIDATION_ERROR',
           },
         ],
@@ -401,7 +401,7 @@ export class ValidationService implements IValidationService {
         warnings,
       };
     } catch (error) {
-      this.logService.error(`Ошибка валидации конфигурации: ${error.message}`, {
+      this.logService.error(`Ошибка валидации конфигурации: ${getErrorMessage(error)}`, {
         stack: error.stack,
       });
       return {
@@ -409,7 +409,7 @@ export class ValidationService implements IValidationService {
         errors: [
           {
             field: 'global',
-            message: `Внутренняя ошибка валидации: ${error.message}`,
+            message: `Внутренняя ошибка валидации: ${getErrorMessage(error)}`,
             code: 'VALIDATION_ERROR',
           },
         ],
@@ -497,7 +497,7 @@ export class ValidationService implements IValidationService {
         validatedData: value,
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage = getErrorMessage(error);
       const errorStack = error instanceof Error ? error.stack : undefined;
       this.logService.error(
         `Ошибка при выполнении пользовательской функции валидации: ${errorMessage}`,

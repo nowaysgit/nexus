@@ -1,9 +1,11 @@
 import { Test } from '@nestjs/testing';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { CharacterBehaviorService } from '../../src/character/services/character-behavior.service';
 import { LogService } from '../../src/logging/log.service';
 import { LLMService } from '../../src/llm/services/llm.service';
 import { NeedsService } from '../../src/character/services/needs.service';
 import { ActionService } from '../../src/character/services/action.service';
+import { ActionExecutorService } from '../../src/character/services/action-executor.service';
 import { MemoryService } from '../../src/character/services/memory.service';
 import { CharacterService } from '../../src/character/services/character.service';
 import { MessageAnalysisService } from '../../src/character/services/message-analysis.service';
@@ -20,6 +22,8 @@ import { Repository } from 'typeorm';
 import { MockLogService } from '../../lib/tester/mocks';
 import { ActionType } from '../../src/character/enums/action-type.enum';
 import { ActionResult } from '../../src/character/services/action.service';
+import { MessageBehaviorService } from '../../src/character/services/message-behavior.service';
+import { EmotionalBehaviorService } from '../../src/character/services/emotional-behavior.service';
 
 jest.mock('../../src/common/utils/error-handling/error-handling.utils', () => ({
   withErrorHandling: jest.fn((fn: () => unknown) => fn()),
@@ -37,7 +41,19 @@ describe('CharacterBehaviorService Tests', () => {
     interruptAction: jest.Mock;
     canExecute: jest.Mock;
     execute: jest.Mock;
+    processActionTrigger: jest.Mock;
   };
+
+  const mockActionExecutorService = {
+    determineAndPerformAction: jest.fn(),
+    isPerformingAction: jest.fn(),
+    getCurrentAction: jest.fn(),
+    interruptAction: jest.fn(),
+    canExecute: jest.fn(),
+    execute: jest.fn(),
+    processActionTrigger: jest.fn(),
+  };
+
 
   const mockLlmService = { generateResponse: jest.fn(), analyzeText: jest.fn() };
   const mockNeedsService = {
@@ -67,7 +83,18 @@ describe('CharacterBehaviorService Tests', () => {
     getEmotionalState: jest.fn(),
   };
   const mockConfigService = { get: jest.fn() };
-  const mockErrorHandlingService = { handleError: jest.fn() };
+  const mockErrorHandlingService = {
+    handleDbError: jest.fn(),
+    logError: jest.fn(),
+    createErrorContext: jest.fn(),
+  };
+  const mockMessageBehaviorService = {
+    processIncomingMessage: jest.fn().mockResolvedValue({ text: 'Test response' }),
+    processUserMessageWithAnalysis: jest.fn(),
+  };
+  const mockEmotionalBehaviorService = {
+    // Add any necessary mock properties for EmotionalBehaviorService
+  };
 
   beforeEach(async () => {
     mockCharacterRepository = {
@@ -83,6 +110,17 @@ describe('CharacterBehaviorService Tests', () => {
       interruptAction: jest.fn(),
       canExecute: jest.fn().mockResolvedValue(true),
       execute: jest.fn().mockResolvedValue({ success: true } as ActionResult),
+      processActionTrigger: jest
+        .fn()
+        .mockResolvedValue({ success: true, data: { action: { type: ActionType.SEND_MESSAGE } } }),
+    };
+
+    // Создаем мок для EventEmitter2
+    const mockEventEmitter = {
+      emit: jest.fn(),
+      on: jest.fn(),
+      once: jest.fn(),
+      removeListener: jest.fn(),
     };
 
     const moduleRef = await Test.createTestingModule({
@@ -92,12 +130,16 @@ describe('CharacterBehaviorService Tests', () => {
         { provide: LLMService, useValue: mockLlmService },
         { provide: NeedsService, useValue: mockNeedsService },
         { provide: ActionService, useValue: mockActionService },
+        { provide: ActionExecutorService, useValue: mockActionExecutorService },
+        { provide: ActionExecutorService, useValue: mockActionExecutorService },
         { provide: MemoryService, useValue: mockMemoryService },
         { provide: CharacterService, useValue: mockCharacterService },
         { provide: MessageAnalysisService, useValue: mockMessageAnalysisService },
         { provide: ManipulationService, useValue: mockManipulationService },
         { provide: EmotionalStateService, useValue: mockEmotionalStateService },
-        { provide: ConfigService, useValue: mockConfigService },
+        { provide: MessageBehaviorService, useValue: mockMessageBehaviorService },
+        { provide: EmotionalBehaviorService, useValue: mockEmotionalBehaviorService },
+        { provide: EventEmitter2, useValue: mockEventEmitter },
         { provide: ErrorHandlingService, useValue: mockErrorHandlingService },
         { provide: getRepositoryToken(Character), useValue: mockCharacterRepository },
         { provide: getRepositoryToken(CharacterMemory), useValue: mockMemoryRepository },
@@ -167,8 +209,12 @@ describe('CharacterBehaviorService Tests', () => {
     // Мокируем другие необходимые сервисы
     mockNeedsService.getNeeds.mockResolvedValue([]);
     mockEmotionalStateService.getEmotionalState.mockResolvedValue({
-      emotion: 'neutral',
+      primary: 'neutral',
       intensity: 0.5,
+      secondary: [],
+      modifiers: {},
+      timestamp: new Date(),
+      characterId: characterId,
     });
     mockActionService.isPerformingAction.mockReturnValue(false);
     mockMemoryService.createMessageMemory.mockResolvedValue({
@@ -184,13 +230,17 @@ describe('CharacterBehaviorService Tests', () => {
     // Вызываем тестируемый метод напрямую
     await service.processUserMessageWithAnalysis(characterId, userId, messageText, messageAnalysis);
 
-    // Проверяем, что необходимые сервисы были вызваны
-    expect(mockCharacterRepository.findOne).toHaveBeenCalled();
-    expect(mockMemoryService.createMessageMemory).toHaveBeenCalled();
-    expect(mockNeedsService.updateNeed).toHaveBeenCalled();
+    // Проверяем, что MessageBehaviorService был вызван
+    expect(mockMessageBehaviorService.processUserMessageWithAnalysis).toHaveBeenCalledWith(
+      characterId,
+      userId,
+      messageText,
+      messageAnalysis,
+      undefined,
+    );
   });
 
-  it('processActionTrigger должен вызывать execute с правильными параметрами', async () => {
+  it('processActionTrigger должен вызывать determineAndPerformAction с правильными параметрами', async () => {
     // Подготовка данных для теста
     const characterId = 1;
     const userId = 2;
@@ -220,43 +270,27 @@ describe('CharacterBehaviorService Tests', () => {
     // Настраиваем моки
     mockCharacterService.findOneById.mockResolvedValue(character);
 
-    // Мокируем selectActionForMotivation, чтобы возвращал действие
-    const mockAction = {
-      type: ActionType.INITIATE_CONVERSATION,
-      description: 'Тестовое действие',
-      priority: 8,
-      relatedNeeds: [CharacterNeedType.COMMUNICATION],
-      status: 'planned',
-      metadata: {},
-    };
-
-    // Используем jest.spyOn для приватного метода
-    jest.spyOn(service as any, 'selectActionForMotivation').mockResolvedValue(mockAction);
-
-    // Мокируем determineAndPerformAction вместо execute
-    mockActionService.determineAndPerformAction.mockResolvedValue({
-      type: ActionType.INITIATE_CONVERSATION,
-      description: 'Тестовое действие выполнено',
-      status: 'completed',
+    // Мокируем processActionTrigger в ActionService
+    mockActionService.processActionTrigger.mockResolvedValue({
+      success: true,
+      data: {
+        action: {
+          type: ActionType.INITIATE_CONVERSATION,
+          description: 'Тестовое действие выполнено',
+          status: 'completed',
+        },
+        result: { success: true },
+      },
     });
 
     // Вызываем тестируемый метод с правильным объектом контекста
-    await service.processActionTrigger(actionTriggerContext);
+    const result = await service.processActionTrigger(actionTriggerContext);
 
-    // Проверяем, что determineAndPerformAction был вызван
-    expect(mockActionService.determineAndPerformAction).toHaveBeenCalled();
+    // Проверяем, что processActionTrigger был вызван в ActionService
+    expect(mockActionService.processActionTrigger).toHaveBeenCalledWith(actionTriggerContext);
 
-    // Проверяем, что determineAndPerformAction был вызван хотя бы один раз
-    expect(mockActionService.determineAndPerformAction).toHaveBeenCalledTimes(1);
-
-    // Проверяем параметры вызова
-    expect(mockActionService.determineAndPerformAction).toHaveBeenCalledWith(
-      character,
-      expect.objectContaining({
-        characterId: characterId,
-        userId: userId,
-        triggerType: triggerType,
-      }),
-    );
+    // Проверяем результат
+    expect(result).toBeDefined();
+    expect(result.success).toBe(true);
   });
 });

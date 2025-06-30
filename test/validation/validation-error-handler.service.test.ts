@@ -35,7 +35,7 @@ createTestSuite('ValidationErrorHandlerService Tests', () => {
       ],
     },
     async context => {
-      const service = context.get(ValidationErrorHandlerService) as ValidationErrorHandlerService;
+      const service = context.get(ValidationErrorHandlerService);
       expect(service).toBeDefined();
     },
   );
@@ -52,7 +52,7 @@ createTestSuite('ValidationErrorHandlerService Tests', () => {
       ],
     },
     async context => {
-      const service = context.get(ValidationErrorHandlerService) as ValidationErrorHandlerService;
+      const service = context.get(ValidationErrorHandlerService);
 
       const mockValidationResult: ValidationResult = {
         isValid: true,
@@ -94,7 +94,7 @@ createTestSuite('ValidationErrorHandlerService Tests', () => {
       ],
     },
     async context => {
-      const service = context.get(ValidationErrorHandlerService) as ValidationErrorHandlerService;
+      const service = context.get(ValidationErrorHandlerService);
 
       const mockError: ValidationError = {
         field: 'name',
@@ -150,7 +150,7 @@ createTestSuite('ValidationErrorHandlerService Tests', () => {
       ],
     },
     async context => {
-      const service = context.get(ValidationErrorHandlerService) as ValidationErrorHandlerService;
+      const service = context.get(ValidationErrorHandlerService);
 
       const mockError: ValidationError = {
         field: 'email',
@@ -204,7 +204,7 @@ createTestSuite('ValidationErrorHandlerService Tests', () => {
       ],
     },
     async context => {
-      const service = context.get(ValidationErrorHandlerService) as ValidationErrorHandlerService;
+      const service = context.get(ValidationErrorHandlerService);
 
       const mockError: ValidationError = {
         field: 'password',
@@ -254,7 +254,7 @@ createTestSuite('ValidationErrorHandlerService Tests', () => {
       ],
     },
     async context => {
-      const service = context.get(ValidationErrorHandlerService) as ValidationErrorHandlerService;
+      const service = context.get(ValidationErrorHandlerService);
 
       const mockResults: ValidationResult[] = [
         {
@@ -310,7 +310,7 @@ createTestSuite('ValidationErrorHandlerService Tests', () => {
       ],
     },
     async context => {
-      const service = context.get(ValidationErrorHandlerService) as ValidationErrorHandlerService;
+      const service = context.get(ValidationErrorHandlerService);
 
       const error = new Error('Неизвестная ошибка валидации');
       const result = service.handleValidationError(error);
@@ -337,7 +337,7 @@ createTestSuite('ValidationErrorHandlerService Tests', () => {
       ],
     },
     async context => {
-      const service = context.get(ValidationErrorHandlerService) as ValidationErrorHandlerService;
+      const service = context.get(ValidationErrorHandlerService);
 
       const error = new Error('Ошибка валидации API запроса');
       const result = service.handleApiValidationError(error, 'rest-api', 'warn');
@@ -371,7 +371,7 @@ createTestSuite('ValidationErrorHandlerService Tests', () => {
       ],
     },
     async context => {
-      const service = context.get(ValidationErrorHandlerService) as ValidationErrorHandlerService;
+      const service = context.get(ValidationErrorHandlerService);
 
       const error = new Error('Неверный формат данных');
       const result = service.handleFormatValidationError(error, 'json', 'file');
@@ -406,7 +406,7 @@ createTestSuite('ValidationErrorHandlerService Tests', () => {
       ],
     },
     async context => {
-      const service = context.get(ValidationErrorHandlerService) as ValidationErrorHandlerService;
+      const service = context.get(ValidationErrorHandlerService);
 
       const error = new Error('Ошибка валидации БД');
       const result = service.handleDatabaseValidationError(error, 'User');
@@ -440,7 +440,7 @@ createTestSuite('ValidationErrorHandlerService Tests', () => {
       ],
     },
     async context => {
-      const service = context.get(ValidationErrorHandlerService) as ValidationErrorHandlerService;
+      const service = context.get(ValidationErrorHandlerService);
 
       const error = new Error('Запрещенный контент в сообщении');
       const result = service.handleMessageValidationError(error, 'msg-123');
@@ -474,7 +474,7 @@ createTestSuite('ValidationErrorHandlerService Tests', () => {
       ],
     },
     async context => {
-      const service = context.get(ValidationErrorHandlerService) as ValidationErrorHandlerService;
+      const service = context.get(ValidationErrorHandlerService);
 
       const error = new Error('Некорректный ввод пользователя');
       const result = service.handleUserInputValidationError(error, 'user-456', 'command');
@@ -514,7 +514,7 @@ createTestSuite('ValidationErrorHandlerService Tests', () => {
       ],
     },
     async context => {
-      const service = context.get(ValidationErrorHandlerService) as ValidationErrorHandlerService;
+      const service = context.get(ValidationErrorHandlerService);
 
       const error = new Error('Недопустимое значение конфигурации');
       const result = service.handleConfigValidationError(error, 'api.timeout');
@@ -548,7 +548,7 @@ createTestSuite('ValidationErrorHandlerService Tests', () => {
       ],
     },
     async context => {
-      const service = context.get(ValidationErrorHandlerService) as ValidationErrorHandlerService;
+      const service = context.get(ValidationErrorHandlerService);
 
       const customErrorMessage = 'Кастомная ошибка валидации';
       const customField = 'custom-field';

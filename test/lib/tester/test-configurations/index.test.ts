@@ -1,4 +1,4 @@
-import { TestConfigurations } from './index';
+import { TestConfigurations } from '../../../../lib/tester/test-configurations';
 
 // Создаем моки модулей для тестов
 class DialogModule {}

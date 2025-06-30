@@ -1,25 +1,30 @@
+export * from './config.service.mock';
+export * from './event-emitter.mock';
+export * from './llm.service.mock';
+export * from './log.service.mock';
+export * from './rollbar.service.mock';
+export * from './telegraf-token.provider';
+export * from './user-service.mock';
+export * from './mock-telegram.module';
+export * from './mock-monitoring.module';
+
 export { MockLogService } from './log.service.mock';
 export { MockRollbarService } from './rollbar.service.mock';
-export { mockConfigService, ConfigServiceProvider } from './config.service.mock';
-export { MockEventEmitter } from './event-emitter.mock';
-export { mockLlamaProviderService } from './llama-provider.mock';
-export { MockMemoryService } from './memory-service.mock';
-export { MockNeedsService } from './needs-service.mock';
+export { MockLLMService } from './llm.service.mock';
 export { MockUserService } from './user-service.mock';
-export { createMockTelegramService, mockTelegramService } from './telegram-service.mock';
-export { 
-    MockTelegramModule,
-    mockTelegramCoreService,
-    mockAccessControlService,
-    mockCharacterCreationService,
-    mockMessageService,
-    mockMessageFormatterService,
-    mockKeyboardFormatterService,
-    mockTelegramUserService,
-    mockTelegramInitializationService,
+export { MockEventEmitter } from './event-emitter.mock';
+export {
+  MockTelegramModule,
+  mockTelegramCoreService,
+  mockAccessControlService,
+  mockCharacterCreationService,
+  mockMessageService,
+  mockMessageFormatterService,
+  mockKeyboardFormatterService,
+  mockTelegramUserService,
+  mockTelegramInitializationService,
 } from './mock-telegram.module';
 export { MockLLMProviderManagerService, MockEmotionalStateService } from './jest.mocks';
-export { TelegrafTokenProvider, mockTelegraf } from './telegraf-token.provider';
 export { MockProviderFactory } from './mock-provider';
 export { MockInfrastructureModule } from './mock-infrastructure.module';
 
@@ -41,9 +46,9 @@ export class MockEncryptionService {
     return Buffer.from(encrypted, 'base64').toString('utf8');
   }
   async hash(data: string): Promise<string> {
-    /* eslint-disable import/no-commonjs, @typescript-eslint/no-var-requires */
+    /* eslint-disable import/no-commonjs */
     const hash = require('crypto').createHash('sha256').update(data).digest('hex');
-    /* eslint-enable */
+
     return hash;
   }
   async isEncrypted(data: string): Promise<boolean> {
@@ -55,8 +60,17 @@ export class MockEncryptionService {
     }
   }
   async generateKey(): Promise<string> {
-    /* eslint-disable import/no-commonjs, @typescript-eslint/no-var-requires */
+    /* eslint-disable import/no-commonjs */
     return require('crypto').randomBytes(32).toString('hex');
-    /* eslint-enable */
   }
 }
+
+export const MockActionExecutorService = {
+  determineAndPerformAction: jest.fn(),
+  isPerformingAction: jest.fn(),
+  getCurrentAction: jest.fn(),
+  interruptAction: jest.fn(),
+  canExecute: jest.fn(),
+  execute: jest.fn(),
+  processActionTrigger: jest.fn(),
+};

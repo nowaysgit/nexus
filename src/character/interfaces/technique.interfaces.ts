@@ -25,19 +25,20 @@ export interface ITechniqueResult {
   phase?: TechniquePhase;
   effectiveness?: number;
   ethicalScore?: number;
-
-  // Свойства, используемые в тестах
-  techniqueType?: ManipulativeTechniqueType; // Дублирует appliedTechnique для обратной совместимости
-  generatedResponse?: string; // Сгенерированный ответ
-  responseText?: string; // Текст ответа, используемый в тестах
-  sideEffects?: string[]; // Побочные эффекты применения техники
+  techniqueType?: ManipulativeTechniqueType;
+  generatedResponse?: string;
+  responseText?: string;
+  sideEffects?: string[];
+  adaptationNotes?: string[];
+  vulnerabilityScore?: number;
+  nextRecommendedTechnique?: ManipulativeTechniqueType;
+  executionNotes?: string[];
 }
 
 /**
  * Интерфейс для контекста выполнения манипулятивной техники
  */
 export interface ITechniqueContext {
-  // Поля основного приложения
   user?: User;
   character?: Character;
   messageContent: string;
@@ -48,29 +49,30 @@ export interface ITechniqueContext {
   previousInteractions?: number;
   conversationHistory?: string[];
   relationshipLevel: number;
-
-  // Дополнительные поля для тестов
   characterId?: number;
-  userId?: number; // Используем только числовой ID для соответствия с базой данных
+  userId?: number;
   previousTechniques?: any[];
   timeOfDay?: string;
   sessionDuration?: number;
+  intensity?: TechniqueIntensity;
+  conversationId?: string;
 }
 
 /**
  * Интерфейс для контекста манипуляции
  */
 export interface IManipulationContext {
-  userId: string | number; // Поддерживаем оба типа для совместимости с тестами
+  userId: string | number;
   characterId: number;
   targetEmotion?: string;
   targetNeed?: string;
-  messageContent?: string; // Делаем необязательным для совместимости с тестами
-  userMessage?: string; // Альтернативное имя для messageContent, используемое в тестах
-  context?: string; // Контекст разговора, используемый в тестах
-  intensityLevel?: TechniqueIntensity; // Делаем необязательным для совместимости с тестами
-  techniqueType?: ManipulativeTechniqueType; // Делаем необязательным для совместимости с тестами
-  excludeTechniques?: ManipulativeTechniqueType[]; // Техники, которые не следует использовать
-  phase?: TechniquePhase; // Фаза техники
+  messageContent?: string;
+  userMessage?: string;
+  context?: string;
+  intensityLevel?: TechniqueIntensity;
+  techniqueType?: ManipulativeTechniqueType;
+  excludeTechniques?: ManipulativeTechniqueType[];
+  phase?: TechniquePhase;
   additionalParameters?: Record<string, any>;
 }
+export { ManipulativeTechniqueType, TechniqueIntensity, TechniquePhase };

@@ -5,7 +5,7 @@ import { TestConfigurations, TestConfig, requiredMocksAdder } from './test-confi
 import { FixtureManager } from './fixtures/fixture-manager';
 import { TestModuleBuilder } from './utils/test-module-builder';
 import { createTestSuite, createTest, createBasicTest } from './utils/test-functions';
-import { createTestDataSource, createTestDataSourceSync } from './utils/data-source';
+import { createTestDataSource } from './utils/data-source';
 import { checkDatabaseConnection, waitForDatabaseConnection } from './utils/db-connection-checker';
 import { ConfigService } from '@nestjs/config';
 
@@ -179,6 +179,7 @@ export class Tester {
     // Подготавливаем импорты (заменяем LoggingModule, TelegrafModule, добавляем MockTypeOrmModule)
     const preparedImports = TestConfigurations.prepareImportsForTesting(
       (metadata.imports || []) as (Type<any> | DynamicModule)[],
+      configType,
     ) as unknown as (Type<any> | DynamicModule)[];
 
     const importsForMocks: (Type<any> | DynamicModule)[] = preparedImports.filter(
@@ -274,7 +275,6 @@ export {
   TestConfig,
   TestConfigurations,
   createTestDataSource,
-  createTestDataSourceSync,
   checkDatabaseConnection,
   waitForDatabaseConnection,
   TestModuleBuilder,

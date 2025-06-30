@@ -6,8 +6,8 @@ import { CharacterBehaviorService } from './character-behavior.service';
 import { CharacterResponseService } from './character-response.service';
 import { EmotionalStateService } from './emotional-state.service';
 import { ManipulationService } from './manipulation.service';
+import { BaseService } from '../../common/base/base.service';
 import { LogService } from '../../logging/log.service';
-import { withErrorHandling } from '../../common/utils/error-handling/error-handling.utils';
 import { MessageAnalysis } from '../interfaces/analysis.interfaces';
 import { CharacterNeedType } from '../enums/character-need-type.enum';
 
@@ -16,7 +16,7 @@ import { CharacterNeedType } from '../enums/character-need-type.enum';
  * Выполняет единый анализ и координирует обновление всех систем персонажа
  */
 @Injectable()
-export class MessageProcessingCoordinator {
+export class MessageProcessingCoordinator extends BaseService {
   constructor(
     private readonly messageAnalysisService: MessageAnalysisService,
     private readonly needsService: NeedsService,
@@ -24,8 +24,10 @@ export class MessageProcessingCoordinator {
     private readonly characterResponseService: CharacterResponseService,
     private readonly emotionalStateService: EmotionalStateService,
     private readonly manipulationService: ManipulationService,
-    private readonly logService: LogService,
-  ) {}
+    logService: LogService,
+  ) {
+    super(logService);
+  }
 
   /**
    * Основной метод координации обработки сообщения пользователя
@@ -41,12 +43,13 @@ export class MessageProcessingCoordinator {
     response: string;
     userMessageId?: number;
   }> {
-    return withErrorHandling(
+    return this.withErrorHandling(
+      'обработке сообщения пользователя через координатор',
       async () => {
         // Преобразуем userId в number для внутреннего использования
         const numericUserId = typeof userId === 'string' ? parseInt(userId, 10) : userId;
 
-        this.logService.log('Начинается обработка сообщения пользователя', {
+        this.logInfo('Начинается обработка сообщения пользователя', {
           characterId: character.id,
           userId: numericUserId,
           messageLength: userMessage.length,
@@ -60,7 +63,7 @@ export class MessageProcessingCoordinator {
           recentMessages,
         );
 
-        this.logService.debug('Анализ сообщения завершен', {
+        this.logDebug('Анализ сообщения завершен', {
           analysisTimestamp: analysis.analysisMetadata.timestamp,
           needsUpdateCount: Object.keys(analysis.needsImpact).length,
         });
@@ -82,7 +85,7 @@ export class MessageProcessingCoordinator {
         // ЭТАП 3: ГЕНЕРАЦИЯ ОТВЕТА ПЕРСОНАЖА
         const response = await this.generateCharacterResponse(character, userMessage, analysis);
 
-        this.logService.log('Обработка сообщения пользователя завершена', {
+        this.logInfo('Обработка сообщения пользователя завершена', {
           characterId: character.id,
           userId,
           responseLength: response.length,
@@ -94,9 +97,6 @@ export class MessageProcessingCoordinator {
           userMessageId: null,
         };
       },
-      'обработке сообщения пользователя через координатор',
-      this.logService,
-      { characterId: character.id, userId },
     );
   }
 
@@ -118,9 +118,9 @@ export class MessageProcessingCoordinator {
           });
         }
       }
-      this.logService.debug('Потребности персонажа обновлены', { characterId });
+      this.logDebug('Потребности персонажа обновлены', { characterId });
     } catch (error) {
-      this.logService.error('Ошибка обновления потребностей персонажа', {
+      this.logError('Ошибка обновления потребностей персонажа', {
         error: error instanceof Error ? error.message : String(error),
         characterId,
       });
@@ -147,13 +147,13 @@ export class MessageProcessingCoordinator {
       // Используем EmotionalStateService для обновления состояния
       await this.emotionalStateService.updateEmotionalState(characterId, analysis);
 
-      this.logService.debug('Эмоциональное состояние персонажа обновлено', {
+      this.logDebug('Эмоциональное состояние персонажа обновлено', {
         characterId,
         emotionalType: emotionalImpact.emotionalType,
         intensity: emotionalImpact.intensity,
       });
     } catch (error) {
-      this.logService.error('Ошибка обновления эмоционального состояния персонажа', {
+      this.logError('Ошибка обновления эмоционального состояния персонажа', {
         error: error instanceof Error ? error.message : String(error),
         characterId,
       });
@@ -180,9 +180,9 @@ export class MessageProcessingCoordinator {
         userMessage,
         analysis,
       );
-      this.logService.debug('Поведенческие паттерны персонажа обновлены', { characterId });
+      this.logDebug('Поведенческие паттерны персонажа обновлены', { characterId });
     } catch (error) {
-      this.logService.error('Ошибка обновления поведенческих паттернов персонажа', {
+      this.logError('Ошибка обновления поведенческих паттернов персонажа', {
         error: error instanceof Error ? error.message : String(error),
         characterId,
       });
@@ -210,7 +210,7 @@ export class MessageProcessingCoordinator {
       );
 
       if (chosenTechnique) {
-        this.logService.debug('Выбрана манипулятивная техника', {
+        this.logDebug('Выбрана манипулятивная техника', {
           characterId,
           userId: numericUserId,
           technique: chosenTechnique,
@@ -219,13 +219,13 @@ export class MessageProcessingCoordinator {
         // Техника будет применена при генерации ответа
         // Сохраняем информацию о выбранной технике в контексте
       } else {
-        this.logService.debug('Манипулятивные техники не применимы в данной ситуации', {
+        this.logDebug('Манипулятивные техники не применимы в данной ситуации', {
           characterId,
           userId: numericUserId,
         });
       }
     } catch (error) {
-      this.logService.error('Ошибка применения манипулятивных техник', {
+      this.logError('Ошибка применения манипулятивных техник', {
         error: error instanceof Error ? error.message : String(error),
         characterId,
       });

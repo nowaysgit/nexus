@@ -30,7 +30,7 @@ createTestSuite('MessageQueueService Integration Tests', () => {
   createTest(
     {
       name: 'should enqueue and process a simple message',
-      configType: TestConfigType.INTEGRATION,
+      configType: TestConfigType.BASIC,
       imports,
       providers,
     },
@@ -62,7 +62,7 @@ createTestSuite('MessageQueueService Integration Tests', () => {
   createTest(
     {
       name: 'should get queue statistics',
-      configType: TestConfigType.INTEGRATION,
+      configType: TestConfigType.BASIC,
       imports,
       providers,
     },
@@ -82,7 +82,7 @@ createTestSuite('MessageQueueService Integration Tests', () => {
   createTest(
     {
       name: 'should get all messages in queue',
-      configType: TestConfigType.INTEGRATION,
+      configType: TestConfigType.BASIC,
       imports,
       providers,
     },
@@ -99,10 +99,10 @@ createTestSuite('MessageQueueService Integration Tests', () => {
   createTest(
     {
       name: 'should get messages by status',
-      configType: TestConfigType.INTEGRATION,
+      configType: TestConfigType.BASIC,
       imports,
       providers,
-      requiresDatabase: true, // Добавляем флаг для очистки базы данных
+      requiresDatabase: false, // Используем моки вместо реальной базы данных
       timeout: 30000, // Уменьшаем таймаут до 30 секунд, так как тест теперь должен выполняться быстрее
     },
     async ({ get }) => {

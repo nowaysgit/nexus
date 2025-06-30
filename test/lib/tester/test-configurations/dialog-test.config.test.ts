@@ -1,5 +1,8 @@
-import { getDialogTestConfig, addMockUserServiceToProviders } from './dialog-test.config';
-import { mockUserService } from '../mocks/user-service.mock';
+import {
+  getDialogTestConfig,
+  addMockUserServiceToProviders,
+} from '../../../../lib/tester/test-configurations/dialog-test.config';
+import { mockUserService } from '../../../../lib/tester/mocks/user-service.mock';
 
 describe('DialogTestConfig', () => {
   describe('getDialogTestConfig', () => {

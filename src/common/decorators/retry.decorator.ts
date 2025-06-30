@@ -1,4 +1,5 @@
 import { LogService } from '../../logging/log.service';
+import { getErrorMessage } from '../utils/error.utils';
 
 /**
  * Опции для декоратора повторных попыток
@@ -55,6 +56,9 @@ export function Retry(options: RetryOptions = {}) {
         try {
           return (await originalMethod.apply(this, args)) as unknown;
         } catch (error) {
+          const errorMessage = getErrorMessage(error);
+          const errorStack = error instanceof Error ? error.stack : undefined;
+
           // Проверяем, нужно ли повторить попытку для данного типа ошибки
           let shouldRetry = true;
 
@@ -91,14 +95,10 @@ export function Retry(options: RetryOptions = {}) {
                 attempt: retries,
                 maxRetries,
                 delay: currentDelay,
-                error:
-                  error instanceof Error
-                    ? {
-                        message: error.message,
-                        name: error.name,
-                        stack: error.stack,
-                      }
-                    : { value: String(error) },
+                error: {
+                  message: errorMessage,
+                  stack: errorStack,
+                },
               },
             );
           }

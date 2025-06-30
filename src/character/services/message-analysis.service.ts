@@ -7,9 +7,10 @@ import { UserService } from '../../user/services/user.service';
 import { PromptTemplateService } from '../../prompt-template/prompt-template.service';
 import { LLMMessageRole, ILLMMessage } from '../../common/interfaces/llm-provider.interface';
 import { MessageAnalysis, MessageAnalysisContext } from '../interfaces/analysis.interfaces';
+import { BaseService } from '../../common/base/base.service';
 
 @Injectable()
-export class MessageAnalysisService {
+export class MessageAnalysisService extends BaseService {
   private readonly ANALYSIS_VERSION = '2.0.0';
 
   constructor(
@@ -17,8 +18,10 @@ export class MessageAnalysisService {
     private readonly needsService: NeedsService,
     private readonly userService: UserService,
     private readonly promptTemplateService: PromptTemplateService,
-    private readonly logService: LogService,
-  ) {}
+    logService: LogService,
+  ) {
+    super(logService);
+  }
 
   /**
    * Основной метод анализа сообщения пользователя
@@ -30,7 +33,7 @@ export class MessageAnalysisService {
     recentMessages: string[] = [],
   ): Promise<MessageAnalysis> {
     try {
-      this.logService.log('Начинаем анализ сообщения', {
+      this.logInfo('Начинаем анализ сообщения', {
         characterId: character.id,
         userId,
         messageLength: message.length,
@@ -42,7 +45,7 @@ export class MessageAnalysisService {
 
       return analysis;
     } catch (error) {
-      this.logService.error('Ошибка при анализе сообщения', {
+      this.logError('Ошибка при анализе сообщения', {
         error: error instanceof Error ? error.message : 'Unknown error',
         characterId: character.id,
         userId,
@@ -89,7 +92,7 @@ export class MessageAnalysisService {
         },
       };
     } catch (error) {
-      this.logService.error('Ошибка построения контекста анализа', {
+      this.logError('Ошибка построения контекста анализа', {
         error: error instanceof Error ? error.message : 'Unknown error',
         characterId: character.id,
         userId,
@@ -153,7 +156,7 @@ export class MessageAnalysisService {
         },
       };
     } catch (error) {
-      this.logService.error('Ошибка при LLM анализе, используем fallback', {
+      this.logError('Ошибка при LLM анализе, используем fallback', {
         error: error instanceof Error ? error.message : 'Unknown error',
         message: message.substring(0, 100),
       });
@@ -276,7 +279,7 @@ export class MessageAnalysisService {
         },
       };
     } catch (error) {
-      this.logService.error('Ошибка парсинга ответа LLM', {
+      this.logError('Ошибка парсинга ответа LLM', {
         error: error instanceof Error ? error.message : 'Unknown error',
         response: JSON.stringify(llmResponse).substring(0, 200),
       });

@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Character } from '../entities/character.entity';
 // LLM импорты удалены - требуется доработка интеграции с LLM согласно ТЗ
-import { withErrorHandling } from '../../common/utils/error-handling/error-handling.utils';
+import { BaseService } from '../../common/base/base.service';
 import { LogService } from '../../logging/log.service';
 
 /**
@@ -102,9 +102,7 @@ export interface CompetenceCheck {
  * Сервис управления специализацией и ограничениями персонажей согласно ТЗ ОГРАНИЧЕНИЯ
  */
 @Injectable()
-export class SpecializationService {
-  private readonly logService: LogService;
-
+export class SpecializationService extends BaseService {
   // Кэш профилей специализации
   private specializationProfiles: Map<number, SpecializationProfile> = new Map();
 
@@ -113,7 +111,7 @@ export class SpecializationService {
     private characterRepository: Repository<Character>,
     logService: LogService,
   ) {
-    this.logService = logService.setContext(SpecializationService.name);
+    super(logService);
   }
 
   /**
@@ -125,30 +123,28 @@ export class SpecializationService {
       return this.specializationProfiles.get(characterId);
     }
 
-    return withErrorHandling(
-      async () => {
-        const character = await this.characterRepository.findOne({
-          where: { id: characterId },
-          relations: ['personality'],
-        });
+    return this.withErrorHandling('получении профиля специализации', async () => {
+      const character = await this.characterRepository.findOne({
+        where: { id: characterId },
+        relations: ['personality'],
+      });
 
-        if (!character) {
-          throw new Error(`Персонаж с ID ${characterId} не найден`);
-        }
+      if (!character) {
+        // Если персонаж не найден, возвращаем дефолтный профиль
+        const defaultProfile = this.getDefaultProfile(characterId);
+        this.specializationProfiles.set(characterId, defaultProfile);
+        this.logDebug(`Персонаж с ID ${characterId} не найден, используется дефолтный профиль`);
+        return defaultProfile;
+      }
 
-        // Создаем профиль на основе личности персонажа
-        const profile = this.createSpecializationProfile(character);
+      // Создаем профиль на основе личности персонажа
+      const profile = this.createSpecializationProfile(character);
 
-        // Сохраняем в кэш
-        this.specializationProfiles.set(characterId, profile);
+      // Сохраняем в кэш
+      this.specializationProfiles.set(characterId, profile);
 
-        return profile;
-      },
-      'получении профиля специализации',
-      this.logService,
-      { characterId },
-      this.getDefaultProfile(characterId),
-    );
+      return profile;
+    });
   }
 
   /**
@@ -159,59 +155,45 @@ export class SpecializationService {
     userQuery: string,
     context: KnowledgeContext,
   ): Promise<CompetenceCheck> {
-    return withErrorHandling(
-      async () => {
-        const profile = await this.getSpecializationProfile(characterId);
+    return this.withErrorHandling('проверке компетенции персонажа', async () => {
+      const profile = await this.getSpecializationProfile(characterId);
 
-        // Определяем область знаний запроса
-        const domain = this.classifyQueryDomain(userQuery);
+      // Определяем область знаний запроса
+      const domain = this.classifyQueryDomain(userQuery);
 
-        // Получаем уровень компетенции персонажа в этой области
-        const characterCompetence = profile.competenceLevels[domain] || CompetenceLevel.BASIC;
+      // Получаем уровень компетенции персонажа в этой области
+      const characterCompetence = profile.competenceLevels[domain] || CompetenceLevel.BASIC;
 
-        // Анализируем контекст
-        const contextualFactors = this.analyzeContext(context, domain, characterCompetence);
+      // Анализируем контекст
+      const contextualFactors = this.analyzeContext(context, domain, characterCompetence);
 
-        // Определяем стратегию ответа
-        const responseStrategy = this.determineResponseStrategy(
-          characterCompetence,
-          domain,
-          context,
-          profile,
-        );
+      // Определяем стратегию ответа
+      const responseStrategy = this.determineResponseStrategy(
+        characterCompetence,
+        domain,
+        context,
+        profile,
+      );
 
-        // Генерируем предлагаемый ответ
-        const suggestedResponse = `Ответ должен генерироваться через LLM согласно ТЗ. Стратегия: ${responseStrategy}, Домен: ${domain}`;
+      // Генерируем предлагаемый ответ
+      const suggestedResponse = `Ответ должен генерироваться через LLM согласно ТЗ. Стратегия: ${responseStrategy}, Домен: ${domain}`;
 
-        const result: CompetenceCheck = {
-          domain,
-          userQuery,
-          characterCompetence,
-          shouldRespond: responseStrategy !== 'admit_ignorance',
-          responseStrategy,
-          suggestedResponse,
-          contextualFactors,
-        };
-
-        this.logService.debug(
-          `Проверка компетенции персонажа ${characterId}: область ${domain}, уровень ${characterCompetence}, стратегия ${responseStrategy}`,
-        );
-
-        return result;
-      },
-      'проверке компетенции персонажа',
-      this.logService,
-      { characterId, userQuery, domain: this.classifyQueryDomain(userQuery) },
-      {
-        domain: KnowledgeDomain.GENERAL_CONVERSATION,
+      const result: CompetenceCheck = {
+        domain,
         userQuery,
-        characterCompetence: CompetenceLevel.BASIC,
-        shouldRespond: true,
-        responseStrategy: 'answer',
-        suggestedResponse: 'Могу поговорить об этом, но не претендую на экспертность.',
-        contextualFactors: [],
-      },
-    );
+        characterCompetence,
+        shouldRespond: responseStrategy !== 'admit_ignorance',
+        responseStrategy,
+        suggestedResponse,
+        contextualFactors,
+      };
+
+      this.logService.debug(
+        `Проверка компетенции персонажа ${characterId}: область ${domain}, уровень ${characterCompetence}, стратегия ${responseStrategy}`,
+      );
+
+      return result;
+    });
   }
 
   /**
@@ -595,27 +577,23 @@ export class SpecializationService {
     characterId: number,
     updates: Partial<SpecializationProfile>,
   ): Promise<SpecializationProfile> {
-    return withErrorHandling(
-      async () => {
-        const currentProfile = await this.getSpecializationProfile(characterId);
+    return this.withErrorHandling('обновлении профиля специализации', async () => {
+      const currentProfile = await this.getSpecializationProfile(characterId);
 
-        const updatedProfile: SpecializationProfile = {
-          ...currentProfile,
-          ...updates,
-        };
+      // Объединяем текущий профиль с обновлениями
+      const updatedProfile: SpecializationProfile = {
+        ...currentProfile,
+        ...updates,
+        characterId, // Убеждаемся, что ID не изменился
+      };
 
-        // Обновляем кэш
-        this.specializationProfiles.set(characterId, updatedProfile);
+      // Обновляем кэш
+      this.specializationProfiles.set(characterId, updatedProfile);
 
-        this.logService.debug(`Обновлен профиль специализации персонажа ${characterId}`);
+      this.logService.debug(`Профиль специализации персонажа ${characterId} обновлен`);
 
-        return updatedProfile;
-      },
-      'обновлении профиля специализации',
-      this.logService,
-      { characterId, updates },
-      this.getDefaultProfile(characterId),
-    );
+      return updatedProfile;
+    });
   }
 
   /**

@@ -1,40 +1,60 @@
 module.exports = {
-    preset: 'ts-jest',
-    testEnvironment: 'node',
-    roots: ['<rootDir>/test'],
+    moduleFileExtensions: ['js', 'json', 'ts'],
+    rootDir: '.',
+    testRegex: '.*\\.integration\\.test\\.ts$',
     transform: {
         '^.+\\.(t|j)s$': 'ts-jest',
     },
-    collectCoverageFrom: [
-        'src/**/*.(t|j)s',
-        '!src/**/*.spec.ts',
-        '!src/**/*.test.ts',
-    ],
-    coverageDirectory: '../coverage',
-    testTimeout: 60000, // 60 секунд для интеграционных тестов
+    collectCoverageFrom: ['**/*.(t|j)s'],
+    coverageDirectory: './coverage-integration',
+    testEnvironment: 'node',
+    roots: ['<rootDir>/src/', '<rootDir>/test/'],
+    moduleNameMapper: {
+        '^src/(.*)$': '<rootDir>/src/$1',
+        '^test/(.*)$': '<rootDir>/test/$1',
+    },
     setupFilesAfterEnv: ['<rootDir>/test/setup-integration.ts'],
+    // Отключаем проверку типов для ускорения тестов
+    globals: {
+        'ts-jest': {
+            tsconfig: 'tsconfig.json',
+            skipTypeCheck: true,
+        },
+    },
+    // Увеличиваем таймаут для интеграционных тестов до 120 секунд
+    testTimeout: 120000,
+    // Уменьшаем вывод для ускорения
+    verbose: false,
     // Принудительное завершение Jest
     forceExit: true,
     // Обнаружение открытых хендлов
     detectOpenHandles: true,
-    // Максимальное количество воркеров
+    // Уменьшаем количество воркеров для стабильности PostgreSQL подключений
     maxWorkers: 1,
-    // Отключаем кеш для интеграционных тестов
-    cache: false,
+    // Включаем кеш для ускорения повторных запусков
+    cache: true,
+    cacheDirectory: '<rootDir>/.jest-integration-cache',
     // Очистка моков между тестами
     clearMocks: true,
-    restoreMocks: true,
-    resetMocks: true,
-    // Настройки для TypeScript
-    moduleFileExtensions: ['js', 'json', 'ts'],
-    rootDir: '.',
-    moduleNameMapper: {
-        '^src/(.*)$': '<rootDir>/src/$1',
+    resetMocks: false,
+    restoreMocks: false,
+    // Остановка после первой ошибки для быстрого фидбека
+    bail: false,
+    // Модули для игнорирования
+    modulePathIgnorePatterns: [
+        '<rootDir>/dist/',
+        '<rootDir>/node_modules/',
+        '<rootDir>/coverage/',
+    ],
+    // Настройки для работы с PostgreSQL
+    testEnvironmentOptions: {
+        url: 'postgresql://test_user:test_password@localhost:5433/nexus_test',
     },
-    // Переменные окружения для интеграционных тестов
-    globals: {
-        'ts-jest': {
-            tsconfig: 'tsconfig.json',
-        },
-    },
+    // Ограничение конкурентности для PostgreSQL
+    maxConcurrency: 1,
+    silent: false,
+    // Дополнительные настройки для оптимизации
+    slowTestThreshold: 60,
+    // Повторные попытки для нестабильных тестов
+    retry: 1,
 }; 

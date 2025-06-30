@@ -8,17 +8,20 @@ import { Need } from '../entities/need.entity';
 import { Character } from '../entities/character.entity';
 import { INeedsService, INeed, INeedUpdate } from '../interfaces/needs.interfaces';
 import { CharacterNeedType } from '../enums/character-need-type.enum';
+import { BaseService } from '../../common/base/base.service';
 
 @Injectable()
-export class NeedsService implements INeedsService {
+export class NeedsService extends BaseService implements INeedsService {
   constructor(
     @InjectRepository(Need)
     private readonly needRepository: Repository<Need>,
     @InjectRepository(Character)
     private readonly characterRepository: Repository<Character>,
     private readonly eventEmitter: EventEmitter2,
-    private readonly logService: LogService,
-  ) {}
+    logService: LogService,
+  ) {
+    super(logService);
+  }
 
   /**
    * Обновляет потребность персонажа
@@ -30,7 +33,7 @@ export class NeedsService implements INeedsService {
       });
 
       if (!need) {
-        this.logService.warn(`Потребность ${update.type} не найдена для персонажа ${characterId}`);
+        this.logWarning(`Потребность ${update.type} не найдена для персонажа ${characterId}`);
         throw new Error(`Потребность ${update.type} не найдена для персонажа ${characterId}`);
       }
 
@@ -49,13 +52,13 @@ export class NeedsService implements INeedsService {
         reason: update.reason,
       });
 
-      this.logService.log(
+      this.logInfo(
         `Обновлена потребность ${update.type} для персонажа ${characterId}: ${oldValue} -> ${need.currentValue} (${update.reason})`,
       );
 
       return this.mapToInterface(need);
     } catch (error) {
-      this.logService.error('Ошибка обновления потребности', {
+      this.logError('Ошибка обновления потребности', {
         characterId,
         update,
         error: error instanceof Error ? error.message : String(error),
@@ -76,7 +79,7 @@ export class NeedsService implements INeedsService {
 
       return needs.map(need => this.mapToInterface(need));
     } catch (error) {
-      this.logService.error('Ошибка получения потребностей персонажа', {
+      this.logError('Ошибка получения потребностей персонажа', {
         characterId,
         error: error instanceof Error ? error.message : String(error),
       });
@@ -96,7 +99,7 @@ export class NeedsService implements INeedsService {
 
       return needs.map(need => this.mapToInterface(need));
     } catch (error) {
-      this.logService.error('Ошибка получения активных потребностей', {
+      this.logError('Ошибка получения активных потребностей', {
         characterId,
         error: error instanceof Error ? error.message : String(error),
       });
@@ -148,14 +151,14 @@ export class NeedsService implements INeedsService {
       }
 
       if (updatedNeeds.length > 0) {
-        this.logService.log(
+        this.logInfo(
           `Обработан рост потребностей для персонажа ${characterId}: ${updatedNeeds.length} потребностей обновлено`,
         );
       }
 
       return updatedNeeds;
     } catch (error) {
-      this.logService.error('Ошибка обработки роста потребностей', {
+      this.logError('Ошибка обработки роста потребностей', {
         characterId,
         error: error instanceof Error ? error.message : String(error),
       });
@@ -173,9 +176,7 @@ export class NeedsService implements INeedsService {
       });
 
       if (!need) {
-        this.logService.warn(
-          `Потребность ${needType} не найдена для сброса у персонажа ${characterId}`,
-        );
+        this.logWarning(`Потребность ${needType} не найдена для сброса у персонажа ${characterId}`);
         return;
       }
 
@@ -192,11 +193,11 @@ export class NeedsService implements INeedsService {
         newValue: need.currentValue,
       });
 
-      this.logService.log(
+      this.logInfo(
         `Сброшена потребность ${needType} для персонажа ${characterId}: ${oldValue} -> 0`,
       );
     } catch (error) {
-      this.logService.error('Ошибка сброса потребности', {
+      this.logError('Ошибка сброса потребности', {
         characterId,
         needType,
         error: error instanceof Error ? error.message : String(error),
@@ -238,13 +239,13 @@ export class NeedsService implements INeedsService {
         createdNeeds.push(savedNeed);
       }
 
-      this.logService.log(
+      this.logInfo(
         `Созданы базовые потребности для персонажа ${characterId}: ${createdNeeds.length} потребностей`,
       );
 
       return createdNeeds.map(need => this.mapToInterface(need));
     } catch (error) {
-      this.logService.error('Ошибка создания базовых потребностей', {
+      this.logError('Ошибка создания базовых потребностей', {
         characterId,
         error: error instanceof Error ? error.message : String(error),
       });
@@ -263,23 +264,21 @@ export class NeedsService implements INeedsService {
         select: ['id'],
       });
 
-      this.logService.log(
-        `Запуск фонового обновления потребностей для ${characters.length} персонажей`,
-      );
+      this.logInfo(`Запуск фонового обновления потребностей для ${characters.length} персонажей`);
 
       for (const character of characters) {
         try {
           await this.processNeedsGrowth(character.id);
         } catch (error) {
-          this.logService.error(`Ошибка обновления потребностей для персонажа ${character.id}`, {
+          this.logError(`Ошибка обновления потребностей для персонажа ${character.id}`, {
             error: error instanceof Error ? error.message : String(error),
           });
         }
       }
 
-      this.logService.log('Завершено фоновое обновление потребностей всех персонажей');
+      this.logInfo('Завершено фоновое обновление потребностей всех персонажей');
     } catch (error) {
-      this.logService.error('Ошибка фонового обновления потребностей', {
+      this.logError('Ошибка фонового обновления потребностей', {
         error: error instanceof Error ? error.message : String(error),
       });
     }
@@ -353,7 +352,7 @@ export class NeedsService implements INeedsService {
 
       return this.mapToInterface(need);
     } catch (error) {
-      this.logService.error('Ошибка получения потребности по типу', {
+      this.logError('Ошибка получения потребности по типу', {
         characterId,
         type,
         error: error instanceof Error ? error.message : String(error),
@@ -381,7 +380,7 @@ export class NeedsService implements INeedsService {
       const unfulfilled = needs.filter(need => need.currentValue >= need.threshold);
       return unfulfilled.map(need => this.mapToInterface(need));
     } catch (error) {
-      this.logService.error('Ошибка получения неудовлетворенных потребностей', {
+      this.logError('Ошибка получения неудовлетворенных потребностей', {
         characterId,
         error: error instanceof Error ? error.message : String(error),
       });

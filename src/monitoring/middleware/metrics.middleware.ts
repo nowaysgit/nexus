@@ -2,6 +2,7 @@ import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { MonitoringService } from '../monitoring.service';
 import { LogService } from '../../logging/log.service';
+import { getErrorMessage } from '../../common/utils/error.utils';
 
 /**
  * Middleware для сбора метрик HTTP-запросов
@@ -35,7 +36,7 @@ export class MetricsMiddleware implements NestMiddleware {
           },
         );
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessage = getErrorMessage(error);
         const errorStack = error instanceof Error ? error.stack : undefined;
 
         this.logService.error(`Ошибка при сборе метрик запроса: ${errorMessage}`, errorStack);

@@ -5,6 +5,7 @@ import {
   MessageContext,
   MessageProcessingResult,
 } from '../common/interfaces/message-processor.interface';
+import { getErrorMessage } from '../common/utils/error.utils';
 
 /**
  * Статус сообщения в очереди
@@ -182,7 +183,7 @@ export class MessageQueueService implements OnModuleDestroy {
           this.removeMessage(messageId);
           resolve(result);
         } else if (message.status === MessageQueueStatus.FAILED) {
-          const error = message.error || new Error('Неизвестная ошибка при обработке сообщения');
+          const error = message.error || new Error(getErrorMessage(message.error));
           // Удаляем сообщение только после получения ошибки
           this.removeMessage(messageId);
           reject(error);
@@ -244,7 +245,7 @@ export class MessageQueueService implements OnModuleDestroy {
 
     const processQueueSafely = () => {
       this.processQueue().catch(error => {
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessage = getErrorMessage(error);
         this.logService.error('Ошибка при обработке очереди', {
           error: errorMessage,
         });
@@ -339,7 +340,7 @@ export class MessageQueueService implements OnModuleDestroy {
    * Обрабатывает неудачное выполнение сообщения
    */
   private handleMessageFailure<T>(message: QueuedMessage<T>, error: unknown): void {
-    const errorObj = error instanceof Error ? error : new Error(JSON.stringify(error));
+    const errorObj = error instanceof Error ? error : new Error(getErrorMessage(error));
 
     this.logService.error('Ошибка при обработке сообщения', {
       messageId: message.id,

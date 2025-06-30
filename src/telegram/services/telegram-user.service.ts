@@ -12,6 +12,7 @@ import {
   DEFAULT_CHARACTER_SETTINGS,
 } from '../interfaces/character-settings.interface';
 import { TelegramCharacterSettings } from '../entities/character-settings.entity';
+import { getErrorMessage } from '../../common/utils/error.utils';
 
 /**
  * Интерфейс настроек пользователя
@@ -126,7 +127,7 @@ export class TelegramUserService {
       };
     } catch (error) {
       this.logService.error('Ошибка инициализации пользователя', {
-        error: error instanceof Error ? error.message : String(error),
+        error: getErrorMessage(error),
       });
       return {
         success: false,
@@ -149,7 +150,7 @@ export class TelegramUserService {
       return user ? user.isActive : false;
     } catch (error) {
       this.logService.error('Ошибка проверки доступа пользователя', {
-        error: error instanceof Error ? error.message : String(error),
+        error: getErrorMessage(error),
       });
       return false;
     }
@@ -179,7 +180,7 @@ export class TelegramUserService {
       };
     } catch (error) {
       this.logService.error('Ошибка получения статистики пользователя', {
-        error: error instanceof Error ? error.message : String(error),
+        error: getErrorMessage(error),
       });
       return null;
     }
@@ -208,7 +209,7 @@ export class TelegramUserService {
       };
     } catch (error) {
       this.logService.error('Ошибка получения настроек пользователя', {
-        error: error instanceof Error ? error.message : String(error),
+        error: getErrorMessage(error),
       });
       return null;
     }
@@ -246,7 +247,7 @@ export class TelegramUserService {
       return true;
     } catch (error) {
       this.logService.error('Ошибка обновления настроек пользователя', {
-        error: error instanceof Error ? error.message : String(error),
+        error: getErrorMessage(error),
       });
       return false;
     }
@@ -272,7 +273,7 @@ export class TelegramUserService {
       });
     } catch (error) {
       this.logService.error('Ошибка переключения уведомлений', {
-        error: error instanceof Error ? error.message : String(error),
+        error: getErrorMessage(error),
       });
       return false;
     }
@@ -291,7 +292,7 @@ export class TelegramUserService {
       });
     } catch (error) {
       this.logService.error('Ошибка переключения автодействий', {
-        error: error instanceof Error ? error.message : String(error),
+        error: getErrorMessage(error),
       });
       return false;
     }
@@ -325,7 +326,7 @@ export class TelegramUserService {
       return false;
     } catch (error) {
       this.logService.error('Ошибка при проверке доступа', {
-        error: error instanceof Error ? error.message : String(error),
+        error: getErrorMessage(error),
       });
       await ctx.reply('Произошла ошибка при проверке доступа. Попробуйте позже.');
       return false;
@@ -393,7 +394,7 @@ export class TelegramUserService {
       return true;
     } catch (error) {
       this.logService.error('Ошибка при валидации ключа', {
-        error: error instanceof Error ? error.message : String(error),
+        error: getErrorMessage(error),
       });
       await ctx.reply('Произошла ошибка при проверке ключа. Попробуйте позже.');
       return false;
@@ -423,7 +424,7 @@ export class TelegramUserService {
 
       return await this.accessKeyRepository.save(newKey);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
+      const errorMessage = getErrorMessage(error);
       this.logService.error(`Ошибка при генерации ключа: ${errorMessage}`);
       throw new Error('Не удалось сгенерировать ключ доступа');
     }
@@ -446,7 +447,7 @@ export class TelegramUserService {
       await this.accessKeyRepository.save(key);
       return true;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка';
+      const errorMessage = getErrorMessage(error);
       this.logService.error(`Ошибка при деактивации ключа: ${errorMessage}`);
       return false;
     }
@@ -542,7 +543,7 @@ export class TelegramUserService {
       return true;
     } catch (error) {
       this.logService.error('Ошибка сохранения настроек персонажа', {
-        error: error instanceof Error ? error.message : String(error),
+        error: getErrorMessage(error),
       });
       return false;
     }
@@ -561,7 +562,7 @@ export class TelegramUserService {
       return await this.saveCharacterSettings(settings);
     } catch (error) {
       this.logService.error('Ошибка переключения автодействий персонажа', {
-        error: error instanceof Error ? error.message : String(error),
+        error: getErrorMessage(error),
       });
       return false;
     }
@@ -580,7 +581,7 @@ export class TelegramUserService {
       return await this.saveCharacterSettings(settings);
     } catch (error) {
       this.logService.error('Ошибка переключения уведомлений персонажа', {
-        error: error instanceof Error ? error.message : String(error),
+        error: getErrorMessage(error),
       });
       return false;
     }
@@ -599,7 +600,7 @@ export class TelegramUserService {
       return await this.saveCharacterSettings(settings);
     } catch (error) {
       this.logService.error('Ошибка обновления типа уведомлений', {
-        error: error instanceof Error ? error.message : String(error),
+        error: getErrorMessage(error),
       });
       return false;
     }
@@ -618,7 +619,7 @@ export class TelegramUserService {
       return await this.saveCharacterSettings(settings);
     } catch (error) {
       this.logService.error('Ошибка обновления формата уведомлений', {
-        error: error instanceof Error ? error.message : String(error),
+        error: getErrorMessage(error),
       });
       return false;
     }
@@ -637,7 +638,7 @@ export class TelegramUserService {
       return await this.saveCharacterSettings(settings);
     } catch (error) {
       this.logService.error('Ошибка обновления частоты уведомлений', {
-        error: error instanceof Error ? error.message : String(error),
+        error: getErrorMessage(error),
       });
       return false;
     }
@@ -653,7 +654,7 @@ export class TelegramUserService {
       return await this.saveCharacterSettings(settings);
     } catch (error) {
       this.logService.error('Ошибка обновления лимита действий', {
-        error: error instanceof Error ? error.message : String(error),
+        error: getErrorMessage(error),
       });
       return false;
     }

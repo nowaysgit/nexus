@@ -1,14 +1,11 @@
 import { createTest, createTestSuite, TestConfigType } from '../../lib/tester';
 import { LLMService } from '../../src/llm/services/llm.service';
-import { LLMProviderManagerService } from '../../src/llm/services/llm-provider-manager.service';
-import { LogService } from '../../src/logging/log.service';
 import {
   ILLMMessage,
   ILLMTextResult,
   ILLMJsonResult,
   LLMProviderType,
   LLMMessageRole,
-  ILLMProvider,
 } from '../../src/common/interfaces/llm-provider.interface';
 
 // Мок провайдера LLM
@@ -186,7 +183,11 @@ createTestSuite('LLMService Tests', () => {
       await llmService.switchProvider(targetProvider);
 
       expect(mockProviderManager.setActiveProvider).toHaveBeenCalledWith(targetProvider);
-      expect(mockLogService.log).toHaveBeenCalledWith(`Переключен на провайдер: ${targetProvider}`);
+      // Проверяем, что логирование происходит через BaseService (logInfo вместо log)
+      expect(mockLogService.log).toHaveBeenCalledWith(
+        `Переключен на провайдер: ${targetProvider}`,
+        undefined,
+      );
     },
   );
 

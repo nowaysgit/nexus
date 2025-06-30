@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ValidationResult, ValidationError } from '../../common/interfaces/validation.interface';
 import { MessageContext } from '../../common/interfaces/message-processor.interface';
 import { LogService } from '../../logging/log.service';
+import { getErrorMessage } from '../../common/utils/error.utils';
 
 export interface ValidationErrorHandlingOptions {
   /** Логировать ошибки валидации (по умолчанию true) */
@@ -243,7 +244,7 @@ export class ValidationErrorHandlerService {
    * @returns Результат валидации с ошибкой
    */
   handleValidationError(error: unknown): ValidationResult {
-    const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
+    const errorMessage = getErrorMessage(error);
     this.logService.error('Ошибка валидации', { error: errorMessage });
 
     return {
@@ -277,7 +278,7 @@ export class ValidationErrorHandlerService {
     source = 'api',
     logLevel: 'debug' | 'info' | 'warn' | 'error' = 'error',
   ): ValidationResult {
-    const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
+    const errorMessage = getErrorMessage(error);
 
     const logData = {
       error: errorMessage,
@@ -322,7 +323,7 @@ export class ValidationErrorHandlerService {
    * @returns Результат валидации с ошибкой формата
    */
   handleFormatValidationError(error: unknown, field = 'format', source = 'data'): ValidationResult {
-    const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
+    const errorMessage = getErrorMessage(error);
 
     this.logService.warn('Ошибка валидации формата данных', {
       error: errorMessage,
@@ -352,7 +353,7 @@ export class ValidationErrorHandlerService {
    * @returns Результат валидации с ошибкой БД
    */
   handleDatabaseValidationError(error: unknown, entity: string): ValidationResult {
-    const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
+    const errorMessage = getErrorMessage(error);
 
     this.logService.error('Ошибка валидации базы данных', {
       error: errorMessage,
@@ -382,7 +383,7 @@ export class ValidationErrorHandlerService {
    * @returns Результат валидации с ошибкой сообщения
    */
   handleMessageValidationError(error: unknown, messageId?: string): ValidationResult {
-    const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
+    const errorMessage = getErrorMessage(error);
 
     this.logService.warn('Ошибка валидации сообщения', {
       error: errorMessage,
@@ -417,7 +418,7 @@ export class ValidationErrorHandlerService {
     userId?: string | number,
     inputType = 'unknown',
   ): ValidationResult {
-    const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
+    const errorMessage = getErrorMessage(error);
 
     this.logService.warn('Ошибка валидации пользовательского ввода', {
       error: errorMessage,
@@ -448,7 +449,7 @@ export class ValidationErrorHandlerService {
    * @returns Результат валидации с ошибкой конфигурации
    */
   handleConfigValidationError(error: unknown, configKey?: string): ValidationResult {
-    const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
+    const errorMessage = getErrorMessage(error);
 
     this.logService.error('Ошибка валидации конфигурации', {
       error: errorMessage,

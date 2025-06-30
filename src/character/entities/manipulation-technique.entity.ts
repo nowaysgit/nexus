@@ -24,14 +24,14 @@ export class TechniqueExecution {
   id!: number;
 
   @Column({
-    type: 'enum',
+    type: 'varchar',
     enum: ManipulativeTechniqueType,
     comment: 'Тип манипулятивной техники',
   })
   techniqueType!: ManipulativeTechniqueType;
 
   @Column({
-    type: 'enum',
+    type: 'varchar',
     enum: TechniqueIntensity,
     default: TechniqueIntensity.MEDIUM,
     comment: 'Интенсивность применения техники',
@@ -39,7 +39,7 @@ export class TechniqueExecution {
   intensity!: TechniqueIntensity;
 
   @Column({
-    type: 'enum',
+    type: 'varchar',
     enum: TechniquePhase,
     default: TechniquePhase.DEVELOPMENT,
     comment: 'Фаза выполнения техники',
@@ -77,17 +77,17 @@ export class TechniqueExecution {
   sideEffects?: string[];
 
   @Column({
-    type: 'enum',
+    type: 'varchar',
     enum: ManipulativeTechniqueType,
     nullable: true,
     comment: 'Рекомендуемая следующая техника',
   })
   nextRecommendedTechnique?: ManipulativeTechniqueType;
 
-  @Column({ type: 'timestamp', comment: 'Время начала выполнения техники' })
+  @Column({ type: 'datetime', comment: 'Время начала выполнения техники' })
   startTime!: Date;
 
-  @Column({ type: 'timestamp', nullable: true, comment: 'Время завершения техники' })
+  @Column({ type: 'datetime', nullable: true, comment: 'Время завершения техники' })
   endTime?: Date;
 
   @Column({
@@ -103,10 +103,10 @@ export class TechniqueExecution {
     previousTechniques: ManipulativeTechniqueType[];
   };
 
-  @CreateDateColumn({ comment: 'Дата создания записи' })
+  @CreateDateColumn({ type: 'datetime', comment: 'Дата создания записи' })
   createdAt!: Date;
 
-  @UpdateDateColumn({ comment: 'Дата последнего обновления записи' })
+  @UpdateDateColumn({ type: 'datetime', comment: 'Дата последнего обновления записи' })
   updatedAt!: Date;
 
   // Связь с персонажем
@@ -229,16 +229,16 @@ export class UserManipulationProfile {
   immuneTechniques?: ManipulativeTechniqueType[];
 
   @Column({
-    type: 'timestamp',
+    type: 'datetime',
     default: () => 'CURRENT_TIMESTAMP',
     comment: 'Дата последнего обновления',
   })
   lastUpdate!: Date;
 
-  @CreateDateColumn({ comment: 'Дата создания профиля' })
+  @CreateDateColumn({ type: 'datetime', comment: 'Дата создания профиля' })
   createdAt!: Date;
 
-  @UpdateDateColumn({ comment: 'Дата последнего обновления профиля' })
+  @UpdateDateColumn({ type: 'datetime', comment: 'Дата последнего обновления профиля' })
   updatedAt!: Date;
 
   /**

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
 import { ErrorHandlingService } from '../utils/error-handling/error-handling.service';
 import { LogService } from '../../logging/log.service';
+import { getErrorMessage } from '../utils/error.utils';
 
 /**
  * Упрощенный HTTP-клиент с обработкой ошибок на основе axios
@@ -119,7 +120,7 @@ export class ErrorHandledHttpClient {
       });
       return response;
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage = getErrorMessage(error);
       const axiosError = error as { response?: { status?: number; statusText?: string } };
       const status = axiosError.response?.status;
       const statusText = axiosError.response?.statusText;

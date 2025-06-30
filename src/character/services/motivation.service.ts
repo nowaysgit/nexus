@@ -1,8 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
   CharacterMotivation,
   MotivationStatus,
@@ -13,9 +14,8 @@ import { Need } from '../entities/need.entity';
 import { LogService } from '../../logging/log.service';
 import { CharacterNeedType } from '../enums/character-need-type.enum';
 import { IMotivation } from '../interfaces/needs.interfaces';
-import { withErrorHandling } from '../../common/utils/error-handling/error-handling.utils';
+import { BaseService } from '../../common/base/base.service';
 import { CharacterService } from './character.service';
-import { CharacterService as CharacterServiceAlias } from './character.service';
 import { NeedsService } from './needs.service';
 import { CacheService } from '../../cache/cache.service';
 
@@ -24,7 +24,7 @@ import { CacheService } from '../../cache/cache.service';
  * Реализует систему ВОЛЯ согласно ТЗ
  */
 @Injectable()
-export class MotivationService {
+export class MotivationService extends BaseService {
   constructor(
     @InjectRepository(CharacterMotivation)
     private readonly motivationRepository: Repository<CharacterMotivation>,
@@ -33,12 +33,14 @@ export class MotivationService {
     @InjectRepository(Need)
     private readonly needRepository: Repository<Need>,
     private readonly configService: ConfigService,
-    private readonly logService: LogService,
+    logService: LogService,
     private readonly characterService: CharacterService,
     private readonly needsService: NeedsService,
     private readonly cacheService: CacheService,
+    private readonly eventEmitter: EventEmitter2,
   ) {
-    this.logService.log('MotivationService инициализирован');
+    super(logService);
+    this.logInfo('MotivationService инициализирован');
   }
 
   // === ОСНОВНЫЕ МЕТОДЫ УПРАВЛЕНИЯ МОТИВАЦИЯМИ ===
@@ -47,24 +49,18 @@ export class MotivationService {
    * Получение всех активных мотиваций персонажа, отсортированных по приоритету
    */
   async getCharacterMotivations(characterId: number): Promise<IMotivation[]> {
-    return withErrorHandling(
-      async () => {
-        const motivations = await this.motivationRepository.find({
-          where: {
-            characterId,
-            status: MotivationStatus.ACTIVE,
-          },
-          order: { priority: 'DESC', currentValue: 'DESC' },
-        });
+    return this.withErrorHandling('получении мотиваций персонажа', async () => {
+      const motivations = await this.motivationRepository.find({
+        where: {
+          characterId,
+          status: MotivationStatus.ACTIVE,
+        },
+        order: { priority: 'DESC', currentValue: 'DESC' },
+      });
 
-        // Преобразуем в интерфейс IMotivation для совместимости
-        return motivations.filter(m => m.isActive()).map(m => this.convertToMotivationInterface(m));
-      },
-      'получении мотиваций персонажа',
-      this.logService,
-      { characterId },
-      [],
-    );
+      // Преобразуем в интерфейс IMotivation для совместимости
+      return motivations.filter(m => m.isActive()).map(m => this.convertToMotivationInterface(m));
+    });
   }
 
   /**
@@ -83,38 +79,41 @@ export class MotivationService {
       expiresAt?: Date;
     },
   ): Promise<CharacterMotivation> {
-    return withErrorHandling(
-      async () => {
-        const motivationId = `${relatedNeed}_${characterId}_${Date.now()}`;
+    return this.withErrorHandling('создании мотивации', async () => {
+      const motivationId = `${relatedNeed}_${characterId}_${Date.now()}`;
 
-        const motivation = this.motivationRepository.create({
-          motivationId,
-          description,
-          priority,
-          relatedNeed,
-          characterId,
-          status: MotivationStatus.ACTIVE,
-          intensity: this.determineIntensity(priority),
-          thresholdValue: options?.thresholdValue || 70,
-          accumulationRate:
-            options?.accumulationRate || this.getDefaultAccumulationRate(relatedNeed),
-          resourceCost: options?.resourceCost || 10,
-          successProbability: options?.successProbability || 80,
-          expiresAt: options?.expiresAt,
-          currentValue: 0,
-          lastUpdated: new Date(),
-        });
+      const motivation = this.motivationRepository.create({
+        motivationId,
+        description,
+        priority,
+        relatedNeed,
+        characterId,
+        status: MotivationStatus.ACTIVE,
+        intensity: this.determineIntensity(priority),
+        thresholdValue: options?.thresholdValue || 70,
+        accumulationRate: options?.accumulationRate || this.getDefaultAccumulationRate(relatedNeed),
+        resourceCost: options?.resourceCost || 10,
+        successProbability: options?.successProbability || 80,
+        expiresAt: options?.expiresAt,
+        currentValue: 0,
+        lastUpdated: new Date(),
+      });
 
-        const savedMotivation = await this.motivationRepository.save(motivation);
-        this.logService.log(`Создана мотивация ${motivationId} для персонажа ${characterId}`);
+      const savedMotivation = await this.motivationRepository.save(motivation);
+      this.logInfo(`Создана мотивация ${motivationId} для персонажа ${characterId}`);
 
-        return savedMotivation;
-      },
-      'создании мотивации',
-      this.logService,
-      { characterId, relatedNeed, priority },
-      null as never,
-    );
+      // Генерируем событие создания мотивации
+      this.eventEmitter.emit('motivation.created', {
+        characterId,
+        motivationId,
+        needType: relatedNeed,
+        priority,
+        intensity: savedMotivation.intensity,
+        description,
+      });
+
+      return savedMotivation;
+    });
   }
 
   /**
@@ -124,31 +123,46 @@ export class MotivationService {
     motivationId: string,
     delta: number,
   ): Promise<CharacterMotivation | null> {
-    return withErrorHandling(
-      async () => {
-        const motivation = await this.motivationRepository.findOne({
-          where: { motivationId },
+    return this.withErrorHandling('обновлении значения мотивации', async () => {
+      const motivation = await this.motivationRepository.findOne({
+        where: { motivationId },
+      });
+
+      if (!motivation || motivation.status !== MotivationStatus.ACTIVE) {
+        return null;
+      }
+
+      motivation.currentValue += delta;
+      motivation.lastUpdated = new Date();
+
+      // Проверяем достижение порогового значения
+      if (motivation.currentValue >= motivation.thresholdValue) {
+        this.logInfo(`Мотивация ${motivationId} достигла порогового значения`);
+
+        // Генерируем событие достижения порога мотивации
+        this.eventEmitter.emit('motivation.threshold_reached', {
+          characterId: motivation.characterId,
+          motivationId,
+          needType: motivation.relatedNeed,
+          currentValue: motivation.currentValue,
+          thresholdValue: motivation.thresholdValue,
+          intensity: motivation.intensity,
         });
+      }
 
-        if (!motivation || motivation.status !== MotivationStatus.ACTIVE) {
-          return null;
-        }
+      const updatedMotivation = await this.motivationRepository.save(motivation);
 
-        motivation.currentValue += delta;
-        motivation.lastUpdated = new Date();
+      // Генерируем событие обновления мотивации
+      this.eventEmitter.emit('motivation.updated', {
+        characterId: motivation.characterId,
+        motivationId,
+        needType: motivation.relatedNeed,
+        currentValue: motivation.currentValue,
+        delta,
+      });
 
-        // Проверяем достижение порогового значения
-        if (motivation.currentValue >= motivation.thresholdValue) {
-          this.logService.log(`Мотивация ${motivationId} достигла порогового значения`);
-        }
-
-        return await this.motivationRepository.save(motivation);
-      },
-      'обновлении значения мотивации',
-      this.logService,
-      { motivationId, delta },
-      null,
-    );
+      return updatedMotivation;
+    });
   }
 
   /**
@@ -156,110 +170,87 @@ export class MotivationService {
    */
   async executeMotivationAction(
     motivationId: string,
-    context?: Record<string, unknown>,
+    _context?: Record<string, unknown>,
   ): Promise<{
     success: boolean;
     result: 'success' | 'failure' | 'blocked';
     reward?: Record<string, unknown>;
   }> {
-    return withErrorHandling(
-      async () => {
-        const motivation = await this.motivationRepository.findOne({
-          where: { motivationId },
-        });
+    return this.withErrorHandling('выполнении действия по мотивации', async () => {
+      const motivation = await this.motivationRepository.findOne({
+        where: { motivationId },
+      });
 
-        if (!motivation || !motivation.isActive()) {
-          return { success: false, result: 'blocked' };
-        }
+      if (!motivation || motivation.status !== MotivationStatus.ACTIVE) {
+        return { success: false, result: 'blocked' };
+      }
 
-        // Вычисляем вероятность успеха с учетом обратной связи
-        const adjustedProbability =
-          motivation.successProbability * (motivation.feedback?.adjustmentFactor || 1.0);
+      // Проверяем вероятность успеха
+      const success = Math.random() * 100 < motivation.successProbability;
 
-        const success = Math.random() * 100 <= adjustedProbability;
-        const result = success ? 'success' : 'failure';
+      if (success) {
+        motivation.status = MotivationStatus.FULFILLED;
+        motivation.lastUpdated = new Date();
+        await this.motivationRepository.save(motivation);
 
-        // Обновляем обратную связь
-        motivation.updateFeedback(result);
-
-        if (success) {
-          // Сбрасываем базовый параметр при успехе
-          motivation.currentValue = 0;
-          motivation.status = MotivationStatus.FULFILLED;
-
-          this.logService.log(`Мотивация ${motivationId} успешно выполнена`);
-
-          return {
-            success: true,
-            result: 'success',
-            reward: motivation.potentialReward,
-          };
-        } else {
-          this.logService.log(`Мотивация ${motivationId} не была выполнена`);
-
-          return { success: false, result: 'failure' };
-        }
-      },
-      'выполнении действия по мотивации',
-      this.logService,
-      { motivationId, context },
-      { success: false, result: 'blocked' },
-    );
+        return {
+          success: true,
+          result: 'success',
+          reward: { needType: motivation.relatedNeed, value: motivation.currentValue },
+        };
+      } else {
+        return { success: false, result: 'failure' };
+      }
+    });
   }
 
   /**
    * Генерация мотиваций на основе текущих потребностей
    */
   async generateMotivationsFromNeeds(characterId: number): Promise<CharacterMotivation[]> {
-    return withErrorHandling(
-      async () => {
-        const character = await this.characterRepository.findOne({
-          where: { id: characterId },
-          relations: ['needs'],
-        });
+    return this.withErrorHandling('генерации мотиваций из потребностей', async () => {
+      const character = await this.characterRepository.findOne({
+        where: { id: characterId },
+        relations: ['needs'],
+      });
 
-        if (!character || !character.needs) {
-          return [];
-        }
+      if (!character || !character.needs) {
+        return [];
+      }
 
-        const newMotivations: CharacterMotivation[] = [];
-        const threshold = this.configService.get<number>('character.motivation.threshold', 70);
+      const newMotivations: CharacterMotivation[] = [];
+      const threshold = this.configService.get<number>('character.motivation.threshold', 70);
 
-        for (const need of character.needs) {
-          if (need.currentValue >= threshold) {
-            // Проверяем, нет ли уже активной мотивации для этой потребности
-            const existingMotivation = await this.motivationRepository.findOne({
-              where: {
-                characterId,
-                relatedNeed: need.type,
-                status: MotivationStatus.ACTIVE,
+      for (const need of character.needs) {
+        if (need.currentValue >= threshold) {
+          // Проверяем, нет ли уже активной мотивации для этой потребности
+          const existingMotivation = await this.motivationRepository.findOne({
+            where: {
+              characterId,
+              relatedNeed: need.type,
+              status: MotivationStatus.ACTIVE,
+            },
+          });
+
+          if (!existingMotivation) {
+            const motivation = await this.createMotivation(
+              characterId,
+              need.type,
+              this.generateMotivationDescription(need.type, need.currentValue),
+              this.calculatePriority(need),
+              {
+                thresholdValue: threshold,
+                accumulationRate: this.getDefaultAccumulationRate(need.type),
               },
-            });
+            );
 
-            if (!existingMotivation) {
-              const motivation = await this.createMotivation(
-                characterId,
-                need.type,
-                this.generateMotivationDescription(need.type, need.currentValue),
-                this.calculatePriority(need),
-                {
-                  thresholdValue: threshold,
-                  accumulationRate: this.getDefaultAccumulationRate(need.type),
-                },
-              );
-
-              newMotivations.push(motivation);
-            }
+            newMotivations.push(motivation);
           }
         }
+      }
 
-        return newMotivations;
-      },
-      'генерации мотиваций из потребностей',
-      this.logService,
-      { characterId },
-      [],
-    );
+      return newMotivations;
+    });
   }
 
   // === ФОНОВЫЕ ПРОЦЕССЫ ===
@@ -285,9 +276,9 @@ export class MotivationService {
         }
       }
 
-      this.logService.log(`Обновлено ${activeMotivations.length} мотиваций`);
+      this.logInfo(`Обновлено ${activeMotivations.length} мотиваций`);
     } catch (error) {
-      this.logService.error('Ошибка при фоновом обновлении мотиваций', {
+      this.logError('Ошибка при фоновом обновлении мотиваций', {
         error: error instanceof Error ? error.message : String(error),
       });
     }
@@ -306,9 +297,9 @@ export class MotivationService {
         .where('expiresAt IS NOT NULL AND expiresAt < :now', { now: new Date() })
         .execute();
 
-      this.logService.log(`Помечено как истёкшие ${expiredCount.affected} мотиваций`);
+      this.logInfo(`Помечено как истёкшие ${expiredCount.affected} мотиваций`);
     } catch (error) {
-      this.logService.error('Ошибка при очистке устаревших мотиваций', {
+      this.logError('Ошибка при очистке устаревших мотиваций', {
         error: error instanceof Error ? error.message : String(error),
       });
     }

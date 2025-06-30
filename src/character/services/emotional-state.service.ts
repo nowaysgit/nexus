@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Character } from '../entities/character.entity';
 import { EmotionalState } from '../entities/emotional-state';
-import { withErrorHandling } from '../../common/utils/error-handling/error-handling.utils';
+import { BaseService } from '../../common/base/base.service';
 import { LogService } from '../../logging/log.service';
 import { MessageAnalysis } from '../interfaces/analysis.interfaces';
 
@@ -66,9 +67,7 @@ export interface EmotionalManifestation {
  * Сервис для управления эмоциональным состоянием персонажа
  */
 @Injectable()
-export class EmotionalStateService {
-  private readonly logService: LogService;
-
+export class EmotionalStateService extends BaseService {
   // Кэш эмоциональных состояний по ID персонажа
   private emotionalStates: Map<number, EmotionalState> = new Map();
 
@@ -81,8 +80,9 @@ export class EmotionalStateService {
     @InjectRepository(Character)
     private characterRepository: Repository<Character>,
     logService: LogService,
+    private readonly eventEmitter: EventEmitter2,
   ) {
-    this.logService = logService.setContext(EmotionalStateService.name);
+    super(logService);
   }
 
   /**
@@ -94,30 +94,24 @@ export class EmotionalStateService {
       return this.emotionalStates.get(characterId);
     }
 
-    return withErrorHandling(
-      async () => {
-        // Дополнительная проверка в базе данных
-        const character = await this.characterRepository.findOneBy({ id: characterId });
-        if (!character) {
-          throw new Error(`Character with id ${characterId} not found`);
-        }
+    return this.withErrorHandling('получении эмоционального состояния персонажа', async () => {
+      // Дополнительная проверка в базе данных
+      const character = await this.characterRepository.findOne({ where: { id: characterId } });
+      if (!character) {
+        throw new Error(`Character with id ${characterId} not found`);
+      }
 
-        // Создаем базовое состояние
-        const defaultState: EmotionalState = {
-          primary: 'нейтральная',
-          intensity: 3,
-          secondary: '',
-          description: 'Спокойное, уравновешенное состояние',
-        };
+      // Создаем базовое состояние
+      const defaultState: EmotionalState = {
+        primary: 'нейтральная',
+        intensity: 3,
+        secondary: '',
+        description: 'Спокойное, уравновешенное состояние',
+      };
 
-        this.emotionalStates.set(characterId, defaultState);
-        return defaultState;
-      },
-      'получении эмоционального состояния персонажа',
-      this.logService,
-      { characterId },
-      this.getDefaultEmotionalState(),
-    );
+      this.emotionalStates.set(characterId, defaultState);
+      return defaultState;
+    });
   }
 
   /**
@@ -127,52 +121,55 @@ export class EmotionalStateService {
     characterId: number,
     analysisOrUpdate: MessageAnalysis | EmotionalUpdate,
   ): Promise<EmotionalState> {
-    return withErrorHandling(
-      async () => {
-        // Получаем текущее эмоциональное состояние
-        const currentState = await this.getEmotionalState(characterId);
+    return this.withErrorHandling('обновлении эмоционального состояния персонажа', async () => {
+      // Получаем текущее эмоциональное состояние
+      const currentState = await this.getEmotionalState(characterId);
 
-        // Проверяем, является ли объект EmotionalUpdate
-        if ('emotions' in analysisOrUpdate && 'source' in analysisOrUpdate) {
-          return this.updateFromEmotionalUpdate(characterId, currentState, analysisOrUpdate);
-        }
+      // Проверяем, является ли объект EmotionalUpdate
+      if ('emotions' in analysisOrUpdate && 'source' in analysisOrUpdate) {
+        return this.updateFromEmotionalUpdate(characterId, currentState, analysisOrUpdate);
+      }
 
-        // В противном случае это MessageAnalysis
-        const analysis = analysisOrUpdate;
+      // В противном случае это MessageAnalysis
+      const analysis = analysisOrUpdate;
 
-        // Используем эмоциональный анализ из нового формата
-        const emotionalAnalysis = analysis.emotionalAnalysis;
-        if (!emotionalAnalysis || emotionalAnalysis.userMood === 'neutral') {
-          return currentState;
-        }
+      // Используем эмоциональный анализ из нового формата
+      const emotionalAnalysis = analysis.emotionalAnalysis;
+      if (!emotionalAnalysis || emotionalAnalysis.userMood === 'neutral') {
+        return currentState;
+      }
 
-        // Разбираем эмоциональную реакцию из анализа
-        const emotion = this.parseEmotionalReaction(emotionalAnalysis.expectedEmotionalResponse);
+      // Разбираем эмоциональную реакцию из анализа
+      const emotion = this.parseEmotionalReaction(emotionalAnalysis.expectedEmotionalResponse);
 
-        // Рассчитываем интенсивность на основе срочности сообщения и эмоциональной интенсивности
-        const intensity = this.calculateNewIntensity(
-          currentState.intensity,
-          Math.round(analysis.urgency * 10), // конвертируем 0-1 в 0-10
-        );
+      // Рассчитываем интенсивность на основе срочности сообщения и эмоциональной интенсивности
+      const intensity = this.calculateNewIntensity(
+        currentState.intensity,
+        Math.round(analysis.urgency * 10), // конвертируем 0-1 в 0-10
+      );
 
-        // Формируем новое эмоциональное состояние
-        const newState: EmotionalState = {
-          primary: emotion.primary,
-          secondary: emotion.secondary?.[0] || '',
-          intensity,
-          description: this.generateEmotionalDescription(emotion.primary, intensity),
-        };
+      // Формируем новое эмоциональное состояние
+      const newState: EmotionalState = {
+        primary: emotion.primary,
+        secondary: emotion.secondary?.[0] || '',
+        intensity,
+        description: this.generateEmotionalDescription(emotion.primary, intensity),
+      };
 
-        // Сохраняем в кэш
-        this.emotionalStates.set(characterId, newState);
+      // Сохраняем в кэш
+      this.emotionalStates.set(characterId, newState);
 
-        return newState;
-      },
-      'обновлении эмоционального состояния персонажа',
-      this.logService,
-      { characterId, analysis: analysisOrUpdate },
-      this.emotionalStates.get(characterId) || this.getDefaultEmotionalState(),
-    );
+      // Генерируем событие изменения эмоционального состояния
+      this.eventEmitter.emit('emotional_state.changed', {
+        characterId,
+        oldState: currentState,
+        newState,
+        trigger: 'message_analysis',
+        source: 'MessageAnalysis',
+      });
+
+      return newState;
+    });
   }
 
   /**
@@ -224,46 +221,54 @@ export class EmotionalStateService {
     // Сохраняем в кэш
     this.emotionalStates.set(characterId, newState);
 
+    // Генерируем событие изменения эмоционального состояния
+    this.eventEmitter.emit('emotional_state.changed', {
+      characterId,
+      oldState: currentState,
+      newState,
+      trigger: 'direct_update',
+      source: update.source,
+      description: update.description,
+    });
+
     return newState;
   }
 
   /**
-   * Постепенно возвращает эмоциональное состояние к нейтральному
+   * Нормализует эмоциональное состояние персонажа к базовому уровню
    */
   async normalizeEmotionalState(characterId: number): Promise<EmotionalState> {
-    return withErrorHandling(
-      async () => {
-        const currentState = await this.getEmotionalState(characterId);
+    return this.withErrorHandling('нормализации эмоционального состояния персонажа', async () => {
+      const currentState = await this.getEmotionalState(characterId);
 
-        // Если текущая интенсивность низкая, возвращаем к нейтральному состоянию
-        if (currentState.intensity <= 2) {
-          const neutralState: EmotionalState = {
-            primary: 'нейтральная',
-            intensity: 1,
-            secondary: '',
-            description: 'Спокойное, уравновешенное состояние',
-          };
+      // Если состояние уже нейтральное, ничего не делаем
+      if (currentState.primary === 'нейтральная' && currentState.intensity <= 3) {
+        return currentState;
+      }
 
-          this.emotionalStates.set(characterId, neutralState);
-          return neutralState;
-        }
+      // Создаем нормализованное состояние
+      const normalizedState: EmotionalState = {
+        primary: 'нейтральная',
+        intensity: 3,
+        secondary: '',
+        description: 'Спокойное, уравновешенное состояние после нормализации',
+      };
 
-        // Иначе постепенно снижаем интенсивность
-        const newIntensity = Math.max(1, currentState.intensity - 1);
-        const newState: EmotionalState = {
-          ...currentState,
-          intensity: newIntensity,
-          description: this.generateEmotionalDescription(currentState.primary, newIntensity),
-        };
+      // Сохраняем в кэш
+      this.emotionalStates.set(characterId, normalizedState);
 
-        this.emotionalStates.set(characterId, newState);
-        return newState;
-      },
-      'нормализации эмоционального состояния',
-      this.logService,
-      { characterId },
-      this.getDefaultEmotionalState(),
-    );
+      // Очищаем активные эмоциональные воздействия
+      this.clearEmotionalImpacts(characterId);
+
+      // Генерируем событие нормализации
+      this.eventEmitter.emit('emotional_state.normalized', {
+        characterId,
+        oldState: currentState,
+        newState: normalizedState,
+      });
+
+      return normalizedState;
+    });
   }
 
   /**
@@ -339,37 +344,39 @@ export class EmotionalStateService {
     impact: EmotionalImpact,
     context: EmotionalContext,
   ): Promise<EmotionalState> {
-    return withErrorHandling(
+    return this.withErrorHandling(
+      'применении градуального эмоционального воздействия',
       async () => {
         // Сохраняем контекст
         this.emotionalContexts.set(characterId, context);
 
         // Добавляем воздействие к активным
-        const existingImpacts = this.activeEmotionalImpacts.get(characterId) || [];
-        existingImpacts.push(impact);
-        this.activeEmotionalImpacts.set(characterId, existingImpacts);
+        if (!this.activeEmotionalImpacts.has(characterId)) {
+          this.activeEmotionalImpacts.set(characterId, []);
+        }
+        this.activeEmotionalImpacts.get(characterId).push(impact);
 
-        // Создаем проявления эмоции в зависимости от контекста
-        const manifestations = this.generateContextualManifestations(impact, context);
-        impact.manifestations = manifestations;
+        // Генерируем контекстуальные проявления
+        impact.manifestations = this.generateContextualManifestations(impact, context);
 
-        // Применяем немедленное воздействие
-        const currentState = await this.getEmotionalState(characterId);
-        const newState = this.calculateEmotionalStateWithImpacts(characterId, currentState);
-
-        // Устанавливаем таймер для постепенного затухания
+        // Настраиваем таймер затухания
         this.setupEmotionalFadeTimer(characterId, impact);
 
-        this.logService.debug(
-          `Применено градуальное эмоциональное воздействие для персонажа ${characterId}: ${impact.emotionalType} (${impact.intensity}%)`,
-        );
+        // Пересчитываем эмоциональное состояние с учетом всех воздействий
+        const baseState = await this.getEmotionalState(characterId);
+        const newState = this.calculateEmotionalStateWithImpacts(characterId, baseState);
+
+        // Сохраняем новое состояние
+        this.emotionalStates.set(characterId, newState);
+
+        this.logDebug(`Применено эмоциональное воздействие для персонажа ${characterId}`, {
+          impact: impact.emotionalType,
+          intensity: impact.intensity,
+          duration: impact.duration,
+        });
 
         return newState;
       },
-      'применении градуального эмоционального воздействия',
-      this.logService,
-      { characterId, impactType: impact.emotionalType, intensity: impact.intensity },
-      this.getDefaultEmotionalState(),
     );
   }
 
@@ -627,7 +634,7 @@ export class EmotionalStateService {
             this.emotionalTimers.set(characterId, timers);
           }
 
-          this.logService.debug(
+          this.logDebug(
             `Эмоциональное воздействие ${impact.emotionalType} затухло для персонажа ${characterId}`,
           );
         } else {
@@ -706,6 +713,6 @@ export class EmotionalStateService {
     // Сбрасываем состояние к нейтральному
     this.emotionalStates.set(characterId, this.getDefaultEmotionalState());
 
-    this.logService.debug(`Очищены все эмоциональные воздействия для персонажа ${characterId}`);
+    this.logDebug(`Очищены все эмоциональные воздействия для персонажа ${characterId}`);
   }
 }

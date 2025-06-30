@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DeepPartial, FindOptionsWhere } from 'typeorm';
 import { Character } from '../entities/character.entity';
-import { withErrorHandling } from '../../common/utils/error-handling/error-handling.utils';
+import { BaseService } from '../../common/base/base.service';
 import { LogService } from '../../logging/log.service';
 import { CharacterArchetype } from '../enums/character-archetype.enum';
 
@@ -30,15 +30,15 @@ export interface PaginatedResult<T> {
  * Использует композицию вместо наследования для лучшей гибкости
  */
 @Injectable()
-export class CharacterService {
+export class CharacterService extends BaseService {
   private readonly entityName: string = 'Character';
 
   constructor(
     @InjectRepository(Character)
     private readonly repository: Repository<Character>,
-    private readonly logService: LogService,
+    logService: LogService,
   ) {
-    this.logService.setContext(CharacterService.name);
+    super(logService);
   }
 
   // Базовые CRUD операции через прямое использование repository
@@ -47,19 +47,13 @@ export class CharacterService {
    * Найти одну запись по ID
    */
   async findOne(id: number | string, relations: string[] = []): Promise<Character | null> {
-    return withErrorHandling(
-      async () => {
-        const character = await this.repository.findOne({
-          where: { id } as FindOptionsWhere<Character>,
-          relations,
-        });
-        return character;
-      },
-      'получении персонажа по ID',
-      this.logService,
-      { id, relations },
-      null,
-    );
+    return this.withErrorHandling('получении персонажа по ID', async () => {
+      const character = await this.repository.findOne({
+        where: { id } as FindOptionsWhere<Character>,
+        relations,
+      });
+      return character;
+    });
   }
 
   /**
@@ -73,64 +67,67 @@ export class CharacterService {
    * Создать новую запись
    */
   async create(data: DeepPartial<Character>): Promise<Character> {
-    return withErrorHandling(
-      async () => {
-        if (!data.archetype) {
-          data.archetype = CharacterArchetype.HERO;
-        }
+    return this.withErrorHandling('создании персонажа', async () => {
+      if (!data.archetype) {
+        data.archetype = CharacterArchetype.HERO;
+      }
 
-        // По умолчанию appearance не должен быть null из-за NOT NULL ограничения
-        if (!data.appearance) {
-          data.appearance = 'n/a';
-        }
+      // По умолчанию appearance не должен быть null из-за NOT NULL ограничения
+      if (!data.appearance) {
+        data.appearance = 'n/a';
+      }
 
-        const entity = this.repository.create(data);
-        return await this.repository.save(entity);
-      },
-      'создании персонажа',
-      this.logService,
-      { data },
-      null as never,
-    );
+      // Убеждаемся что userId правильно установлен
+      if (data.user && !data.userId) {
+        data.userId = data.user.id;
+        this.logDebug('Установлен userId из user объекта', {
+          userId: data.userId,
+        });
+      }
+
+      const entity = this.repository.create(data);
+      this.logDebug('Создан entity для сохранения', {
+        entityId: entity.id,
+        entityUserId: entity.userId,
+        entityName: entity.name,
+      });
+
+      const saved = await this.repository.save(entity);
+      this.logDebug('Entity сохранен в базу данных', {
+        savedId: saved.id,
+        savedUserId: saved.userId,
+        savedName: saved.name,
+      });
+
+      return saved;
+    });
   }
 
   /**
    * Обновить запись
    */
   async update(id: number | string, data: Partial<Character>): Promise<Character> {
-    return withErrorHandling(
-      async () => {
-        const entity = await this.findOne(id);
-        if (!entity) {
-          throw new Error(`Персонаж с ID ${id} не найден`);
-        }
-        const updatedEntity = Object.assign({}, entity, data);
-        return await this.repository.save(updatedEntity);
-      },
-      'обновлении персонажа',
-      this.logService,
-      { id, data },
-      null as never,
-    );
+    return this.withErrorHandling('обновлении персонажа', async () => {
+      const entity = await this.findOne(id);
+      if (!entity) {
+        throw new Error(`Персонаж с ID ${id} не найден`);
+      }
+      const updatedEntity = Object.assign({}, entity, data);
+      return await this.repository.save(updatedEntity);
+    });
   }
 
   /**
    * Удалить запись
    */
   async delete(id: number | string): Promise<void> {
-    return withErrorHandling(
-      async () => {
-        const entity = await this.findOne(id);
-        if (!entity) {
-          throw new Error(`Персонаж с ID ${id} не найден`);
-        }
-        await this.repository.remove(entity);
-      },
-      'удалении персонажа',
-      this.logService,
-      { id },
-      undefined,
-    );
+    return this.withErrorHandling('удалении персонажа', async () => {
+      const entity = await this.findOne(id);
+      if (!entity) {
+        throw new Error(`Персонаж с ID ${id} не найден`);
+      }
+      await this.repository.remove(entity);
+    });
   }
 
   // Специфичные методы для персонажей
@@ -144,7 +141,7 @@ export class CharacterService {
         relations: ['needs'],
       });
     } catch (error) {
-      this.logService.error(
+      this.logError(
         `Ошибка при поиске всех персонажей: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}`,
       );
       return [];
@@ -156,18 +153,12 @@ export class CharacterService {
    * @param userId ID пользователя
    */
   async findByUserId(userId: string): Promise<Character[]> {
-    return withErrorHandling(
-      async () => {
-        return this.repository.find({
-          where: { userId },
-          relations: ['needs'],
-        });
-      },
-      'поиске персонажей пользователя',
-      this.logService,
-      { userId },
-      [],
-    );
+    return this.withErrorHandling('поиске персонажей пользователя', async () => {
+      return this.repository.find({
+        where: { userId },
+        relations: ['needs'],
+      });
+    });
   }
 
   /**
@@ -175,16 +166,9 @@ export class CharacterService {
    * @param id ID персонажа
    */
   async updateLastInteraction(id: number): Promise<void> {
-    return withErrorHandling(
-      async () => {
-        await this.repository.update(id, {
-          lastInteraction: new Date(),
-        });
-      },
-      'обновлении времени взаимодействия',
-      this.logService,
-      { id },
-    );
+    return this.withErrorHandling('обновлении времени последнего взаимодействия', async () => {
+      await this.repository.update(id, { lastInteraction: new Date() });
+    });
   }
 
   /**
@@ -193,24 +177,18 @@ export class CharacterService {
    * @param relations Отношения для загрузки
    */
   async findOneWithRelations(id: number, relations: string[] = []): Promise<Character | null> {
-    return await withErrorHandling(
-      async () => {
-        const character = await this.repository.findOne({
-          where: { id },
-          relations,
-        });
+    return await this.withErrorHandling('получении персонажа с отношениями', async () => {
+      const character = await this.repository.findOne({
+        where: { id },
+        relations,
+      });
 
-        if (!character) {
-          this.logService.warn(`Персонаж с ID ${id} не найден`);
-          return null;
-        }
-        return character;
-      },
-      'получении персонажа с отношениями',
-      this.logService,
-      { id, relations },
-      null,
-    );
+      if (!character) {
+        this.logWarning(`Персонаж с ID ${id} не найден`);
+        return null;
+      }
+      return character;
+    });
   }
 
   /**
@@ -234,19 +212,13 @@ export class CharacterService {
     where: FindOptionsWhere<Character>,
     options: { limit?: number; relations?: string[] } = {},
   ): Promise<Character[]> {
-    return withErrorHandling(
-      async () => {
-        return await this.repository.find({
-          where,
-          relations: options.relations || [],
-          take: options.limit,
-        });
-      },
-      'поиске персонажей по условию',
-      this.logService,
-      { where, options },
-      [],
-    );
+    return this.withErrorHandling('поиске персонажей по условию', async () => {
+      return await this.repository.find({
+        where,
+        relations: options.relations || [],
+        take: options.limit,
+      });
+    });
   }
 
   /**
@@ -257,36 +229,27 @@ export class CharacterService {
     where: FindOptionsWhere<Character> = {} as FindOptionsWhere<Character>,
     relations: string[] = [],
   ): Promise<PaginatedResult<Character>> {
-    return withErrorHandling(
-      async () => {
-        const { page = 1, limit = 10, sort = {} } = options;
-        const skip = (page - 1) * limit;
+    return this.withErrorHandling('получении данных с пагинацией', async () => {
+      const { page = 1, limit = 10, sort = {} } = options;
+      const skip = (page - 1) * limit;
 
-        const [items, totalItems] = await this.repository.findAndCount({
-          where,
-          relations,
-          take: limit,
-          skip,
-          order: sort,
-        });
+      const [items, totalItems] = await this.repository.findAndCount({
+        where,
+        relations,
+        take: limit,
+        skip,
+        order: sort,
+      });
 
-        return {
-          items,
-          meta: {
-            totalItems,
-            itemsPerPage: limit,
-            totalPages: Math.ceil(totalItems / limit) || 1,
-            currentPage: page,
-          },
-        };
-      },
-      'получении данных с пагинацией',
-      this.logService,
-      { options, where, relations },
-      {
-        items: [],
-        meta: { totalItems: 0, itemsPerPage: 0, totalPages: 0, currentPage: 0 },
-      },
-    );
+      return {
+        items,
+        meta: {
+          totalItems,
+          itemsPerPage: limit,
+          totalPages: Math.ceil(totalItems / limit) || 1,
+          currentPage: page,
+        },
+      };
+    });
   }
 }

@@ -6,14 +6,23 @@ import { NeedsService } from '../../src/character/services/needs.service';
 import { LogService } from '../../src/logging/log.service';
 import { Character } from '../../src/character/entities/character.entity';
 import { EmotionalState } from '../../src/character/entities/emotional-state';
-import { LLMMessageRole } from '../../src/llm/services/llm.service';
+import { LLMMessageRole } from '../../src/common/interfaces/llm-provider.interface';
 import { CharacterArchetype } from '../../src/character/enums/character-archetype.enum';
 
 createTestSuite('CharacterResponseService Unit Tests', () => {
   const mockLlmService = { generateText: jest.fn() };
   const mockPromptTemplateService = { createCharacterSystemPrompt: jest.fn() };
   const mockNeedsService = { getActiveNeeds: jest.fn() };
-  const mockLogService = { setContext: jest.fn(), debug: jest.fn(), error: jest.fn() };
+  const mockLogService = {
+    setContext: jest.fn().mockReturnValue({
+      debug: jest.fn(),
+      error: jest.fn(),
+      log: jest.fn(),
+      warn: jest.fn(),
+    }),
+    debug: jest.fn(),
+    error: jest.fn(),
+  };
 
   const providers = [
     CharacterResponseService,
@@ -102,6 +111,11 @@ createTestSuite('CharacterResponseService Unit Tests', () => {
       mockLlmService.generateText.mockRejectedValue(error);
       mockNeedsService.getActiveNeeds.mockResolvedValue([]);
 
+      // Получаем мок, который возвращается из setContext
+      const contextLogService = mockLogService.setContext.mock.results[0]?.value as {
+        error: jest.Mock;
+      };
+
       // Вместо ожидания исключения, проверяем, что сервис возвращает резервный ответ
       const result = await service.generateResponse(character, 'Hi', [], emotionalState, '');
 
@@ -109,8 +123,9 @@ createTestSuite('CharacterResponseService Unit Tests', () => {
       expect(result).toContain('Прости, что-то я отвлеклась!');
 
       // Проверяем, что ошибка была залогирована
-      expect(mockLogService.error).toHaveBeenCalledWith(
+      expect(contextLogService.error).toHaveBeenCalledWith(
         'Ошибка при генерации ответа персонажа: LLM failed',
+        undefined,
       );
     },
   );

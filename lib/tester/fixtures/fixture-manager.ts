@@ -3,34 +3,22 @@ import { Character, CharacterGender } from '../../../src/character/entities/char
 import { CharacterArchetype } from '../../../src/character/enums/character-archetype.enum';
 import { User } from '../../../src/user/entities/user.entity';
 import { Need } from '../../../src/character/entities/need.entity';
-import { CharacterMotivation } from '../../../src/character/entities/character-motivation.entity';
+import {
+  CharacterMotivation,
+  MotivationStatus,
+  MotivationIntensity,
+} from '../../../src/character/entities/character-motivation.entity';
 import { Dialog } from '../../../src/dialog/entities/dialog.entity';
 import { Message } from '../../../src/dialog/entities/message.entity';
 import { CharacterNeedType } from '../../../src/character/enums/character-need-type.enum';
 import { Action, ActionStatus } from '../../../src/character/entities/action.entity';
-import { EmotionalState, EmotionCategory } from '../../../src/character/entities/emotional-state';
-import {
-  TechniqueExecution,
-  UserManipulationProfile,
-} from '../../../src/character/entities/manipulation-technique.entity';
-import {
-  StoryPlan,
-  StoryMilestone,
-  MilestoneStatus,
-  TransformationType,
-} from '../../../src/character/entities/story-plan.entity';
-import {
-  ManipulativeTechniqueType,
-  TechniqueIntensity,
-  TechniquePhase,
-} from '../../../src/character/enums/technique.enums';
 import { ActionType } from '../../../src/character/enums/action-type.enum';
 import {
   CharacterMemory,
-  MemoryImportance,
   MemoryImportanceLevel,
 } from '../../../src/character/entities/character-memory.entity';
 import { MemoryType } from '../../../src/character/interfaces/memory.interfaces';
+import { clearGlobalMemoryStorage } from '../utils/data-source';
 
 /**
  * Типы тестовых данных
@@ -48,18 +36,8 @@ export interface ITestData {
   dialogs?: Dialog[];
   /** Сообщения */
   messages?: Message[];
-  /** Эмоциональные состояния */
-  emotionalStates?: any[];
   /** Действия персонажей */
   actions?: Action[];
-  /** Исполнения манипулятивных техник */
-  techniqueExecutions?: TechniqueExecution[];
-  /** Профили пользователей для манипуляций */
-  userManipulationProfiles?: UserManipulationProfile[];
-  /** Планы развития сюжета */
-  storyPlans?: StoryPlan[];
-  /** Этапы сюжетной линии */
-  storyMilestones?: StoryMilestone[];
   /** Воспоминания персонажей */
   characterMemories?: CharacterMemory[];
   /** Пользовательские данные */
@@ -74,12 +52,10 @@ export interface IFixtureOptions {
   cleanBeforeCreate?: boolean;
   /** Очищать БД после выполнения теста */
   cleanAfterTest?: boolean;
-  /** Использовать числовые ID вместо UUID */
-  useNumericIds?: boolean;
 }
 
 /**
- * Фабрика фикстур для тестов
+ * Фабрика фикстур для тестов (только PostgreSQL)
  */
 export class FixtureManager {
   private dataSource: DataSource;
@@ -87,11 +63,7 @@ export class FixtureManager {
   private options: IFixtureOptions = {
     cleanBeforeCreate: true,
     cleanAfterTest: true,
-    useNumericIds: true,
   };
-  private characterRepository: Repository<Character>;
-  private dialogRepository: Repository<Dialog>;
-  private messageRepository: Repository<Message>;
 
   /**
    * Конструктор фабрики фикстур
@@ -103,9 +75,6 @@ export class FixtureManager {
     if (options) {
       this.options = { ...this.options, ...options };
     }
-    this.characterRepository = dataSource.getRepository(Character);
-    this.dialogRepository = dataSource.getRepository(Dialog);
-    this.messageRepository = dataSource.getRepository(Message);
   }
 
   /**
@@ -118,301 +87,113 @@ export class FixtureManager {
   }
 
   /**
-   * Преобразует числовой ID в UUID строку
-   * @param numericId Числовой ID
-   * @returns UUID строка
-   * @public для использования в тестах
-   */
-  public numericToUuid(numericId: number | string): string {
-    // Преобразуем числовой ID в строку и дополняем нулями до 32 символов
-    const idStr = String(numericId).padStart(32, '0');
-    // Форматируем в UUID формат
-    return `${idStr.substr(0, 8)}-${idStr.substr(8, 4)}-${idStr.substr(12, 4)}-${idStr.substr(16, 4)}-${idStr.substr(20, 12)}`;
-  }
-
-  /**
-   * Преобразует UUID в числовой ID
-   * @param uuid UUID строка
-   * @returns Числовой ID или null, если UUID не может быть преобразован
-   * @public для использования в тестах
-   */
-  public uuidToNumeric(uuid: string): number | null {
-    // Проверяем формат UUID
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(uuid)) {
-      return null;
-    }
-
-    // Удаляем дефисы и проверяем, содержит ли строка только нули
-    const cleanUuid = uuid.replace(/-/g, '');
-    if (cleanUuid.match(/^0+$/)) {
-      return 0;
-    }
-
-    // Пытаемся получить числовой ID из UUID, игнорируя ведущие нули
-    try {
-      // Ищем первый ненулевой символ
-      let startIndex = 0;
-      while (startIndex < cleanUuid.length && cleanUuid[startIndex] === '0') {
-        startIndex++;
-      }
-
-      // Если все символы - нули, возвращаем 0
-      if (startIndex === cleanUuid.length) {
-        return 0;
-      }
-
-      // Получаем часть строки, начиная с первого ненулевого символа
-      const numericPart = cleanUuid.substring(startIndex);
-
-      // Если строка слишком длинная для числа, возвращаем только первые 9 символов
-      if (numericPart.length > 9) {
-        return parseInt(numericPart.substring(0, 9));
-      }
-
-      return parseInt(numericPart);
-    } catch (error) {
-      console.warn('Не удалось преобразовать UUID в числовой ID:', error.message);
-      return null;
-    }
-  }
-
-  /**
-   * Обеспечивает совместимость ID между строковым (UUID) и числовым форматом
-   * @param id ID в любом формате
-   * @param targetType Целевой тип ('string' для UUID, 'number' для числового ID)
-   * @returns ID в требуемом формате
-   * @public для использования в тестах
-   */
-  public ensureIdFormat(
-    id: string | number,
-    targetType: 'string' | 'number' = 'number',
-  ): string | number {
-    if (targetType === 'number') {
-      if (typeof id === 'number') {
-        return id;
-      } else {
-        // Проверяем, является ли строка UUID
-        const uuidNumber = this.uuidToNumeric(id);
-        return uuidNumber !== null ? uuidNumber : parseInt(id);
-      }
-    } else {
-      // targetType === 'string'
-      if (typeof id === 'string') {
-        // Проверяем, является ли строка UUID
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-        return uuidRegex.test(id) ? id : this.numericToUuid(id);
-      } else {
-        return this.numericToUuid(id);
-      }
-    }
-  }
-
-  /**
-   * Создать тестового пользователя
+   * Создает тестового пользователя
    * @param userData Данные пользователя
    * @returns Созданный пользователь
    */
   public async createUser(userData: Partial<User> = {}): Promise<User> {
     const userRepository = this.getRepository(User);
 
-    // Ensure unique fields to avoid duplication errors in parallel tests
-    const uniqueSuffix = `${Date.now()}_${Math.round(Math.random() * 1e6)}`;
-
-    const generatedCredentials = {
-      telegramId: `tg_${uniqueSuffix}`,
-      username: `test_user_${uniqueSuffix}`,
-      email: `user_${uniqueSuffix}@example.com`,
-    };
-
-    // Если пользователь передал email/username/telegramId вручную, сохраняем их без изменений.
-    // Для остальных полей используем автоматически сгенерированные уникальные значения.
-
-    const defaultUser = {
-      ...generatedCredentials,
-      firstName: 'Тестовый',
-      lastName: 'Пользователь',
+    const defaultUser: Partial<User> = {
+      telegramId: `test_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      username: `testuser_${Date.now()}`,
+      firstName: 'Test',
+      lastName: 'User',
       isActive: true,
       ...userData,
-    } as Partial<User>;
+    };
 
-    // Если указан числовой ID и требуются UUID, преобразуем
-    if (defaultUser.id && typeof defaultUser.id === 'number' && !this.options.useNumericIds) {
-      // Используем явное преобразование типа
-      (defaultUser as any).id = this.numericToUuid(defaultUser.id);
+    // Проверяем, есть ли метод create в репозитории (реальный PostgreSQL репозиторий)
+    const user = userRepository.create
+      ? userRepository.create(defaultUser)
+      : Object.assign(new User(), defaultUser);
+    const savedUser = await userRepository.save(user);
+
+    if (!this.testData.users) {
+      this.testData.users = [];
     }
+    this.testData.users.push(savedUser);
 
-    const user = userRepository.create(defaultUser);
-    await userRepository.save(user);
-
-    if (!this.testData.users) this.testData.users = [];
-    this.testData.users.push(user);
-
-    return user;
+    return savedUser;
   }
 
   /**
-   * Создать тестового персонажа
+   * Создает тестового персонажа
    * @param characterData Данные персонажа
    * @returns Созданный персонаж
    */
   public async createCharacter(characterData: Partial<Character> = {}): Promise<Character> {
-    // Если не указан пользователь, создаем его
-    if (!characterData.user && !characterData.userId) {
-      // Создаем пользователя и присоединяем его напрямую к character.user
-      const user = await this.createUser();
-      characterData.user = user;
-    } else if (characterData.userId && !characterData.user) {
-      // Если указан только userId, обрабатываем его соответствующим образом
-      const userId = characterData.userId;
+    const characterRepository = this.getRepository(Character);
 
-      if (typeof userId === 'number') {
-        // Создаем пользователя с числовым ID
-        const idValue = this.options.useNumericIds ? userId : this.numericToUuid(userId);
-        const user = await this.createUser({
-          id: idValue as any, // Используем any для обхода проверки типов
-        });
-        characterData.user = user;
-        delete characterData.userId; // Удаляем, чтобы избежать конфликта
-      } else if (typeof userId === 'string') {
-        // Проверяем, является ли строка UUID
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-        if (uuidRegex.test(userId)) {
-          // Если это UUID, используем как есть
-          const user = await this.createUser({ id: userId });
-          characterData.user = user;
-        } else {
-          // Если это не UUID, преобразуем в числовой ID или UUID в зависимости от настроек
-          const numericId = parseInt(userId);
-          const idValue = this.options.useNumericIds ? numericId : this.numericToUuid(numericId);
-          const user = await this.createUser({
-            id: idValue as any, // Используем any для обхода проверки типов
-          });
-          characterData.user = user;
-        }
-
-        delete characterData.userId; // Удаляем, чтобы избежать конфликта
-      }
+    // Если передан user объект, извлекаем userId
+    let userId: string | undefined;
+    if ('user' in characterData && characterData.user) {
+      userId = characterData.user.id;
+      // Удаляем user из characterData чтобы не было конфликта
+      const { user, ...restCharacterData } = characterData;
+      characterData = restCharacterData;
     }
 
-    // Подготавливаем personality в зависимости от типа
-    let personalityData: any = {
-      traits: ['умный', 'добрый'],
-      hobbies: ['чтение', 'программирование'],
-      fears: ['высота', 'одиночество'],
-      values: ['знания', 'честность'],
-      musicTaste: ['классика', 'электроника'], // Важное поле, которое требуется в тестах
-      strengths: ['логика', 'терпение'],
-      weaknesses: ['нетерпеливость', 'перфекционизм'],
+    const defaultCharacter: Partial<Character> = {
+      name: `TestCharacter_${Date.now()}`,
+      age: 25,
+      biography: 'Test character biography',
+      appearance: 'Test character appearance',
+      gender: CharacterGender.FEMALE,
+      archetype: CharacterArchetype.MENTOR,
+      personality: {
+        traits: ['friendly', 'helpful'],
+        values: ['honesty', 'kindness'],
+        hobbies: ['technology', 'science'],
+        fears: [],
+        musicTaste: [],
+        strengths: ['empathy'],
+        weaknesses: [],
+      },
+      isActive: true,
+      // Устанавливаем userId если он был передан
+      ...(userId && { userId }),
+      ...characterData,
     };
 
-    if (characterData.personality) {
-      if (typeof characterData.personality === 'string') {
-        try {
-          // Если personality передан как строка, парсим его как JSON
-          personalityData = JSON.parse(characterData.personality as string);
-        } catch (error) {
-          console.warn(
-            'Не удалось распарсить personality как JSON, используем значение по умолчанию:',
-            error.message,
-          );
-        }
-      } else if (typeof characterData.personality === 'object') {
-        // Если personality - объект, проверяем наличие всех необходимых полей
-        const requiredFields = [
-          'traits',
-          'hobbies',
-          'fears',
-          'values',
-          'musicTaste',
-          'strengths',
-          'weaknesses',
-        ];
-        const hasAllFields = requiredFields.every(field =>
-          Array.isArray((characterData.personality as any)[field]),
-        );
+    const character = characterRepository.create
+      ? characterRepository.create(defaultCharacter)
+      : Object.assign(new Character(), defaultCharacter);
+    const savedCharacter = await characterRepository.save(character);
 
-        if (hasAllFields) {
-          personalityData = characterData.personality;
-        } else {
-          console.warn(
-            'Объект personality не содержит все необходимые поля, дополняем значениями по умолчанию',
-          );
-          // Объединяем переданные данные с дефолтными, чтобы обеспечить наличие всех полей
-          personalityData = {
-            traits: ['умный', 'добрый'],
-            hobbies: ['чтение', 'программирование'],
-            fears: ['высота', 'одиночество'],
-            values: ['знания', 'честность'],
-            musicTaste: ['классика', 'электроника'],
-            strengths: ['логика', 'терпение'],
-            weaknesses: ['нетерпеливость', 'перфекционизм'],
-            ...(characterData.personality as any),
-          };
-        }
-      }
+    if (!this.testData.characters) {
+      this.testData.characters = [];
     }
-
-    // Создаем копию входных данных без personality (чтобы избежать дублирования)
-    const { personality, ...restCharacterData } = characterData;
-
-    // Создаем базовые данные персонажа с обязательными полями
-    const character = this.characterRepository.create({
-      name: 'Test Character',
-      age: 25,
-      gender: CharacterGender.FEMALE,
-      archetype: CharacterArchetype.INTELLECTUAL,
-      biography: 'Тестовая биография персонажа',
-      appearance: 'Тестовое описание внешности',
-      fullName: 'Test Full Name',
-      knowledgeAreas: ['общие знания', 'психология'],
-      isActive: true,
-      ...restCharacterData,
-      personality: personalityData,
-    });
-
-    const savedCharacter = await this.characterRepository.save(character);
-
-    if (!this.testData.characters) this.testData.characters = [];
     this.testData.characters.push(savedCharacter);
 
     return savedCharacter;
   }
 
   /**
-   * Создать тестовую потребность
+   * Создает потребность персонажа
    * @param needData Данные потребности
    * @returns Созданная потребность
    */
   public async createNeed(needData: Partial<Need> = {}): Promise<Need> {
     const needRepository = this.getRepository(Need);
 
-    // Создаем персонажа, если он не указан
-    if (!needData.character) {
-      needData.character = await this.createCharacter();
-    }
-
-    // Устанавливаем значения по умолчанию
-    const defaultNeedData = {
-      type: CharacterNeedType.REST,
-      currentValue: 50,
+    const defaultNeed: Partial<Need> = {
+      type: CharacterNeedType.COMMUNICATION,
+      currentValue: 0,
       maxValue: 100,
-      growthRate: 5,
-      decayRate: 1,
-      priority: 1,
-      isActive: true,
+      growthRate: 1.0,
+      decayRate: 0.1,
+      priority: 5,
       threshold: 70,
+      isActive: true,
+      ...needData,
     };
 
-    // Объединяем данные по умолчанию с переданными данными
-    const finalNeedData = { ...defaultNeedData, ...needData };
-
-    // Создаем потребность
-    const need = needRepository.create(finalNeedData);
+    const need = needRepository.create
+      ? needRepository.create(defaultNeed)
+      : Object.assign(new Need(), defaultNeed);
     const savedNeed = await needRepository.save(need);
 
-    // Сохраняем потребность в тестовых данных
     if (!this.testData.needs) {
       this.testData.needs = [];
     }
@@ -422,161 +203,255 @@ export class FixtureManager {
   }
 
   /**
-   * Создать тестовый диалог
+   * Создает мотивацию персонажа
+   * @param characterId ID персонажа
+   * @param motivationData Данные мотивации
+   * @returns Созданная мотивация
+   */
+  public async createMotivation(
+    characterId: number,
+    motivationData: Partial<CharacterMotivation> = {},
+  ): Promise<CharacterMotivation> {
+    const motivationRepository = this.getRepository(CharacterMotivation);
+
+    const defaultMotivation: Partial<CharacterMotivation> = {
+      characterId,
+      motivationId: `motivation_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      description: 'Test motivation',
+      priority: 5,
+      relatedNeed: CharacterNeedType.COMMUNICATION,
+      status: MotivationStatus.ACTIVE,
+      intensity: MotivationIntensity.MODERATE,
+      thresholdValue: 70,
+      currentValue: 0,
+      accumulationRate: 1.0,
+      resourceCost: 10,
+      successProbability: 80,
+      ...motivationData,
+    };
+
+    const motivation = motivationRepository.create
+      ? motivationRepository.create(defaultMotivation)
+      : Object.assign(new CharacterMotivation(), defaultMotivation);
+    const savedMotivation = await motivationRepository.save(motivation);
+
+    if (!this.testData.motivations) {
+      this.testData.motivations = [];
+    }
+    this.testData.motivations.push(savedMotivation);
+
+    return savedMotivation;
+  }
+
+  /**
+   * Создает диалог
    * @param dialogData Данные диалога
    * @returns Созданный диалог
    */
   public async createDialog(dialogData: Partial<Dialog> = {}): Promise<Dialog> {
-    // Создаем пользователя, если не указан
-    if (!dialogData.user && !dialogData.userId) {
-      const user = await this.createUser();
-      dialogData.user = user;
-      // Явно указываем userId как число
-      dialogData.userId = parseInt(user.id.toString());
-    } else if (dialogData.user && !dialogData.userId) {
-      // Если указан только объект user, добавляем числовое значение userId
-      dialogData.userId = parseInt(dialogData.user.id.toString());
-    }
+    const dialogRepository = this.getRepository(Dialog);
 
-    // Создаем персонажа, если не указан
-    if (!dialogData.character && !dialogData.characterId) {
-      const user = dialogData.user || (await this.createUser());
-      const character = await this.createCharacter({ user });
-      dialogData.character = character;
-    }
-
-    // Явно задаем ключевые поля согласно типам
-    const defaultData = {
-      telegramId: `telegram_${Date.now()}_${Math.random().toString().slice(2, 8)}`,
+    const defaultDialog: Partial<Dialog> = {
+      telegramId: `test_dialog_${Date.now()}`,
       isActive: true,
-      lastInteractionDate: new Date(),
+      title: 'Test Dialog',
+      ...dialogData,
     };
 
-    // Создаем диалог, приоритет у переданных пользователем данных
-    const dialog = this.dialogRepository.create({
-      ...defaultData,
-      ...dialogData,
-    });
+    const dialog = dialogRepository.create
+      ? dialogRepository.create(defaultDialog)
+      : Object.assign(new Dialog(), defaultDialog);
+    const savedDialog = await dialogRepository.save(dialog);
 
-    const savedDialog = await this.dialogRepository.save(dialog);
-
-    if (!this.testData.dialogs) this.testData.dialogs = [];
+    if (!this.testData.dialogs) {
+      this.testData.dialogs = [];
+    }
     this.testData.dialogs.push(savedDialog);
 
     return savedDialog;
   }
 
   /**
-   * Создать тестовое сообщение
+   * Создает сообщение в диалоге
    * @param messageData Данные сообщения
    * @returns Созданное сообщение
    */
   public async createMessage(messageData: Partial<Message> = {}): Promise<Message> {
-    // Создаем диалог, если не указан
-    if (!messageData.dialogId && !messageData.dialog) {
-      const dialog = await this.createDialog();
-      messageData.dialogId = dialog.id;
-    }
+    const messageRepository = this.getRepository(Message);
 
-    // Если указан диалог, но не указаны пользователь и персонаж
-    if (messageData.dialogId && !messageData.userId && !messageData.characterId) {
-      const dialog = await this.dialogRepository.findOne({
-        where: { id: messageData.dialogId },
-        relations: ['user', 'character'],
-      });
-
-      if (dialog) {
-        if (messageData.isFromUser !== false) {
-          messageData.userId = dialog.userId;
-        } else {
-          messageData.characterId = dialog.characterId;
-        }
-      }
-    }
-
-    // Явно задаем ключевые поля согласно типам
-    const defaultData = {
-      content: 'Test Message Content',
+    const defaultMessage: Partial<Message> = {
+      content: 'Test message content',
       isFromUser: true,
-      metadata: {},
+      ...messageData,
     };
 
-    // Создаем сообщение, приоритет у переданных пользователем данных
-    const message = this.messageRepository.create({
-      ...defaultData,
-      ...messageData,
-    });
+    const message = messageRepository.create
+      ? messageRepository.create(defaultMessage)
+      : Object.assign(new Message(), defaultMessage);
+    const savedMessage = await messageRepository.save(message);
 
-    const savedMessage = await this.messageRepository.save(message);
-
-    if (!this.testData.messages) this.testData.messages = [];
+    if (!this.testData.messages) {
+      this.testData.messages = [];
+    }
     this.testData.messages.push(savedMessage);
 
     return savedMessage;
   }
 
   /**
-   * Сохранить произвольные данные
-   * @param key Ключ для данных
+   * Создает действие персонажа
+   * @param actionData Данные действия
+   * @returns Созданное действие
+   */
+  public async createAction(actionData: Partial<Action> = {}): Promise<Action> {
+    const actionRepository = this.getRepository(Action);
+
+    const defaultAction: Partial<Action> = {
+      type: ActionType.SOCIALIZATION,
+      description: 'Test action',
+      status: ActionStatus.IN_PROGRESS,
+      startTime: new Date(),
+      resourceCost: 10,
+      successProbability: 80,
+      ...actionData,
+    };
+
+    const action = actionRepository.create
+      ? actionRepository.create(defaultAction)
+      : Object.assign(new Action(), defaultAction);
+    const savedAction = await actionRepository.save(action);
+
+    if (!this.testData.actions) {
+      this.testData.actions = [];
+    }
+    this.testData.actions.push(savedAction);
+
+    return savedAction;
+  }
+
+  /**
+   * Создает воспоминание персонажа
+   * @param characterId ID персонажа
+   * @param memoryData Данные воспоминания
+   * @returns Созданное воспоминание
+   */
+  public async createMemory(
+    characterId: number,
+    memoryData: Partial<CharacterMemory> = {},
+  ): Promise<CharacterMemory> {
+    const memoryRepository = this.getRepository(CharacterMemory);
+
+    const defaultMemory: Partial<CharacterMemory> = {
+      characterId,
+      content: 'Test memory content',
+      type: MemoryType.CONVERSATION,
+      importance: MemoryImportanceLevel.AVERAGE,
+      isActive: true,
+      recallCount: 0,
+      ...memoryData,
+    };
+
+    const memory = memoryRepository.create
+      ? memoryRepository.create(defaultMemory)
+      : Object.assign(new CharacterMemory(), defaultMemory);
+    const savedMemory = await memoryRepository.save(memory);
+
+    if (!this.testData.characterMemories) {
+      this.testData.characterMemories = [];
+    }
+    this.testData.characterMemories.push(savedMemory);
+
+    return savedMemory;
+  }
+
+  /**
+   * Создает множественные воспоминания персонажа
+   * @param characterId ID персонажа
+   * @param count Количество воспоминаний
+   * @returns Массив созданных воспоминаний
+   */
+  public async createManyMemories(characterId: number, count: number): Promise<CharacterMemory[]> {
+    const memories: CharacterMemory[] = [];
+
+    for (let i = 0; i < count; i++) {
+      const memory = await this.createMemory(characterId, {
+        content: `Test memory ${i + 1}`,
+        importance: MemoryImportanceLevel.AVERAGE,
+      });
+      memories.push(memory);
+    }
+
+    return memories;
+  }
+
+  /**
+   * Сохраняет пользовательские данные
+   * @param key Ключ данных
    * @param data Данные для сохранения
    */
-  public saveCustomData(key: string, data: any): void {
+  public saveCustomData(key: string, data: unknown): void {
     this.testData[key] = data;
   }
 
   /**
-   * Получить тестовые данные
-   * @returns Все тестовые данные
+   * Получает все тестовые данные
+   * @returns Объект с тестовыми данными
    */
   public getTestData(): ITestData {
     return this.testData;
   }
 
   /**
-   * Получить данные по ключу
+   * Получает данные по ключу
    * @param key Ключ данных
-   * @returns Данные по указанному ключу
+   * @returns Данные по ключу
    */
   public getData<T>(key: keyof ITestData): T {
     return this.testData[key] as T;
   }
 
   /**
-   * Очистить тестовую БД
+   * Очищает базу данных
    */
   public async cleanDatabase(): Promise<void> {
-    if (!this.dataSource || !this.dataSource.isInitialized) {
-      throw new Error('DataSource не инициализирован');
-    }
+    // Очищаем таблицы в обратном порядке зависимостей
+    const tableNames = [
+      'messages',
+      'dialogs',
+      'character_memories',
+      'character_motivations',
+      'character_needs',
+      'actions',
+      'characters',
+      'users',
+    ];
 
-    try {
-      // Отключаем проверку внешних ключей перед очисткой
-      await this.dataSource.query('SET session_replication_role = replica;');
-
-      const entities = this.dataSource.entityMetadatas;
-
-      // Сначала удаляем зависимые таблицы, потом основные
-      for (const entity of entities.reverse()) {
-        try {
-          const tableName = entity.tableName;
-          await this.dataSource.query(`TRUNCATE TABLE "${tableName}" CASCADE;`);
-        } catch (error) {
-          console.warn(`Не удалось очистить таблицу ${entity.tableName}:`, error.message);
-        }
+    for (const tableName of tableNames) {
+      try {
+        await this.dataSource.query(`DELETE FROM "${tableName}";`);
+        // Сбрасываем автоинкремент для PostgreSQL
+        await this.dataSource
+          .query(`ALTER SEQUENCE "${tableName}_id_seq" RESTART WITH 1;`)
+          .catch(() => {
+            // Игнорируем ошибки сброса последовательности
+          });
+      } catch (error) {
+        console.warn(
+          `Не удалось очистить таблицу ${tableName}:`,
+          error instanceof Error ? error.message : String(error),
+        );
       }
-
-      // Включаем проверку внешних ключей после очистки
-      await this.dataSource.query('SET session_replication_role = DEFAULT;');
-    } catch (error) {
-      console.error('Ошибка при очистке базы данных:', error);
     }
 
-    // Очищаем сохраненные тестовые данные
+    // Очищаем локальные данные
     this.testData = {};
+
+    // Очищаем глобальное хранилище мок DataSource
+    clearGlobalMemoryStorage();
   }
 
   /**
-   * Подготовить тестовое окружение
+   * Инициализация фикстур
    */
   public async setup(): Promise<void> {
     if (this.options.cleanBeforeCreate) {
@@ -585,7 +460,7 @@ export class FixtureManager {
   }
 
   /**
-   * Очистить тестовое окружение
+   * Очистка после тестов
    */
   public async cleanup(): Promise<void> {
     if (this.options.cleanAfterTest) {
@@ -594,392 +469,325 @@ export class FixtureManager {
   }
 
   /**
-   * Создать тестовое эмоциональное состояние
-   * @param emotionalStateData Данные эмоционального состояния
-   * @returns Созданное эмоциональное состояние
+   * Быстрая оптимизированная очистка
    */
-  public async createEmotionalState(emotionalStateData: any = {}): Promise<any> {
-    const emotionalStateRepository = this.dataSource.getTreeRepository('emotional_state');
+  public async fastCleanupOptimized(): Promise<void> {
+    try {
+      // Используем TRUNCATE для быстрой очистки (только PostgreSQL)
+      const tableNames = [
+        'messages',
+        'dialogs',
+        'character_memories',
+        'character_motivations',
+        'character_needs',
+        'actions',
+        'characters',
+        'users',
+      ];
 
-    // Создаем персонажа, если он не указан
-    let character;
-    if (!emotionalStateData.character && !emotionalStateData.characterId) {
-      character = await this.createCharacter();
-      emotionalStateData.characterId = character.id;
-    } else if (emotionalStateData.characterId && !emotionalStateData.character) {
-      const characterId = this.ensureIdFormat(
-        emotionalStateData.characterId,
-        this.options.useNumericIds ? 'number' : 'string',
-      );
-      character = await this.createCharacter({ id: characterId as any });
-      emotionalStateData.characterId = character.id;
-    }
+      // Отключаем проверки внешних ключей
+      await this.dataSource.query('SET session_replication_role = replica;');
 
-    const defaultEmotionalState = {
-      primary: 'happy',
-      secondary: 'calm',
-      intensity: 0.7,
-      category: EmotionCategory.POSITIVE,
-      triggers: ['успешное взаимодействие', 'достижение цели'],
-      duration: 3600, // 1 час в секундах
-      current: true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      ...emotionalStateData,
-    };
-
-    const emotionalState = emotionalStateRepository.create(defaultEmotionalState);
-    await emotionalStateRepository.save(emotionalState);
-
-    if (!this.testData.emotionalStates) this.testData.emotionalStates = [];
-    this.testData.emotionalStates.push(emotionalState);
-
-    return emotionalState;
-  }
-
-  /**
-   * Создать тестовое действие персонажа
-   * @param actionData Данные действия
-   * @returns Созданное действие
-   */
-  public async createAction(actionData: Partial<Action> = {}): Promise<Action> {
-    const actionRepository = this.getRepository(Action);
-    // Если не указан персонаж, создаем его
-    if (!actionData.character && !actionData.characterId) {
-      const character = await this.createCharacter();
-      actionData.character = character;
-      actionData.characterId = Number(character.id);
-    } else if (actionData.characterId && !actionData.character) {
-      const characterId = this.ensureIdFormat(
-        actionData.characterId,
-        this.options.useNumericIds ? 'number' : 'string',
-      );
-      const character = await this.createCharacter({ id: characterId as any });
-      actionData.character = character;
-      actionData.characterId = Number(character.id);
-    }
-    const defaultAction = {
-      type: ActionType.INITIATE_CONVERSATION,
-      description: 'Инициировать разговор',
-      status: ActionStatus.IN_PROGRESS,
-      startTime: new Date(),
-      expectedDuration: 300,
-      successProbability: 80,
-      resourceCost: 10,
-      relatedNeed: CharacterNeedType.COMMUNICATION,
-      metadata: JSON.stringify({}),
-      ...actionData,
-    };
-    const action = actionRepository.create(defaultAction);
-    await actionRepository.save(action);
-    if (!this.testData.actions) this.testData.actions = [];
-    this.testData.actions.push(action);
-    return action;
-  }
-
-  /**
-   * Создать тестовое исполнение манипулятивной техники
-   * @param executionData Данные исполнения техники
-   * @returns Созданное исполнение техники
-   */
-  public async createTechniqueExecution(
-    executionData: Partial<TechniqueExecution> = {},
-  ): Promise<TechniqueExecution> {
-    const executionRepository = this.getRepository(TechniqueExecution);
-    // Если не указан персонаж, создаем его
-    if (!executionData.character && !executionData.characterId) {
-      const character = await this.createCharacter();
-      executionData.characterId = Number(character.id);
-      if (!character.user) {
-        const user = await this.createUser();
-        executionData.userId = Number(user.id);
-      } else {
-        executionData.userId = Number(character.user.id);
+      for (const tableName of tableNames) {
+        await this.dataSource
+          .query(`TRUNCATE TABLE "${tableName}" RESTART IDENTITY CASCADE;`)
+          .catch(() => {
+            // Fallback к DELETE если TRUNCATE не работает
+            this.dataSource.query(`DELETE FROM "${tableName}";`);
+          });
       }
-    } else if (executionData.characterId && !executionData.character) {
-      const characterId = this.ensureIdFormat(
-        executionData.characterId,
-        this.options.useNumericIds ? 'number' : 'string',
+
+      // Включаем обратно проверки внешних ключей
+      await this.dataSource.query('SET session_replication_role = DEFAULT;');
+    } catch (error) {
+      console.warn(
+        'Fallback к стандартной очистке:',
+        error instanceof Error ? error.message : String(error),
       );
-      const character = await this.createCharacter({ id: characterId as any });
-      executionData.characterId = Number(character.id);
-      if (!character.user) {
-        const user = await this.createUser();
-        executionData.userId = Number(user.id);
-      } else {
-        executionData.userId = Number(character.user.id);
-      }
+      await this.cleanDatabase();
     }
-    if (!executionData.userId) {
-      const user = await this.createUser();
-      executionData.userId = Number(user.id);
-    }
-    // Финальная защита от NaN/undefined/null
-    if (!executionData.characterId || isNaN(Number(executionData.characterId))) {
-      const character = await this.createCharacter();
-      executionData.characterId = Number(character.id);
-    }
-    if (!executionData.userId || isNaN(Number(executionData.userId))) {
-      const user = await this.createUser();
-      executionData.userId = Number(user.id);
-    }
-    const defaultExecution = {
-      techniqueType: ManipulativeTechniqueType.PUSH_PULL,
-      phase: TechniquePhase.PREPARATION,
-      intensity: TechniqueIntensity.MEDIUM,
-      startTime: new Date(),
-      generatedResponse: 'Тестовый ответ с использованием техники',
-      effectiveness: 75,
-      ethicalScore: 60,
-      ...executionData,
-    };
-    if (defaultExecution.characterId)
-      defaultExecution.characterId = Number(defaultExecution.characterId);
-    if (defaultExecution.userId) defaultExecution.userId = Number(defaultExecution.userId);
-    const execution = executionRepository.create(defaultExecution);
-    await executionRepository.save(execution);
-    if (!this.testData.techniqueExecutions) this.testData.techniqueExecutions = [];
-    this.testData.techniqueExecutions.push(execution);
-    return execution;
+
+    this.testData = {};
   }
 
   /**
-   * Создать тестовый профиль пользователя для манипуляций
-   * @param profileData Данные профиля
-   * @returns Созданный профиль
+   * Создает пакет пользователей, персонажей и диалогов для тестирования
    */
-  public async createUserManipulationProfile(
-    profileData: Partial<UserManipulationProfile> = {},
-  ): Promise<UserManipulationProfile> {
-    const profileRepository = this.getRepository(UserManipulationProfile);
-    if (!profileData.userId) {
-      const user = await this.createUser();
-      profileData.userId = Number(user.id);
-    }
-    if (!profileData.characterId) {
-      const character = await this.createCharacter();
-      profileData.characterId = Number(character.id);
-    }
-    // Финальная защита от NaN/undefined/null
-    if (!profileData.userId || isNaN(Number(profileData.userId))) {
-      const user = await this.createUser();
-      profileData.userId = Number(user.id);
-    }
-    if (!profileData.characterId || isNaN(Number(profileData.characterId))) {
-      const character = await this.createCharacter();
-      profileData.characterId = Number(character.id);
-    }
-    if (profileData.userId) profileData.userId = Number(profileData.userId);
-    if (profileData.characterId) profileData.characterId = Number(profileData.characterId);
-    const defaultProfile = {
-      susceptibilityScore: 65,
-      vulnerabilities: ['одиночество', 'признание'],
-      successfulTechniques: [ManipulativeTechniqueType.PUSH_PULL],
-      resistedTechniques: [ManipulativeTechniqueType.GASLIGHTING],
-      emotionalTriggers: ['упоминание семьи', 'финансовые трудности'],
-      susceptibilityRatings: {
-        [ManipulativeTechniqueType.PUSH_PULL]: 75,
-        [ManipulativeTechniqueType.EXCLUSIVITY_ILLUSION]: 80,
-        [ManipulativeTechniqueType.EMOTIONAL_BLACKMAIL]: 45,
-      },
-      lastUpdate: new Date(),
-      ...profileData,
-    };
-    if (defaultProfile.userId) defaultProfile.userId = Number(defaultProfile.userId);
-    if (defaultProfile.characterId) defaultProfile.characterId = Number(defaultProfile.characterId);
-    const profile = profileRepository.create(defaultProfile);
-    await profileRepository.save(profile);
-    if (!this.testData.userManipulationProfiles) this.testData.userManipulationProfiles = [];
-    this.testData.userManipulationProfiles.push(profile);
-    return profile;
-  }
+  public async createBatchUserCharacterDialog(
+    options: {
+      usersCount?: number;
+      charactersPerUser?: number;
+      dialogsPerCharacter?: number;
+      messagesPerDialog?: number;
+    } = {},
+  ): Promise<{
+    users: User[];
+    characters: Character[];
+    dialogs: Dialog[];
+    messages: Message[];
+  }> {
+    const {
+      usersCount = 2,
+      charactersPerUser = 2,
+      dialogsPerCharacter = 2,
+      messagesPerDialog = 3,
+    } = options;
 
-  /**
-   * Создать тестовый план развития сюжета
-   * @param planData Данные плана
-   * @returns Созданный план
-   */
-  public async createStoryPlan(planData: Partial<StoryPlan> = {}): Promise<StoryPlan> {
-    const planRepository = this.getRepository(StoryPlan);
+    const users: User[] = [];
+    const characters: Character[] = [];
+    const dialogs: Dialog[] = [];
+    const messages: Message[] = [];
 
-    // Если не указан персонаж, создаем его
-    if (!planData.character && !planData.characterId) {
-      const character = await this.createCharacter();
-      planData.characterId = character.id;
-    } else if (planData.characterId && !planData.character) {
-      const characterId = this.ensureIdFormat(
-        planData.characterId,
-        this.options.useNumericIds ? 'number' : 'string',
-      );
-      const character = await this.createCharacter({ id: characterId as any });
-      planData.characterId = character.id;
-    }
+    // Создаем пользователей
+    for (let i = 0; i < usersCount; i++) {
+      const user = await this.createUser({
+        username: `testuser_${i}`,
+        firstName: `TestUser${i}`,
+      });
+      users.push(user);
 
-    const defaultPlan = {
-      title: 'Тестовый сюжетный план',
-      description: 'План для эволюции персонажа в тестовом окружении',
-      startDate: new Date(),
-      endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 дней
-      overallArc: {
-        startingState: { confidence: 'low', openness: 'medium' },
-        endingState: { confidence: 'high', openness: 'high' },
-        majorThemes: ['самореализация', 'преодоление страхов'],
-        evolutionDirection: 'growth',
-      },
-      retrospectivePlanning: {
-        preExistingTraits: { introversion: 'high', sensitivity: 'medium' },
-        formativeEvents: [
-          {
-            description: 'Первый успешный проект',
-            timeframe: '2 года назад',
-            impact: { confidence: '+10%', skills: '+15%' },
-          },
-        ],
-        characterHistory: 'Базовая история персонажа для тестирования',
-        pastInfluences: ['наставник', 'книги'],
-      },
-      adaptabilitySettings: {
-        coreEventsRigidity: 8, // 1-10
-        detailsFlexibility: 7, // 1-10
-        userInfluenceWeight: 6, // 1-10
-        emergentEventTolerance: 5, // 1-10
-      },
-      ...planData,
-    };
-
-    const plan = planRepository.create(defaultPlan);
-    await planRepository.save(plan);
-
-    if (!this.testData.storyPlans) this.testData.storyPlans = [];
-    this.testData.storyPlans.push(plan);
-
-    return plan;
-  }
-
-  /**
-   * Создать тестовый этап сюжетной линии
-   * @param milestoneData Данные этапа
-   * @returns Созданный этап
-   */
-  public async createStoryMilestone(
-    milestoneData: Partial<StoryMilestone> = {},
-  ): Promise<StoryMilestone> {
-    const milestoneRepository = this.getRepository(StoryMilestone);
-
-    // Если не указан план, создаем его
-    if (!milestoneData.storyPlan && !milestoneData.storyPlanId) {
-      const storyPlan = await this.createStoryPlan();
-      milestoneData.storyPlanId = storyPlan.id;
-    } else if (milestoneData.storyPlanId && !milestoneData.storyPlan) {
-      const storyPlanId = this.ensureIdFormat(
-        milestoneData.storyPlanId,
-        this.options.useNumericIds ? 'number' : 'string',
-      );
-      const storyPlan = await this.createStoryPlan({ id: storyPlanId as any });
-      milestoneData.storyPlanId = storyPlan.id;
-    }
-
-    // Если не указан персонаж, берем из плана или создаем новый
-    if (!milestoneData.characterId) {
-      if (milestoneData.storyPlanId) {
-        const storyPlan = await this.getRepository(StoryPlan).findOne({
-          where: { id: milestoneData.storyPlanId as any },
+      // Создаем персонажей для каждого пользователя
+      for (let j = 0; j < charactersPerUser; j++) {
+        const character = await this.createCharacter({
+          name: `TestCharacter_${i}_${j}`,
+          user: user, // Передаем user объект для установки userId
         });
-        if (storyPlan) {
-          milestoneData.characterId = storyPlan.characterId;
+        characters.push(character);
+
+        // Создаем диалоги для персонажа
+        for (let k = 0; k < dialogsPerCharacter; k++) {
+          const dialog = await this.createDialog({
+            userId: user.id,
+            characterId: character.id,
+            telegramId: `test_dialog_${i}_${j}_${k}`,
+          });
+          dialogs.push(dialog);
+
+          // Создаем сообщения для диалога
+          for (let l = 0; l < messagesPerDialog; l++) {
+            const message = await this.createMessage({
+              dialogId: dialog.id,
+              // Временно не используем userId из-за несоответствия типов (string vs number)
+              // userId: l % 2 === 0 ? user.id : undefined,
+              characterId: l % 2 === 1 ? character.id : undefined,
+              content: `Test message ${l} in dialog ${dialog.id}`,
+              isFromUser: l % 2 === 0,
+            });
+            messages.push(message);
+          }
         }
       }
-
-      if (!milestoneData.characterId) {
-        const character = await this.createCharacter();
-        milestoneData.characterId = character.id;
-      }
     }
 
-    const defaultMilestone = {
-      title: 'Тестовый этап сюжета',
-      description: 'Описание тестового этапа сюжетной линии',
-      transformationType: TransformationType.PERSONALITY_CHANGE,
-      status: MilestoneStatus.PLANNED,
-      plannedMonth: 1,
-      plannedDay: 7,
-      transformationDetails: {
-        currentState: { trait: 'замкнутость', level: 'высокий' },
-        targetState: { trait: 'общительность', level: 'средний' },
-        progressIndicators: ['инициирует диалоги', 'делится личной информацией'],
-        prerequisiteEvents: [],
-        transitionMethod: 'gradual' as const,
-      },
-      causalConnections: {
-        triggeringConditions: ['достижение определенного уровня доверия'],
-        consequenceEvents: [],
-        timelineConstraints: {
-          minimumDaysBefore: 3,
-          maximumDaysBefore: 14,
-        },
-      },
-      rigidityLevel: 5,
-      isKeyMilestone: false,
-      ...milestoneData,
+    return {
+      users,
+      characters,
+      dialogs,
+      messages,
     };
-
-    const milestone = milestoneRepository.create(defaultMilestone);
-    await milestoneRepository.save(milestone);
-
-    if (!this.testData.storyMilestones) this.testData.storyMilestones = [];
-    this.testData.storyMilestones.push(milestone);
-
-    return milestone;
   }
 
   /**
-   * Создать тестовую память персонажа
-   * @param memoryData Данные памяти персонажа
-   * @returns Созданная память персонажа
+   * Создает пакет тестовых данных для комплексного тестирования
    */
-  public async createCharacterMemory(
-    memoryData: Partial<CharacterMemory> = {},
-  ): Promise<CharacterMemory> {
-    const memoryRepository = this.getRepository(CharacterMemory);
+  public async createBatchTestData(
+    options: {
+      usersCount?: number;
+      charactersPerUser?: number;
+      needsPerCharacter?: number;
+      motivationsPerCharacter?: number;
+      actionsPerCharacter?: number;
+      dialogsPerCharacter?: number;
+      messagesPerDialog?: number;
+      memoriesPerCharacter?: number;
+    } = {},
+  ): Promise<{
+    users: User[];
+    characters: Character[];
+    needs: Need[];
+    motivations: CharacterMotivation[];
+    actions: Action[];
+    dialogs: Dialog[];
+    messages: Message[];
+    memories: CharacterMemory[];
+  }> {
+    const {
+      usersCount = 2,
+      charactersPerUser = 1,
+      needsPerCharacter = 3,
+      motivationsPerCharacter = 2,
+      actionsPerCharacter = 2,
+      dialogsPerCharacter = 1,
+      messagesPerDialog = 5,
+      memoriesPerCharacter = 3,
+    } = options;
 
-    // Если не указан персонаж, создаем нового
-    if (!memoryData.character && !memoryData.characterId) {
-      const character = await this.createCharacter();
-      memoryData.characterId = character.id;
-    } else if (memoryData.character && !memoryData.characterId) {
-      memoryData.characterId = memoryData.character.id;
+    const users: User[] = [];
+    const characters: Character[] = [];
+    const needs: Need[] = [];
+    const motivations: CharacterMotivation[] = [];
+    const actions: Action[] = [];
+    const dialogs: Dialog[] = [];
+    const messages: Message[] = [];
+    const memories: CharacterMemory[] = [];
+
+    // Создаем пользователей
+    for (let i = 0; i < usersCount; i++) {
+      const user = await this.createUser({
+        username: `testuser_${i}`,
+        firstName: `TestUser${i}`,
+      });
+      users.push(user);
+
+      // Создаем персонажей для каждого пользователя
+      for (let j = 0; j < charactersPerUser; j++) {
+        const character = await this.createCharacter({
+          name: `TestCharacter_${i}_${j}`,
+          user: user, // Передаем user объект для установки userId
+        });
+        characters.push(character);
+
+        // Создаем потребности для персонажа
+        const needTypes = [
+          CharacterNeedType.COMMUNICATION,
+          CharacterNeedType.ATTENTION,
+          CharacterNeedType.CONNECTION,
+        ];
+        for (let k = 0; k < needsPerCharacter && k < needTypes.length; k++) {
+          const need = await this.createNeed({
+            characterId: character.id,
+            type: needTypes[k],
+          });
+          needs.push(need);
+        }
+
+        // Создаем мотивации
+        for (let k = 0; k < motivationsPerCharacter; k++) {
+          const motivation = await this.createMotivation(character.id, {
+            description: `Test motivation ${k} for character ${character.id}`,
+          });
+          motivations.push(motivation);
+        }
+
+        // Создаем действия
+        for (let k = 0; k < actionsPerCharacter; k++) {
+          const action = await this.createAction({
+            characterId: character.id,
+            description: `Test action ${k} for character ${character.id}`,
+          });
+          actions.push(action);
+        }
+
+        // Создаем диалоги
+        for (let k = 0; k < dialogsPerCharacter; k++) {
+          const dialog = await this.createDialog({
+            userId: user.id,
+            characterId: character.id,
+            telegramId: `test_dialog_${i}_${j}_${k}`,
+          });
+          dialogs.push(dialog);
+
+          // Создаем сообщения для диалога
+          for (let l = 0; l < messagesPerDialog; l++) {
+            const message = await this.createMessage({
+              dialogId: dialog.id,
+              // Временно не используем userId из-за несоответствия типов (string vs number)
+              // userId: l % 2 === 0 ? user.id : undefined,
+              characterId: l % 2 === 1 ? character.id : undefined,
+              content: `Test message ${l} in dialog ${dialog.id}`,
+              isFromUser: l % 2 === 0,
+            });
+            messages.push(message);
+          }
+        }
+
+        // Создаем воспоминания
+        const characterMemories = await this.createManyMemories(character.id, memoriesPerCharacter);
+        memories.push(...characterMemories);
+      }
     }
 
-    // Преобразуем characterId в числовой формат, если используются числовые ID
-    if (this.options.useNumericIds && memoryData.characterId) {
-      memoryData.characterId = this.ensureIdFormat(memoryData.characterId, 'number') as number;
-    }
-
-    const defaultMemory = {
-      content: `Тестовое воспоминание ${Date.now()}`,
-      type: MemoryType.CONVERSATION,
-      importance: MemoryImportanceLevel.AVERAGE,
-      memoryDate: new Date(),
-      recallCount: 0,
-      lastRecalled: null,
-      isActive: true,
-      summary: 'Краткое описание тестового воспоминания',
-      metadata: { testKey: 'testValue', source: 'fixture-manager' },
+    return {
+      users,
+      characters,
+      needs,
+      motivations,
+      actions,
+      dialogs,
+      messages,
+      memories,
     };
+  }
 
-    const memory = memoryRepository.create({
-      ...defaultMemory,
-      ...memoryData,
+  /**
+   * Создает оптимизированную настройку персонажа со всеми связанными данными
+   */
+  public async createOptimizedCharacterSetup(
+    options: {
+      needsCount?: number;
+      motivationsCount?: number;
+      actionsCount?: number;
+      memoriesCount?: number;
+    } = {},
+  ): Promise<{
+    user: User;
+    character: Character;
+    needs: Need[];
+    motivations: CharacterMotivation[];
+    actions: Action[];
+    memories: CharacterMemory[];
+  }> {
+    const { needsCount = 5, motivationsCount = 3, actionsCount = 2, memoriesCount = 10 } = options;
+
+    // Создаем пользователя и персонажа
+    const user = await this.createUser();
+    const character = await this.createCharacter({
+      user: user, // Передаем user объект для установки userId
     });
 
-    const savedMemory = await memoryRepository.save(memory);
-
-    // Сохраняем в тестовые данные
-    if (!this.testData.characterMemories) {
-      this.testData.characterMemories = [];
+    // Создаем потребности
+    const needs: Need[] = [];
+    const needTypes = Object.values(CharacterNeedType);
+    for (let i = 0; i < needsCount && i < needTypes.length; i++) {
+      const need = await this.createNeed({
+        characterId: character.id,
+        type: needTypes[i],
+        currentValue: Math.random() * 50,
+      });
+      needs.push(need);
     }
-    this.testData.characterMemories.push(savedMemory);
 
-    return savedMemory;
+    // Создаем мотивации
+    const motivations: CharacterMotivation[] = [];
+    for (let i = 0; i < motivationsCount; i++) {
+      const motivation = await this.createMotivation(character.id, {
+        priority: Math.floor(Math.random() * 10) + 1,
+        currentValue: Math.random() * 100,
+      });
+      motivations.push(motivation);
+    }
+
+    // Создаем действия
+    const actions: Action[] = [];
+    const actionTypes = Object.values(ActionType);
+    for (let i = 0; i < actionsCount && i < actionTypes.length; i++) {
+      const action = await this.createAction({
+        characterId: character.id,
+        type: actionTypes[i],
+      });
+      actions.push(action);
+    }
+
+    // Создаем воспоминания
+    const memories = await this.createManyMemories(character.id, memoriesCount);
+
+    return {
+      user,
+      character,
+      needs,
+      motivations,
+      actions,
+      memories,
+    };
   }
 }

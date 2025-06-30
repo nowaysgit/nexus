@@ -51,7 +51,11 @@ createTestSuite('ErrorHandling.service Integration Tests', () => {
   });
 
   createTest(
-    { name: 'should log error with custom log service', configType: TestConfigType.INTEGRATION },
+    {
+      name: 'should log error with custom log service',
+      configType: TestConfigType.INTEGRATION,
+      requiresDatabase: false,
+    },
     async () => {
       const testError = new Error('Test error');
       service.logError(logService, 'test operation', testError);
@@ -65,6 +69,7 @@ createTestSuite('ErrorHandling.service Integration Tests', () => {
     {
       name: 'should handle async operation with error handling',
       configType: TestConfigType.INTEGRATION,
+      requiresDatabase: false,
     },
     async () => {
       const successResult = await service.withErrorHandling(
@@ -92,7 +97,11 @@ createTestSuite('ErrorHandling.service Integration Tests', () => {
   );
 
   createTest(
-    { name: 'should handle not found items', configType: TestConfigType.INTEGRATION },
+    {
+      name: 'should handle not found items',
+      configType: TestConfigType.INTEGRATION,
+      requiresDatabase: false,
+    },
     async () => {
       interface TestItem {
         id: number;

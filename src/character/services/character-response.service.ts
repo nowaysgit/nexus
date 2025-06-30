@@ -6,19 +6,21 @@ import { EmotionalState } from '../entities/emotional-state';
 import { NeedsService } from './needs.service';
 import { LogService } from '../../logging/log.service';
 import { PromptTemplateService } from '../../prompt-template/prompt-template.service';
-import { withErrorHandling } from '../../common/utils/error-handling/error-handling.utils';
+import { BaseService } from '../../common/base/base.service';
 
 /**
  * Сервис для генерации ответов персонажей
  */
 @Injectable()
-export class CharacterResponseService {
+export class CharacterResponseService extends BaseService {
   constructor(
     private readonly llmService: LLMService,
     private readonly promptTemplateService: PromptTemplateService,
     private readonly needsService: NeedsService,
-    private readonly logService: LogService,
-  ) {}
+    logService: LogService,
+  ) {
+    super(logService);
+  }
 
   /**
    * Генерирует ответ персонажа на сообщение пользователя
@@ -30,43 +32,45 @@ export class CharacterResponseService {
     emotionalState: EmotionalState,
     additionalContext: string = '',
   ): Promise<string> {
-    return withErrorHandling(
-      async () => {
-        // Формируем контекст для генерации ответа
-        const historyContext = this.formatDialogHistory(dialogHistory);
-        const motivations = await this.getCharacterMotivations(character.id);
+    try {
+      // Формируем контекст для генерации ответа
+      const historyContext = this.formatDialogHistory(dialogHistory);
+      const motivations = await this.getCharacterMotivations(character.id);
 
-        // Создаем сообщения для LLM
-        const messages = [
-          {
-            role: LLMMessageRole.SYSTEM,
-            content: this.createCharacterSystemPrompt(
-              character,
-              emotionalState,
-              motivations,
-              `История диалога:\n${historyContext}\n\n${additionalContext}`,
-            ),
-          },
-          {
-            role: LLMMessageRole.USER,
-            content: userMessage,
-          },
-        ];
+      // Создаем сообщения для LLM
+      const messages = [
+        {
+          role: LLMMessageRole.SYSTEM,
+          content: this.createCharacterSystemPrompt(
+            character,
+            emotionalState,
+            motivations,
+            `История диалога:\n${historyContext}\n\n${additionalContext}`,
+          ),
+        },
+        {
+          role: LLMMessageRole.USER,
+          content: userMessage,
+        },
+      ];
 
-        // Генерируем ответ через LLM
-        const response = await this.llmService.generateText(messages, {
-          temperature: 0.7,
-          maxTokens: 1000,
-          model: 'gpt-4',
-        });
+      // Генерируем ответ через LLM
+      const response = await this.llmService.generateText(messages, {
+        temperature: 0.7,
+        maxTokens: 1000,
+        model: 'gpt-4',
+      });
 
-        return response.text;
-      },
-      'генерации ответа персонажа',
-      this.logService,
-      { characterId: character.id, emotionalState: emotionalState.primary },
-      this.getFallbackResponse(character, emotionalState),
-    );
+      return response.text;
+    } catch (error) {
+      // Логируем ошибку
+      this.logError(
+        `Ошибка при генерации ответа персонажа: ${error instanceof Error ? error.message : String(error)}`,
+      );
+
+      // Возвращаем fallback ответ на основе эмоционального состояния
+      return this.getFallbackResponse(character, emotionalState);
+    }
   }
 
   /**
@@ -77,33 +81,35 @@ export class CharacterResponseService {
     emotionalState: EmotionalState,
     dialogContext: string = 'Начало общения. Знакомство с пользователем.',
   ): Promise<string> {
-    return withErrorHandling(
-      async () => {
-        // Создаем сообщения для генерации начального сообщения
-        const messages = [
-          {
-            role: LLMMessageRole.SYSTEM,
-            content: this.createCharacterSystemPrompt(character, emotionalState, [], dialogContext),
-          },
-          {
-            role: LLMMessageRole.USER,
-            content: 'Начальное приветствие пользователя',
-          },
-        ];
+    try {
+      // Создаем сообщения для генерации начального сообщения
+      const messages = [
+        {
+          role: LLMMessageRole.SYSTEM,
+          content: this.createCharacterSystemPrompt(character, emotionalState, [], dialogContext),
+        },
+        {
+          role: LLMMessageRole.USER,
+          content: 'Начальное приветствие пользователя',
+        },
+      ];
 
-        const response = await this.llmService.generateText(messages, {
-          temperature: 0.8,
-          maxTokens: 500,
-          model: 'gpt-4',
-        });
+      const response = await this.llmService.generateText(messages, {
+        temperature: 0.8,
+        maxTokens: 500,
+        model: 'gpt-4',
+      });
 
-        return response.text;
-      },
-      'генерации начального сообщения персонажа',
-      this.logService,
-      { characterId: character.id },
-      this.getDefaultInitialMessage(character),
-    );
+      return response.text;
+    } catch (error) {
+      // Логируем ошибку
+      this.logError(
+        `Ошибка при генерации начального сообщения персонажа: ${error instanceof Error ? error.message : String(error)}`,
+      );
+
+      // Возвращаем стандартное начальное сообщение
+      return this.getDefaultInitialMessage(character);
+    }
   }
 
   /**
@@ -116,45 +122,35 @@ export class CharacterResponseService {
     recentMemories: string,
     currentAction: { type: string; name: string; description: string },
   ): Promise<string> {
-    return withErrorHandling(
-      async () => {
-        // Создаем контекст для проактивного сообщения
-        const contextPrompt = `
+    return this.withErrorHandling('генерации проактивного сообщения персонажа', async () => {
+      // Создаем контекст для проактивного сообщения
+      const contextPrompt = `
           Эмоциональное состояние: ${emotionalState.primary} (интенсивность: ${emotionalState.intensity})
           Отношения с пользователем: ${userRelationship}
           Недавние воспоминания: ${recentMemories}
           Текущее действие: ${currentAction.name} (${currentAction.description})
         `;
 
-        // Создаем сообщения для генерации проактивного сообщения
-        const messages = [
-          {
-            role: LLMMessageRole.SYSTEM,
-            content: this.createCharacterSystemPrompt(character, emotionalState, [], contextPrompt),
-          },
-          {
-            role: LLMMessageRole.USER,
-            content: `Проактивное сообщение после действия: ${currentAction.type}`,
-          },
-        ];
+      // Создаем сообщения для генерации проактивного сообщения
+      const messages = [
+        {
+          role: LLMMessageRole.SYSTEM,
+          content: this.createCharacterSystemPrompt(character, emotionalState, [], contextPrompt),
+        },
+        {
+          role: LLMMessageRole.USER,
+          content: `Проактивное сообщение после действия: ${currentAction.type}`,
+        },
+      ];
 
-        const response = await this.llmService.generateText(messages, {
-          temperature: 0.8, // Более высокая температура для разнообразия
-          maxTokens: 800,
-          model: 'gpt-4',
-        });
+      const response = await this.llmService.generateText(messages, {
+        temperature: 0.8, // Более высокая температура для разнообразия
+        maxTokens: 800,
+        model: 'gpt-4',
+      });
 
-        return response.text;
-      },
-      'генерации проактивного сообщения персонажа',
-      this.logService,
-      {
-        characterId: character.id,
-        action: currentAction.type,
-        emotionalState: emotionalState.primary,
-      },
-      this.getDefaultProactiveMessage(character, currentAction),
-    );
+      return response.text;
+    });
   }
 
   /**
@@ -190,7 +186,7 @@ export class CharacterResponseService {
           createdAt: need.lastUpdated,
         }));
     } catch (error) {
-      this.logService.error('Ошибка при получении мотиваций персонажа', {
+      this.logError('Ошибка при получении мотиваций персонажа', {
         error: error instanceof Error ? error.message : String(error),
       });
       return [];

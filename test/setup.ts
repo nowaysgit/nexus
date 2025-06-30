@@ -1,205 +1,86 @@
-// Мокаем библиотеку telegraf в самом начале, до загрузки прочих модулей, чтобы предотвратить реальные HTTP вызовы
-jest.mock('telegraf', () => {
-  const mockTelegrafInstance = {
-    telegram: {
-      sendMessage: jest.fn().mockResolvedValue(true),
-      getMe: jest.fn().mockResolvedValue({ username: 'test_bot', id: 123456 }),
-      setWebhook: jest.fn().mockResolvedValue(true),
-      getWebhookInfo: jest.fn().mockResolvedValue({ url: '' }),
-      deleteWebhook: jest.fn().mockResolvedValue(true),
-    },
-    launch: jest.fn().mockResolvedValue(undefined),
-    stop: jest.fn(),
-    use: jest.fn(),
-    on: jest.fn(),
-    command: jest.fn(),
-    start: jest.fn(),
-    help: jest.fn(),
-    catch: jest.fn(),
-  };
-
-  return {
-    __esModule: true,
-    Telegraf: jest.fn().mockImplementation(() => mockTelegrafInstance),
-    default: jest.fn().mockImplementation(() => mockTelegrafInstance),
-    Context: jest.fn(),
-    Scenes: {
-      Stage: jest.fn().mockImplementation(() => ({ middleware: jest.fn() })),
-    },
-    session: jest.fn().mockReturnValue((_ctx: unknown, next: unknown) => {
-      if (typeof (next as any) === 'function') {
-        return (next as () => unknown)();
-      }
-      return undefined;
-    }),
-  };
-});
-
 import { DataSource } from 'typeorm';
-import { checkDatabaseConnection } from '../lib/tester/utils/db-connection-checker';
-import { createTestDataSource } from '../lib/tester/utils/data-source';
-import { Tester } from '../lib/tester';
+import { cleanupTestDataSources } from '../lib/tester/utils/data-source';
+import { isPostgresAvailable } from '../lib/tester/utils/db-connection-checker';
 
-// Объявление глобальных типов
-declare global {
-  // eslint-disable-next-line @typescript-eslint/no-namespace
-  namespace NodeJS {
-    interface Global {
-      __dataSource?: DataSource;
-      // Не определяем __currentTest здесь, используем тип из lib/tester/index.ts
-    }
-  }
-}
-
-// Мок для DataSource, который используется, когда база данных не требуется
-const mockDataSource = {
-  isInitialized: true,
-  initialize: async () => Promise.resolve(),
-  destroy: async () => Promise.resolve(),
-  createQueryRunner: () => ({
-    connect: async () => Promise.resolve(),
-    startTransaction: async () => Promise.resolve(),
-    commitTransaction: async () => Promise.resolve(),
-    rollbackTransaction: async () => Promise.resolve(),
-    release: async () => Promise.resolve(),
-    manager: {
-      find: async () => [],
-      findOne: async () => null,
-      save: async (entity: unknown) => entity,
-      update: async () => ({ affected: 1 }),
-      delete: async () => ({ affected: 1 }),
-      createQueryBuilder: () => ({
-        where: () => ({ getOne: async () => null, getMany: async () => [] }),
-      }),
-    },
-  }),
-  getRepository: () => ({
-    find: async () => [],
-    findOne: async () => null,
-    save: async (entity: unknown) => entity,
-    update: async () => ({ affected: 1 }),
-    delete: async () => ({ affected: 1 }),
-    createQueryBuilder: () => ({
-      where: () => ({ getOne: async () => null, getMany: async () => [] }),
-    }),
-  }),
-  query: async () => [],
-  manager: {
-    query: async () => [],
-  },
-  entityMetadatas: [],
-} as unknown as DataSource;
+// Глобальный DataSource для переиспользования
+let globalDataSource: DataSource | null = null;
 
 /**
- * Настройка тестового окружения
+ * Глобальная настройка перед запуском всех тестов
  */
-export const setupTests = async (): Promise<DataSource> => {
-  try {
-    // Проверяем, требуется ли база данных для текущего теста
+beforeAll(async () => {
+  // Проверяем доступность PostgreSQL с retry механизмом
+  let pgAvailable = false;
+  const maxRetries = 3;
 
-    const currentTest = (global as any).__currentTest;
-    const requiresDatabase = currentTest?.params?.requiresDatabase !== false;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    console.log(`Попытка ${attempt}/${maxRetries} подключения к PostgreSQL...`);
+    pgAvailable = await isPostgresAvailable();
 
-    if (!requiresDatabase) {
-      console.log('[setupTests] Используем мок DataSource, т.к. requiresDatabase: false');
-      return mockDataSource;
+    if (pgAvailable) {
+      console.log('✅ PostgreSQL доступен, начинаем тесты');
+      break;
     }
 
-    // Проверяем доступность базы данных
-    const isDatabaseAvailable = await checkDatabaseConnection();
-    if (!isDatabaseAvailable) {
-      console.log('[setupTests] База данных недоступна, используем мок DataSource');
-      return mockDataSource;
+    if (attempt < maxRetries) {
+      console.log('Ожидание 2 секунды перед следующей попыткой...');
+      await new Promise(resolve => setTimeout(resolve, 2000));
     }
-
-    // Создаем DataSource
-    const dataSource = await createTestDataSource();
-    return dataSource;
-  } catch (error) {
-    console.error('Ошибка настройки тестового окружения:', error);
-    console.log('[setupTests] Из-за ошибки используем мок DataSource');
-    return mockDataSource;
   }
-};
+
+  if (!pgAvailable) {
+    console.warn('⚠️ PostgreSQL недоступен, тесты будут использовать мок DataSource');
+    console.warn(
+      'Для полного тестирования запустите: docker compose -f docker-compose.test.yml up -d',
+    );
+  }
+}, 30000);
 
 /**
- * Очистка тестового окружения
+ * Глобальная очистка после выполнения всех тестов
  */
-export const cleanupTests = async (dataSource: DataSource): Promise<void> => {
-  try {
-    // Если это мок DataSource, ничего не делаем
-    if (!dataSource || dataSource === mockDataSource) {
-      return;
-    }
-
-    // Закрываем соединение с базой данных
-    if (dataSource && dataSource.isInitialized) {
-      await dataSource.destroy();
-    }
-  } catch (error) {
-    console.error('Ошибка очистки тестового окружения:', error);
-  }
-};
-
-// Настройка тестового окружения перед запуском тестов
-beforeAll(async () => {
-  try {
-    // Настраиваем тестовое окружение
-    const dataSource = await setupTests();
-
-    // Сохраняем DataSource в глобальной переменной для доступа из тестов
-
-    (global as any).__dataSource = dataSource;
-
-    return dataSource;
-  } catch (error) {
-    console.error('Ошибка настройки тестового окружения:', error);
-    throw error;
-  }
-});
-
-// Очистка тестового окружения после завершения тестов
 afterAll(async () => {
   try {
-    // Получаем DataSource из глобальной переменной
+    // Очищаем все тестовые DataSource
+    await cleanupTestDataSources();
 
-    const dataSource = (global as any).__dataSource;
+    // Закрываем глобальный DataSource
+    if (globalDataSource && globalDataSource.isInitialized) {
+      await globalDataSource.destroy();
+      globalDataSource = null;
+    }
 
-    // Очищаем тестовое окружение
-    await cleanupTests(dataSource);
-
-    // Удаляем DataSource из глобальной переменной
-
-    delete (global as any).__dataSource;
+    console.log('✅ Очистка тестового окружения завершена');
   } catch (error) {
-    console.error('Ошибка очистки тестового окружения:', error);
+    console.error('❌ Ошибка при очистке тестового окружения:', error);
   }
-});
+}, 30000);
 
-// Настройка глобальных переменных для тестов
-let globalDataSource: DataSource;
+/**
+ * Настройка таймаутов для Jest
+ */
+jest.setTimeout(30000);
 
-// Запускаем настройку тестового окружения перед всеми тестами
-beforeAll(async () => {
-  globalDataSource = await setupTests();
-});
-
-// Очищаем тестовое окружение после всех тестов
-afterAll(async () => {
-  if (globalDataSource) {
-    await cleanupTests(globalDataSource);
-  }
-  // Принудительно закрываем все соединения Tester
-  const tester = Tester.getInstance();
-  await tester.close();
-});
-
-// Обработка необработанных промисов
+/**
+ * Настройка обработчиков ошибок
+ */
 process.on('unhandledRejection', (reason, promise) => {
-  console.warn('Unhandled Rejection at:', promise, 'reason:', reason);
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });
-// Обработка необработанных исключений
+
 process.on('uncaughtException', error => {
-  console.warn('Uncaught Exception:', error);
+  console.error('Uncaught Exception:', error);
+  process.exit(1);
 });
-// Убираем принудительный exit, Jest самостоятельно завершит процесс
+
+/**
+ * Очистка моков после каждого теста
+ */
+afterEach(() => {
+  jest.clearAllMocks();
+});
+
+/**
+ * Экспорт глобального DataSource для переиспользования в тестах
+ */
+export { globalDataSource };

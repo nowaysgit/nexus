@@ -8,6 +8,7 @@ import { LoggingModule } from '../logging/logging.module';
 import { CommonModule } from '../common/common.module';
 import { LLMModule } from '../llm/llm.module';
 import { PromptTemplateModule } from '../prompt-template/prompt-template.module';
+import { CacheModule } from '../cache/cache.module';
 import { UserModule } from '../user/user.module';
 
 import { CharacterController } from './controllers/character.controller';
@@ -35,11 +36,22 @@ import { MotivationService } from './services/motivation.service';
 import { EmotionalStateService } from './services/emotional-state.service';
 import { CharacterBehaviorService } from './services/character-behavior.service';
 import { ActionService } from './services/action.service';
+import { ActionLifecycleService } from './services/action-lifecycle.service';
+import { ActionSchedulerService } from './services/action-scheduler.service';
+import { ActionResourceService } from './services/action-resource.service';
+import { ActionGeneratorService } from './services/action-generator.service';
+import { ActionExecutorService } from './services/action-executor.service';
+import { FrustrationManagementService } from './services/frustration-management.service';
+import { BehaviorPatternService } from './services/behavior-pattern.service';
+import { EmotionalBehaviorService } from './services/emotional-behavior.service';
 
 // Communication Services
 import { MemoryService } from './services/memory.service';
 import { MessageAnalysisService } from './services/message-analysis.service';
+import { MessageBehaviorService } from './services/message-behavior.service';
 import { CharacterResponseService } from './services/character-response.service';
+import { ContextCompressionService } from './services/context-compression.service';
+import { MessageProcessingCoordinator } from './services/message-processing-coordinator.service';
 
 // Specialization Services
 import { SpecializationService } from './services/specialization.service';
@@ -47,6 +59,18 @@ import { SpecializationService } from './services/specialization.service';
 // Manipulation Services
 import { ManipulationService } from './services/manipulation.service';
 import { TechniqueExecutorService } from './services/technique-executor.service';
+import { TechniqueStrategyService } from './services/technique-strategy.service';
+import { TechniqueValidatorService } from './services/technique-validator.service';
+import { TechniqueAnalyzerService } from './services/technique-analyzer.service';
+import { TechniqueGeneratorService } from './services/technique-generator.service';
+import { TechniqueAdapterService } from './services/technique-adapter.service';
+import { TechniqueHistoryService } from './services/technique-history.service';
+
+// Scheduler Services
+import { CharacterSchedulerService } from './services/character-scheduler.service';
+
+// Monitoring Services
+import { CharacterMonitoringService } from './services/character-monitoring.service';
 
 // Story Integration
 import { StoryController } from './controllers/story.controller';
@@ -58,6 +82,11 @@ import {
   TechniqueExecution,
   UserManipulationProfile,
 } from './entities/manipulation-technique.entity';
+
+// Repositories (временно отключен CharacterRepository из-за конфликтов с тестами)
+// import { CharacterRepository } from './repositories/character.repository';
+import { TechniqueExecutionRepository } from './repositories/technique-execution.repository';
+import { UserManipulationProfileRepository } from './repositories/user-manipulation-profile.repository';
 
 /**
  * Основной модуль персонажей - объединяет всю функциональность character
@@ -87,6 +116,7 @@ import {
     LoggingModule,
     LLMModule,
     PromptTemplateModule,
+    CacheModule,
     forwardRef(() => StoryModule),
   ],
   controllers: [CharacterController, StoryController],
@@ -102,13 +132,23 @@ import {
 
     EmotionalStateService,
     CharacterBehaviorService,
+    FrustrationManagementService,
+    BehaviorPatternService,
+    EmotionalBehaviorService,
 
     // Action Services
     ActionService,
+    ActionLifecycleService,
+    ActionSchedulerService,
+    ActionResourceService,
+    ActionGeneratorService,
+    ActionExecutorService,
 
     // Analysis Services
     MessageAnalysisService,
+    MessageBehaviorService,
     CharacterResponseService,
+    MessageProcessingCoordinator,
 
     // Specialization Services
     SpecializationService,
@@ -116,10 +156,31 @@ import {
     // Manipulation Services
     ManipulationService,
     TechniqueExecutorService,
+    TechniqueStrategyService,
+    TechniqueValidatorService,
+    TechniqueAnalyzerService,
+    TechniqueGeneratorService,
+    TechniqueAdapterService,
+    TechniqueHistoryService,
 
     // Context Services
+    ContextCompressionService,
 
     // Story Services
+
+    // Repositories (временно отключен CharacterRepository из-за конфликтов с тестами)
+    // CharacterRepository,
+    TechniqueExecutionRepository,
+    UserManipulationProfileRepository,
+
+    // Message Processing Services
+    MessageProcessingCoordinator,
+
+    // Scheduler Services
+    CharacterSchedulerService,
+
+    // Monitoring Services
+    CharacterMonitoringService,
   ],
   exports: [
     // Unified Management Service
@@ -132,13 +193,23 @@ import {
     MotivationService,
     EmotionalStateService,
     CharacterBehaviorService,
+    FrustrationManagementService,
+    BehaviorPatternService,
+    EmotionalBehaviorService,
 
     // Action Services
     ActionService,
+    ActionLifecycleService,
+    ActionSchedulerService,
+    ActionResourceService,
+    ActionGeneratorService,
+    ActionExecutorService,
 
     // Analysis Services
     MessageAnalysisService,
+    MessageBehaviorService,
     CharacterResponseService,
+    MessageProcessingCoordinator,
 
     // Specialization Services
     SpecializationService,
@@ -146,10 +217,28 @@ import {
     // Manipulation Services
     ManipulationService,
     TechniqueExecutorService,
+    TechniqueStrategyService,
+    TechniqueValidatorService,
+    TechniqueAnalyzerService,
+    TechniqueGeneratorService,
+    TechniqueAdapterService,
+    TechniqueHistoryService,
 
     // Context Services
+    ContextCompressionService,
 
     // Story Services
+
+    // Repositories (временно отключен CharacterRepository из-за конфликтов с тестами)
+    // CharacterRepository,
+    TechniqueExecutionRepository,
+    UserManipulationProfileRepository,
+
+    // Scheduler Services
+    CharacterSchedulerService,
+
+    // Monitoring Services
+    CharacterMonitoringService,
   ],
 })
 export class CharacterModule implements ICharacterModule {

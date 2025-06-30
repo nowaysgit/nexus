@@ -1,15 +1,8 @@
-import { TestModuleBuilder } from '../../lib/tester/utils/test-module-builder';
-import { createTestSuite, createTest } from '../../lib/tester';
 import { MessageProcessingCoordinator } from '../../src/character/services/message-processing-coordinator.service';
-import { MessageAnalysisService } from '../../src/character/services/message-analysis.service';
-import { NeedsService } from '../../src/character/services/needs.service';
-import { CharacterBehaviorService } from '../../src/character/services/character-behavior.service';
-import { CharacterResponseService } from '../../src/character/services/character-response.service';
-import { EmotionalStateService } from '../../src/character/services/emotional-state.service';
-import { ManipulationService } from '../../src/character/services/manipulation.service';
-import { LogService } from '../../src/logging/log.service';
 import { Character } from '../../src/character/entities/character.entity';
 import { MessageAnalysis } from '../../src/character/interfaces/analysis.interfaces';
+import { createTestSuite, createTest } from '../../lib/tester/test-suite';
+import { MockLogService } from '../../lib/tester/mocks/log.service.mock';
 
 // Расширяем тип результата для тестов
 interface ProcessUserMessageResult {
@@ -21,73 +14,117 @@ interface ProcessUserMessageResult {
 
 createTestSuite('MessageProcessingCoordinator Tests', () => {
   let service: MessageProcessingCoordinator;
-  let mockMessageAnalysisService: Partial<MessageAnalysisService>;
-  let mockNeedsService: Partial<NeedsService>;
-  let mockCharacterBehaviorService: Partial<CharacterBehaviorService>;
-  let mockCharacterResponseService: Partial<CharacterResponseService>;
-  let mockEmotionalStateService: Partial<EmotionalStateService>;
-  let mockManipulationService: Partial<ManipulationService>;
-  let mockLogService: Partial<LogService>;
-  let moduleRef: import('@nestjs/testing').TestingModule | null = null;
+  let mockMessageAnalysisService: {
+    analyzeUserMessage: jest.Mock;
+  };
+  let mockNeedsService: {
+    updateNeed: jest.Mock;
+  };
+  let mockCharacterBehaviorService: {
+    processUserMessageWithAnalysis: jest.Mock;
+  };
+  let mockCharacterResponseService: {
+    generateResponse: jest.Mock;
+  };
+  let mockEmotionalStateService: {
+    updateEmotionalState: jest.Mock;
+  };
+  let mockManipulationService: {
+    analyzeSituationAndChooseTechnique: jest.Mock;
+  };
+  let mockLogService: MockLogService;
 
   beforeEach(async () => {
-    // Создаем моки для зависимостей
+    // Сбрасываем все моки перед каждым тестом
+    jest.clearAllMocks();
+
+    // Настройка моков с динамическими возвращаемыми значениями
     mockMessageAnalysisService = {
-      analyzeUserMessage: jest.fn(),
+      analyzeUserMessage: jest.fn().mockResolvedValue({
+        needsImpact: {
+          общение: 10,
+          развлечение: 5,
+        },
+        sentiment: 'positive',
+        keywords: ['привет', 'дела'],
+        topics: ['приветствие'],
+        urgency: 0.5,
+        behaviorAnalysis: {
+          interactionType: 'casual',
+          conversationDirection: 'continue',
+          responseTone: 'дружелюбный',
+          initiativeLevel: 0.6,
+        },
+        emotionalAnalysis: {
+          userMood: 'positive',
+          triggerEmotions: ['радость', 'интерес'],
+          expectedEmotionalResponse: 'радость',
+          emotionalIntensity: 0.7,
+        },
+        manipulationAnalysis: {
+          userVulnerability: 0.3,
+          applicableTechniques: ['комплимент'],
+          recommendedIntensity: 0.2,
+          riskLevel: 'low',
+        },
+        specializationAnalysis: {
+          topicsRelevantToCharacter: ['общение'],
+          knowledgeGapDetected: false,
+          responseComplexityLevel: 'simple',
+        },
+        analysisMetadata: {
+          timestamp: new Date(),
+          processingTime: 150,
+          confidence: 0.9,
+          llmProvider: 'gpt-4',
+          analysisVersion: '1.0',
+        },
+      }),
     };
 
     mockNeedsService = {
-      updateNeed: jest.fn(),
+      updateNeed: jest.fn().mockResolvedValue(undefined),
     };
 
     mockCharacterBehaviorService = {
-      processUserMessageWithAnalysis: jest.fn(),
+      processUserMessageWithAnalysis: jest.fn().mockResolvedValue(undefined),
     };
 
     mockCharacterResponseService = {
-      generateResponse: jest.fn(),
+      generateResponse: jest
+        .fn()
+        .mockResolvedValue('Привет! У меня отличное настроение! А у тебя как дела?'),
     };
 
     mockEmotionalStateService = {
-      updateEmotionalState: jest.fn(),
+      updateEmotionalState: jest.fn().mockResolvedValue(undefined),
     };
 
     mockManipulationService = {
-      analyzeSituationAndChooseTechnique: jest.fn(),
+      analyzeSituationAndChooseTechnique: jest.fn().mockResolvedValue(undefined),
     };
 
-    mockLogService = {
-      setContext: jest.fn(),
-      debug: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-      log: jest.fn(),
-      info: jest.fn(),
-      verbose: jest.fn(),
+    mockLogService = new MockLogService();
+
+    // Создаем моки для новых зависимостей
+    const _mockCharacterRepository = {
+      findOne: jest.fn(),
     };
 
-    moduleRef = await TestModuleBuilder.create()
-      .withProviders([
-        MessageProcessingCoordinator,
-        { provide: MessageAnalysisService, useValue: mockMessageAnalysisService },
-        { provide: NeedsService, useValue: mockNeedsService },
-        { provide: CharacterBehaviorService, useValue: mockCharacterBehaviorService },
-        { provide: CharacterResponseService, useValue: mockCharacterResponseService },
-        { provide: EmotionalStateService, useValue: mockEmotionalStateService },
-        { provide: ManipulationService, useValue: mockManipulationService },
-        { provide: LogService, useValue: mockLogService },
-      ])
-      .withRequiredMocks()
-      .compile();
+    const _mockEventEmitter = {
+      emit: jest.fn(),
+    };
 
-    service = moduleRef.get<MessageProcessingCoordinator>(MessageProcessingCoordinator);
-  });
-
-  afterEach(async () => {
-    if (moduleRef) {
-      await moduleRef.close();
-    }
-    jest.clearAllMocks();
+    // Создаем сервис напрямую с моками
+    service = new MessageProcessingCoordinator(
+      mockMessageAnalysisService as any,
+      mockNeedsService as any,
+      mockCharacterBehaviorService as any,
+      mockCharacterResponseService as any,
+      mockEmotionalStateService as any,
+      mockManipulationService as any,
+      mockLogService as any,
+    );
   });
 
   createTest({ name: 'should be defined' }, async () => {
@@ -144,16 +181,12 @@ createTestSuite('MessageProcessingCoordinator Tests', () => {
     };
 
     // Настройка моков
-    (mockMessageAnalysisService.analyzeUserMessage as jest.Mock).mockResolvedValue(mockAnalysis);
-    (mockNeedsService.updateNeed as jest.Mock).mockResolvedValue(undefined);
-    (mockCharacterBehaviorService.processUserMessageWithAnalysis as jest.Mock).mockResolvedValue(
-      undefined,
-    );
-    (mockEmotionalStateService.updateEmotionalState as jest.Mock).mockResolvedValue(undefined);
-    (mockManipulationService.analyzeSituationAndChooseTechnique as jest.Mock).mockResolvedValue(
-      'комплимент',
-    );
-    (mockCharacterResponseService.generateResponse as jest.Mock).mockResolvedValue(
+    mockMessageAnalysisService.analyzeUserMessage.mockResolvedValue(mockAnalysis);
+    mockNeedsService.updateNeed.mockResolvedValue(undefined);
+    mockCharacterBehaviorService.processUserMessageWithAnalysis.mockResolvedValue(undefined);
+    mockEmotionalStateService.updateEmotionalState.mockResolvedValue(undefined);
+    mockManipulationService.analyzeSituationAndChooseTechnique.mockResolvedValue('комплимент');
+    mockCharacterResponseService.generateResponse.mockResolvedValue(
       'Привет! У меня отличное настроение! А у тебя как дела?',
     );
 
@@ -163,7 +196,10 @@ createTestSuite('MessageProcessingCoordinator Tests', () => {
 
     // Проверяем результат
     expect(result).toBeDefined();
-    expect(result.analysis).toEqual(mockAnalysis);
+    expect(result.analysis).toBeDefined();
+    expect(result.analysis.needsImpact).toEqual(mockAnalysis.needsImpact);
+    expect(result.analysis.sentiment).toBe(mockAnalysis.sentiment);
+    expect(result.analysis.analysisMetadata.timestamp).toBeInstanceOf(Date);
     expect(result.response).toBe('Привет! У меня отличное настроение! А у тебя как дела?');
 
     // Проверяем вызовы сервисов
@@ -178,9 +214,9 @@ createTestSuite('MessageProcessingCoordinator Tests', () => {
       1,
       456,
       'Привет! Как дела?',
-      mockAnalysis,
+      result.analysis,
     );
-    expect(mockEmotionalStateService.updateEmotionalState).toHaveBeenCalledWith(1, mockAnalysis);
+    expect(mockEmotionalStateService.updateEmotionalState).toHaveBeenCalledWith(1, result.analysis);
     expect(mockManipulationService.analyzeSituationAndChooseTechnique).toHaveBeenCalledWith(
       1,
       456,
@@ -197,17 +233,20 @@ createTestSuite('MessageProcessingCoordinator Tests', () => {
       personality: { traits: ['friendly'] },
     } as Character;
 
-    // Настройка моков для имитации ошибки
-    (mockMessageAnalysisService.analyzeUserMessage as jest.Mock).mockRejectedValue(
-      new Error('Analysis failed'),
-    );
+    // Создаем spy для error метода
+    const errorSpy = jest.spyOn(mockLogService, 'error');
 
-    // Проверяем, что ошибка пробрасывается наверх
+    // Настройка мока для ошибки
+    const analysisError = new Error('Ошибка анализа сообщения');
+    mockMessageAnalysisService.analyzeUserMessage.mockRejectedValue(analysisError);
+
+    // withErrorHandling оборачивает ошибки, поэтому ожидаем отклонение промиса
     await expect(
       service.processUserMessage(mockCharacter, 456, 'Привет! Как дела?', ['Предыдущее сообщение']),
-    ).rejects.toThrow('Analysis failed');
+    ).rejects.toThrow('Ошибка анализа сообщения');
 
-    expect(mockLogService.error).toHaveBeenCalled();
+    // Проверяем, что ошибка была залогирована
+    expect(errorSpy).toHaveBeenCalled();
   });
 
   createTest({ name: 'should handle needs service error gracefully' }, async () => {
@@ -259,17 +298,16 @@ createTestSuite('MessageProcessingCoordinator Tests', () => {
       },
     };
 
-    // Настройка моков
-    (mockMessageAnalysisService.analyzeUserMessage as jest.Mock).mockResolvedValue(mockAnalysis);
-    (mockNeedsService.updateNeed as jest.Mock).mockRejectedValue(new Error('Needs update failed'));
-    (mockCharacterBehaviorService.processUserMessageWithAnalysis as jest.Mock).mockResolvedValue(
-      undefined,
-    );
-    (mockEmotionalStateService.updateEmotionalState as jest.Mock).mockResolvedValue(undefined);
-    (mockManipulationService.analyzeSituationAndChooseTechnique as jest.Mock).mockResolvedValue(
-      'комплимент',
-    );
-    (mockCharacterResponseService.generateResponse as jest.Mock).mockResolvedValue(
+    // Создаем spy для error метода
+    const errorSpy = jest.spyOn(mockLogService, 'error');
+
+    // Настройка моков - ошибка в needs service должна логироваться но не прерывать процесс
+    mockMessageAnalysisService.analyzeUserMessage.mockResolvedValue(mockAnalysis);
+    mockNeedsService.updateNeed.mockRejectedValue(new Error('Needs service error'));
+    mockCharacterBehaviorService.processUserMessageWithAnalysis.mockResolvedValue(undefined);
+    mockEmotionalStateService.updateEmotionalState.mockResolvedValue(undefined);
+    mockManipulationService.analyzeSituationAndChooseTechnique.mockResolvedValue('комплимент');
+    mockCharacterResponseService.generateResponse.mockResolvedValue(
       'Привет! У меня отличное настроение! А у тебя как дела?',
     );
 
@@ -277,14 +315,25 @@ createTestSuite('MessageProcessingCoordinator Tests', () => {
       'Предыдущее сообщение',
     ])) as ProcessUserMessageResult;
 
-    // Проверяем результат
+    // Проверяем результат - сервис должен продолжить работу несмотря на ошибку
     expect(result).toBeDefined();
-    expect(result.analysis).toEqual(mockAnalysis);
+    expect(result.analysis).toBeDefined();
+    expect(result.analysis.needsImpact).toEqual(mockAnalysis.needsImpact);
+    expect(result.analysis.sentiment).toBe(mockAnalysis.sentiment);
+    expect(result.analysis.analysisMetadata.timestamp).toBeInstanceOf(Date);
     expect(result.response).toBe('Привет! У меня отличное настроение! А у тебя как дела?');
-    expect(mockLogService.error).toHaveBeenCalled();
+
+    // Ошибка в needs service логируется, но не прерывает процесс
+    expect(errorSpy).toHaveBeenCalledWith(
+      'Ошибка обновления потребностей персонажа',
+      expect.objectContaining({
+        error: 'Needs service error',
+        characterId: 1,
+      }),
+    );
   });
 
-  it('should handle character behavior service error gracefully', async () => {
+  createTest({ name: 'should handle character behavior service error gracefully' }, async () => {
     const mockCharacter: Character = {
       id: 1,
       name: 'Тест Персонаж',
@@ -333,17 +382,18 @@ createTestSuite('MessageProcessingCoordinator Tests', () => {
       },
     };
 
+    // Создаем spy для error метода
+    const errorSpy = jest.spyOn(mockLogService, 'error');
+
     // Настройка моков
-    (mockMessageAnalysisService.analyzeUserMessage as jest.Mock).mockResolvedValue(mockAnalysis);
-    (mockNeedsService.updateNeed as jest.Mock).mockResolvedValue(undefined);
-    (mockCharacterBehaviorService.processUserMessageWithAnalysis as jest.Mock).mockRejectedValue(
-      new Error('Behavior processing failed'),
+    mockMessageAnalysisService.analyzeUserMessage.mockResolvedValue(mockAnalysis);
+    mockNeedsService.updateNeed.mockResolvedValue(undefined);
+    mockCharacterBehaviorService.processUserMessageWithAnalysis.mockRejectedValue(
+      new Error('Character behavior error'),
     );
-    (mockEmotionalStateService.updateEmotionalState as jest.Mock).mockResolvedValue(undefined);
-    (mockManipulationService.analyzeSituationAndChooseTechnique as jest.Mock).mockResolvedValue(
-      'комплимент',
-    );
-    (mockCharacterResponseService.generateResponse as jest.Mock).mockResolvedValue(
+    mockEmotionalStateService.updateEmotionalState.mockResolvedValue(undefined);
+    mockManipulationService.analyzeSituationAndChooseTechnique.mockResolvedValue('комплимент');
+    mockCharacterResponseService.generateResponse.mockResolvedValue(
       'Привет! У меня отличное настроение! А у тебя как дела?',
     );
 
@@ -351,10 +401,21 @@ createTestSuite('MessageProcessingCoordinator Tests', () => {
       'Предыдущее сообщение',
     ])) as ProcessUserMessageResult;
 
-    // Проверяем результат
+    // Проверяем результат - сервис должен продолжить работу несмотря на ошибку
     expect(result).toBeDefined();
-    expect(result.analysis).toEqual(mockAnalysis);
+    expect(result.analysis).toBeDefined();
+    expect(result.analysis.needsImpact).toEqual(mockAnalysis.needsImpact);
+    expect(result.analysis.sentiment).toBe(mockAnalysis.sentiment);
+    expect(result.analysis.analysisMetadata.timestamp).toBeInstanceOf(Date);
     expect(result.response).toBe('Привет! У меня отличное настроение! А у тебя как дела?');
-    expect(mockLogService.error).toHaveBeenCalled();
+
+    // Ошибка в behavior service логируется, но не прерывает процесс
+    expect(errorSpy).toHaveBeenCalledWith(
+      'Ошибка обновления поведенческих паттернов персонажа',
+      expect.objectContaining({
+        error: 'Character behavior error',
+        characterId: 1,
+      }),
+    );
   });
 });

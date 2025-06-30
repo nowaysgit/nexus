@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { Telegraf } from 'telegraf';
 import { InjectBot } from './decorators/inject-bot.decorator';
 import { Context } from './interfaces/context.interface';
+import { getErrorMessage } from '../common/utils/error.utils';
 
 // Интерфейс конфигурации Telegram
 interface TelegramConfig {
@@ -74,9 +75,7 @@ export class TelegramService implements OnModuleInit, OnApplicationShutdown {
 
       this.logService.log('Telegram бот успешно запущен');
     } catch (error) {
-      this.logService.error(
-        `Ошибка при запуске бота: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}`,
-      );
+      this.logService.error(`Ошибка при запуске бота: ${getErrorMessage(error)}`);
       throw error;
     }
   }
@@ -99,9 +98,7 @@ export class TelegramService implements OnModuleInit, OnApplicationShutdown {
         throw new Error('Объект bot.telegram не инициализирован');
       }
     } catch (error) {
-      this.logService.error(
-        `Ошибка при отправке сообщения: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}`,
-      );
+      this.logService.error(`Ошибка при отправке сообщения: ${getErrorMessage(error)}`);
       throw error;
     }
   }

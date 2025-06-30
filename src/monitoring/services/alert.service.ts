@@ -7,7 +7,8 @@ import { SchedulerRegistry } from '@nestjs/schedule';
 import { Alert, AlertType, AlertSeverity, AlertStatus } from '../entities/alert.entity';
 import { MessageQueueService, MessagePriority } from '../../message-queue/message-queue.service';
 import { MessageContext } from '../../common/interfaces/message-processor.interface';
-import { withErrorHandling } from '../../common/utils/error-handling/error-handling.utils';
+import { BaseService } from '../../common/base/base.service';
+import { getErrorMessage } from '../../common/utils/error.utils';
 
 export interface AlertFilter {
   type?: AlertType;
@@ -59,7 +60,7 @@ function isAlertNotificationData(data: unknown): data is AlertNotificationData {
  * Объединяет функциональность управления, уведомлений и конфигурации алертов
  */
 @Injectable()
-export class AlertService implements OnModuleInit {
+export class AlertService extends BaseService implements OnModuleInit {
   private readonly config: AlertConfiguration;
 
   constructor(
@@ -68,9 +69,9 @@ export class AlertService implements OnModuleInit {
     private readonly configService: ConfigService,
     private readonly schedulerRegistry: SchedulerRegistry,
     private readonly messageQueueService: MessageQueueService,
-    private readonly logService: LogService,
+    logService: LogService,
   ) {
-    this.logService.setContext(AlertService.name);
+    super(logService);
     // Загрузка конфигурации
     this.config = this.loadConfiguration();
   }
@@ -102,31 +103,26 @@ export class AlertService implements OnModuleInit {
       notificationChannels?: string[];
     },
   ): Promise<Alert | null> {
-    return withErrorHandling(
-      async () => {
-        if (!this.config.enabled) {
-          return null;
-        }
+    return this.withErrorHandling('создании оповещения', async () => {
+      if (!this.config.enabled) {
+        return null;
+      }
 
-        // Создаем оповещение в БД
-        const alert = Alert.create(type, severity, title, message, options);
-        const savedAlert = await this.alertRepository.save(alert);
+      // Создаем оповещение в БД
+      const alert = Alert.create(type, severity, title, message, options);
+      const savedAlert = await this.alertRepository.save(alert);
 
-        this.logService.debug(`Создано оповещение: ${title} [ID: ${savedAlert.id}]`, {
-          alertId: savedAlert.id,
-          type,
-          severity,
-        });
+      this.logService.debug(`Создано оповещение: ${title} [ID: ${savedAlert.id}]`, {
+        alertId: savedAlert.id,
+        type,
+        severity,
+      });
 
-        // Отправляем уведомления асинхронно через очередь
-        await this.queueNotifications(savedAlert);
+      // Отправляем уведомления асинхронно через очередь
+      await this.queueNotifications(savedAlert);
 
-        return savedAlert;
-      },
-      'создании оповещения',
-      this.logService,
-      { type, severity, title },
-    );
+      return savedAlert;
+    });
   }
 
   /**
@@ -137,157 +133,125 @@ export class AlertService implements OnModuleInit {
     limit: number = 100,
     offset: number = 0,
   ): Promise<Alert[]> {
-    return withErrorHandling(
-      async () => {
-        const queryBuilder = this.alertRepository.createQueryBuilder('alert');
+    return this.withErrorHandling('получении списка оповещений', async () => {
+      const queryBuilder = this.alertRepository.createQueryBuilder('alert');
 
-        if (filter.type) {
-          queryBuilder.andWhere('alert.type = :type', { type: filter.type });
-        }
-        if (filter.severity) {
-          queryBuilder.andWhere('alert.severity = :severity', { severity: filter.severity });
-        }
-        if (filter.status) {
-          queryBuilder.andWhere('alert.status = :status', { status: filter.status });
-        }
-        if (filter.startDate) {
-          queryBuilder.andWhere('alert.createdAt >= :startDate', { startDate: filter.startDate });
-        }
-        if (filter.endDate) {
-          queryBuilder.andWhere('alert.createdAt <= :endDate', { endDate: filter.endDate });
-        }
+      if (filter.type) {
+        queryBuilder.andWhere('alert.type = :type', { type: filter.type });
+      }
+      if (filter.severity) {
+        queryBuilder.andWhere('alert.severity = :severity', { severity: filter.severity });
+      }
+      if (filter.status) {
+        queryBuilder.andWhere('alert.status = :status', { status: filter.status });
+      }
+      if (filter.startDate) {
+        queryBuilder.andWhere('alert.createdAt >= :startDate', { startDate: filter.startDate });
+      }
+      if (filter.endDate) {
+        queryBuilder.andWhere('alert.createdAt <= :endDate', { endDate: filter.endDate });
+      }
 
-        queryBuilder.orderBy('alert.createdAt', 'DESC');
-        queryBuilder.offset(offset).limit(limit);
+      queryBuilder.orderBy('alert.createdAt', 'DESC');
+      queryBuilder.offset(offset).limit(limit);
 
-        const alerts = await queryBuilder.getMany();
-        this.logService.debug(`Получено ${alerts.length} оповещений`, { filter, limit, offset });
+      const alerts = await queryBuilder.getMany();
+      this.logService.debug(`Получено ${alerts.length} оповещений`, { filter, limit, offset });
 
-        return alerts;
-      },
-      'получении списка оповещений',
-      this.logService,
-      { filter, limit, offset },
-    );
+      return alerts;
+    });
   }
 
   /**
    * Отмечает оповещение как просмотренное
    */
   async acknowledgeAlert(alertId: number, user: string): Promise<Alert | null> {
-    return withErrorHandling(
-      async () => {
-        const alert = await this.alertRepository.findOne({ where: { id: alertId } });
-        if (!alert) {
-          this.logService.warn(`Оповещение с ID ${alertId} не найдено`);
-          return null;
-        }
+    return this.withErrorHandling('отметке оповещения как просмотренного', async () => {
+      const alert = await this.alertRepository.findOne({ where: { id: alertId } });
+      if (!alert) {
+        this.logService.warn(`Оповещение с ID ${alertId} не найдено`);
+        return null;
+      }
 
-        alert.status = AlertStatus.ACKNOWLEDGED;
-        alert.acknowledgedBy = user;
-        // alert.acknowledgedAt = new Date(); // Если поле есть в Alert entity
+      alert.status = AlertStatus.ACKNOWLEDGED;
+      alert.acknowledgedBy = user;
+      // alert.acknowledgedAt = new Date(); // Если поле есть в Alert entity
 
-        const updatedAlert = await this.alertRepository.save(alert);
-        this.logService.log(
-          `Оповещение ${alertId} отмечено как просмотренное пользователем ${user}`,
-        );
+      const updatedAlert = await this.alertRepository.save(alert);
+      this.logService.log(`Оповещение ${alertId} отмечено как просмотренное пользователем ${user}`);
 
-        return updatedAlert;
-      },
-      'отметке оповещения как просмотренного',
-      this.logService,
-      { alertId, user },
-    );
+      return updatedAlert;
+    });
   }
 
   /**
    * Разрешает оповещение
    */
   async resolveAlert(alertId: number, user: string): Promise<Alert | null> {
-    return withErrorHandling(
-      async () => {
-        const alert = await this.alertRepository.findOne({ where: { id: alertId } });
-        if (!alert) {
-          this.logService.warn(`Оповещение с ID ${alertId} не найдено`);
-          return null;
-        }
+    return this.withErrorHandling('разрешении оповещения', async () => {
+      const alert = await this.alertRepository.findOne({ where: { id: alertId } });
+      if (!alert) {
+        this.logService.warn(`Оповещение с ID ${alertId} не найдено`);
+        return null;
+      }
 
-        alert.status = AlertStatus.RESOLVED;
-        alert.resolvedBy = user;
-        // alert.resolvedAt = new Date(); // Если поле есть в Alert entity
+      alert.status = AlertStatus.RESOLVED;
+      alert.resolvedBy = user;
+      // alert.resolvedAt = new Date(); // Если поле есть в Alert entity
 
-        const updatedAlert = await this.alertRepository.save(alert);
-        this.logService.log(`Оповещение ${alertId} разрешено пользователем ${user}`);
+      const updatedAlert = await this.alertRepository.save(alert);
+      this.logService.log(`Оповещение ${alertId} разрешено пользователем ${user}`);
 
-        return updatedAlert;
-      },
-      'разрешении оповещения',
-      this.logService,
-      { alertId, user },
-    );
+      return updatedAlert;
+    });
   }
 
   /**
    * Игнорирует оповещение
    */
   async ignoreAlert(alertId: number): Promise<Alert | null> {
-    return withErrorHandling(
-      async () => {
-        const alert = await this.alertRepository.findOne({ where: { id: alertId } });
-        if (!alert) {
-          this.logService.warn(`Оповещение с ID ${alertId} не найдено`);
-          return null;
-        }
+    return this.withErrorHandling('игнорировании оповещения', async () => {
+      const alert = await this.alertRepository.findOne({ where: { id: alertId } });
+      if (!alert) {
+        this.logService.warn(`Оповещение с ID ${alertId} не найдено`);
+        return null;
+      }
 
-        alert.status = AlertStatus.IGNORED;
-        const updatedAlert = await this.alertRepository.save(alert);
-        this.logService.log(`Оповещение ${alertId} проигнорировано`);
+      alert.status = AlertStatus.IGNORED;
+      const updatedAlert = await this.alertRepository.save(alert);
+      this.logService.log(`Оповещение ${alertId} проигнорировано`);
 
-        return updatedAlert;
-      },
-      'игнорировании оповещения',
-      this.logService,
-      { alertId },
-    );
+      return updatedAlert;
+    });
   }
 
   /**
    * Очищает разрешенные оповещения старше указанного количества дней
    */
   async cleanupResolvedAlerts(daysToKeep: number = 30): Promise<void> {
-    return withErrorHandling(
-      async () => {
-        const cutoffDate = new Date();
-        cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
+    return this.withErrorHandling('очистке разрешенных оповещений', async () => {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
 
-        const result = await this.alertRepository.delete({
-          status: AlertStatus.RESOLVED,
-          createdAt: LessThanOrEqual(cutoffDate),
-        });
+      const result = await this.alertRepository.delete({
+        status: AlertStatus.RESOLVED,
+        createdAt: LessThanOrEqual(cutoffDate),
+      });
 
-        this.logService.log(
-          `Очищено ${result.affected} разрешенных оповещений старше ${daysToKeep} дней`,
-        );
-      },
-      'очистке разрешенных оповещений',
-      this.logService,
-      { daysToKeep },
-    );
+      this.logService.log(
+        `Очищено ${result.affected} разрешенных оповещений старше ${daysToKeep} дней`,
+      );
+    });
   }
 
   /**
    * Получает оповещение по ID
    */
   async getAlertById(alertId: number): Promise<Alert | null> {
-    return withErrorHandling(
-      async () => {
-        const alert = await this.alertRepository.findOne({ where: { id: alertId } });
-        return alert || null;
-      },
-      'получении оповещения по ID',
-      this.logService,
-      { alertId },
-    );
+    return this.withErrorHandling('получении оповещения по ID', async () => {
+      const alert = await this.alertRepository.findOne({ where: { id: alertId } });
+      return alert || null;
+    });
   }
 
   /**
@@ -299,46 +263,42 @@ export class AlertService implements OnModuleInit {
     bySeverity: Record<AlertSeverity, number>;
     byType: Record<AlertType, number>;
   }> {
-    return withErrorHandling(
-      async () => {
-        const alerts = await this.alertRepository.find();
+    return this.withErrorHandling('получении статистики оповещений', async () => {
+      const alerts = await this.alertRepository.find();
 
-        const stats = {
-          total: alerts.length,
-          byStatus: {} as Record<AlertStatus, number>,
-          bySeverity: {} as Record<AlertSeverity, number>,
-          byType: {} as Record<AlertType, number>,
-        };
+      const stats = {
+        total: alerts.length,
+        byStatus: {} as Record<AlertStatus, number>,
+        bySeverity: {} as Record<AlertSeverity, number>,
+        byType: {} as Record<AlertType, number>,
+      };
 
-        // Инициализация счетчиков с проверкой типов
-        for (const status of Object.values(AlertStatus)) {
-          stats.byStatus[status] = 0;
+      // Инициализация счетчиков с проверкой типов
+      for (const status of Object.values(AlertStatus)) {
+        stats.byStatus[status] = 0;
+      }
+      for (const severity of Object.values(AlertSeverity)) {
+        stats.bySeverity[severity] = 0;
+      }
+      for (const type of Object.values(AlertType)) {
+        stats.byType[type] = 0;
+      }
+
+      // Подсчет статистики с безопасной проверкой
+      alerts.forEach(alert => {
+        if (alert.status in stats.byStatus) {
+          stats.byStatus[alert.status]++;
         }
-        for (const severity of Object.values(AlertSeverity)) {
-          stats.bySeverity[severity] = 0;
+        if (alert.severity in stats.bySeverity) {
+          stats.bySeverity[alert.severity]++;
         }
-        for (const type of Object.values(AlertType)) {
-          stats.byType[type] = 0;
+        if (alert.type in stats.byType) {
+          stats.byType[alert.type]++;
         }
+      });
 
-        // Подсчет статистики с безопасной проверкой
-        alerts.forEach(alert => {
-          if (alert.status in stats.byStatus) {
-            stats.byStatus[alert.status]++;
-          }
-          if (alert.severity in stats.bySeverity) {
-            stats.bySeverity[alert.severity]++;
-          }
-          if (alert.type in stats.byType) {
-            stats.byType[alert.type]++;
-          }
-        });
-
-        return stats;
-      },
-      'получении статистики оповещений',
-      this.logService,
-    );
+      return stats;
+    });
   }
 
   // ============================================================================
@@ -377,7 +337,7 @@ export class AlertService implements OnModuleInit {
         return { success: true, handled: true, context: messageContext };
       } catch (error) {
         this.logService.error('Error parsing alert notification data', {
-          error: error instanceof Error ? error.message : String(error),
+          error: getErrorMessage(error),
           content: message.content,
         });
         return { success: false, handled: false, context: messageContext };
@@ -391,25 +351,26 @@ export class AlertService implements OnModuleInit {
    * Отправляет уведомления об оповещении
    */
   async sendNotifications(alert: Alert): Promise<void> {
-    return withErrorHandling(
-      async () => {
-        const notifications: Promise<boolean>[] = [];
+    return this.withErrorHandling('отправке уведомлений об оповещении', async () => {
+      const notifications: Promise<boolean>[] = [];
 
-        if (this.config.channels.slack.enabled) {
-          notifications.push(this.sendSlackNotification(alert));
-        }
+      if (this.config.channels.slack.enabled) {
+        notifications.push(this.sendSlackNotification(alert));
+      }
 
-        if (this.config.channels.pagerduty.enabled) {
-          notifications.push(this.sendPagerDutyNotification(alert));
-        }
+      if (this.config.channels.pagerduty.enabled) {
+        notifications.push(this.sendPagerDutyNotification(alert));
+      }
 
-        await Promise.allSettled(notifications);
-        this.logService.debug(`Уведомления отправлены для оповещения ${alert.id}`);
-      },
-      'отправке уведомлений',
-      this.logService,
-      { alertId: alert.id },
-    );
+      const results = await Promise.allSettled(notifications);
+      const successCount = results.filter(
+        result => result.status === 'fulfilled' && result.value,
+      ).length;
+
+      this.logService.log(
+        `Отправлено ${successCount}/${notifications.length} уведомлений для оповещения ${alert.id}`,
+      );
+    });
   }
 
   /**

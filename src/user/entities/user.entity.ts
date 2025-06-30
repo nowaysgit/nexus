@@ -62,13 +62,13 @@ export class User {
   @Column({ default: 0 })
   messagesCount: number;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, type: 'datetime' })
   testCompletedAt: Date;
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column({ type: 'json', nullable: true })
   preferences: Record<string, any>;
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column({ type: 'json', nullable: true })
   communicationStyle: Record<string, number>;
 
   @OneToMany(() => Character, character => character.user)
@@ -83,12 +83,12 @@ export class User {
   @OneToMany(() => AccessKey, key => key.user)
   accessKeys: AccessKey[];
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'datetime' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'datetime' })
   updatedAt: Date;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, type: 'datetime' })
   lastActivity: Date;
 }

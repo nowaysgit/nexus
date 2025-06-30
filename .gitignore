@@ -45,6 +45,8 @@ lerna-debug.log*
 # temp directory
 .temp
 .tmp
+.jest-cache
+.jest-integration-cache
 
 # Runtime data
 pids

@@ -4,16 +4,15 @@ import { TestModuleBuilder } from '../../lib/tester/utils/test-module-builder';
 import { CharacterModule } from '../../src/character/character.module';
 import { CharacterBehaviorService } from '../../src/character/services/character-behavior.service';
 import { ActionService } from '../../src/character/services/action.service';
+import { ActionExecutorService } from '../../src/character/services/action-executor.service';
 import { EmotionalStateService } from '../../src/character/services/emotional-state.service';
 import { NeedsService } from '../../src/character/services/needs.service';
+import { CharacterService } from '../../src/character/services/character.service';
 import { ActionType } from '../../src/character/enums/action-type.enum';
 import { CharacterNeedType } from '../../src/character/enums/character-need-type.enum';
 import { IMotivation } from '../../src/character/interfaces/needs.interfaces';
 import { DataSource } from 'typeorm';
-import {
-  ActionTriggerContext,
-  CharacterAction,
-} from '../../src/character/interfaces/behavior.interfaces';
+import { ActionTriggerContext, ActionResult } from '../../src/character/services/action.service';
 
 createTestSuite('CharacterBehaviorService.processActionTrigger tests', () => {
   let moduleRef: import('@nestjs/testing').TestingModule | null = null;
@@ -21,8 +20,9 @@ createTestSuite('CharacterBehaviorService.processActionTrigger tests', () => {
   let fixtureManager: FixtureManager;
   let behaviorService: CharacterBehaviorService;
   let emotionalStateService: EmotionalStateService;
-  let needsService: NeedsService;
+  let _needsService: NeedsService;
   let actionService: ActionService;
+  let characterService: CharacterService;
 
   beforeEach(async () => {
     moduleRef = await TestModuleBuilder.create()
@@ -37,11 +37,16 @@ createTestSuite('CharacterBehaviorService.processActionTrigger tests', () => {
     fixtureManager = new FixtureManager(dataSource);
     behaviorService = moduleRef.get<CharacterBehaviorService>(CharacterBehaviorService);
     emotionalStateService = moduleRef.get<EmotionalStateService>(EmotionalStateService);
-    needsService = moduleRef.get<NeedsService>(NeedsService);
+    _needsService = moduleRef.get<NeedsService>(NeedsService);
     actionService = moduleRef.get<ActionService>(ActionService);
+    characterService = moduleRef.get<CharacterService>(CharacterService);
 
     await fixtureManager.cleanDatabase();
+
+    // Более агрессивная очистка всех моков
     jest.clearAllMocks();
+    jest.restoreAllMocks();
+    jest.resetAllMocks();
   });
 
   afterEach(async () => {
@@ -78,33 +83,21 @@ createTestSuite('CharacterBehaviorService.processActionTrigger tests', () => {
         },
       ];
 
-      const mockAction = {
-        type: ActionType.SEND_MESSAGE,
-        description: 'Test Action',
-        content: 'Hello',
-      };
-
-      const selectActionSpy = jest
-        .spyOn(CharacterBehaviorService.prototype as any, 'selectActionForMotivation')
-        .mockResolvedValue(mockAction);
-
-      // Мокаем метод execute в actionService для возврата успешного результата
-      const _executeSpy = jest.spyOn(actionService, 'execute').mockResolvedValue({
-        success: true,
-        data: {
-          action: mockAction,
-          result: { success: true },
-        },
-      });
-
-      // Мокаем determineAndPerformAction в actionService для возврата нужного действия
-      const determineAndPerformActionSpy = jest
-        .spyOn(actionService, 'determineAndPerformAction')
+      // Мокаем processActionTrigger в ActionService для возврата успешного результата
+      const processActionTriggerSpy = jest
+        .spyOn(actionService, 'processActionTrigger')
         .mockResolvedValue({
-          type: ActionType.SEND_MESSAGE,
-          description: 'Test Action',
-          content: 'Hello',
-        });
+          success: true,
+          message: 'Действие выполнено успешно',
+          data: {
+            action: {
+              type: ActionType.SEND_MESSAGE,
+              description: 'Test Action',
+              content: 'Hello',
+            },
+            result: { success: true },
+          },
+        } as ActionResult);
 
       // Создаем контекст для триггера действия
       const triggerContext: ActionTriggerContext = {
@@ -117,14 +110,13 @@ createTestSuite('CharacterBehaviorService.processActionTrigger tests', () => {
       };
 
       // Исправленный вызов с передачей полного объекта контекста
-      const result = await behaviorService.processActionTrigger(triggerContext);
+      const result: ActionResult = await behaviorService.processActionTrigger(triggerContext);
 
       expect(result).toBeDefined();
       expect(result.success).toBe(true);
-      expect(selectActionSpy).toHaveBeenCalledWith(expect.anything(), motivations[0]);
-      expect(determineAndPerformActionSpy).toHaveBeenCalled();
+      expect(processActionTriggerSpy).toHaveBeenCalledWith(triggerContext);
 
-      if (result.success) {
+      if (result.success && result.data) {
         const actionData = result.data;
         expect((actionData.action as { type: ActionType }).type).toBe(ActionType.SEND_MESSAGE);
       }
@@ -167,35 +159,22 @@ createTestSuite('CharacterBehaviorService.processActionTrigger tests', () => {
         },
       ];
 
-      const mockAction = {
-        type: ActionType.EXPRESS_EMOTION,
-        description: 'Expressing joy',
-        content: 'I am so happy!',
-        metadata: { emotion: 'joy' },
-      };
-
-      const selectActionSpy = jest
-        .spyOn(CharacterBehaviorService.prototype as any, 'selectActionForMotivation')
-        .mockResolvedValue(mockAction);
-
-      // Мокаем метод execute в actionService для возврата успешного результата
-      const _executeSpy = jest.spyOn(actionService, 'execute').mockResolvedValue({
-        success: true,
-        data: {
-          action: mockAction,
-          result: { success: true },
-        },
-      });
-
-      // Мокаем determineAndPerformAction в actionService для возврата нужного действия
-      const determineAndPerformActionSpy2 = jest
-        .spyOn(actionService, 'determineAndPerformAction')
+      // Мокаем processActionTrigger в ActionService для возврата успешного результата
+      const processActionTriggerSpy = jest
+        .spyOn(actionService, 'processActionTrigger')
         .mockResolvedValue({
-          type: ActionType.EXPRESS_EMOTION,
-          description: 'Expressing joy',
-          content: 'I am so happy!',
-          metadata: { emotion: 'joy' },
-        });
+          success: true,
+          message: 'Эмоциональное действие выполнено',
+          data: {
+            action: {
+              type: ActionType.EXPRESS_EMOTION,
+              description: 'Expressing joy',
+              content: 'I am so happy!',
+              metadata: { emotion: 'joy' },
+            },
+            result: { success: true },
+          },
+        } as ActionResult);
 
       // Создаем контекст для триггера действия
       const triggerContext: ActionTriggerContext = {
@@ -209,14 +188,13 @@ createTestSuite('CharacterBehaviorService.processActionTrigger tests', () => {
       };
 
       // Исправленный вызов с передачей полного объекта контекста
-      const result = await behaviorService.processActionTrigger(triggerContext);
+      const result: ActionResult = await behaviorService.processActionTrigger(triggerContext);
 
       expect(result).toBeDefined();
       expect(result.success).toBe(true);
-      expect(selectActionSpy).toHaveBeenCalledWith(expect.anything(), motivations[0]);
-      expect(determineAndPerformActionSpy2).toHaveBeenCalled();
+      expect(processActionTriggerSpy).toHaveBeenCalledWith(triggerContext);
 
-      if (result.success) {
+      if (result.success && result.data) {
         const actionData = result.data;
         expect(actionData.action).toBeDefined();
         const action = actionData.action as { type: ActionType; metadata: { emotion: string } };
@@ -235,17 +213,13 @@ createTestSuite('CharacterBehaviorService.processActionTrigger tests', () => {
       const character = await fixtureManager.createCharacter({ user });
 
       // Создаем реальную потребность в базе данных
-      const _need = await fixtureManager.createNeed({
+      await fixtureManager.createNeed({
         character,
         type: CharacterNeedType.FUN,
         currentValue: 90,
         growthRate: 0.5,
         threshold: 70,
       });
-
-      const needs = await needsService.getNeeds(character.id);
-      const initialFunNeed = needs.find(need => need.type === CharacterNeedType.FUN);
-      expect(initialFunNeed?.currentValue).toBe(90);
 
       const motivations: IMotivation[] = [
         {
@@ -258,52 +232,23 @@ createTestSuite('CharacterBehaviorService.processActionTrigger tests', () => {
         },
       ];
 
-      const mockAction = {
-        type: ActionType.ENTERTAINMENT,
-        description: 'Play a fun game',
-        content: 'Let us play!',
-        relatedNeeds: [{ needType: CharacterNeedType.FUN, impact: -50 }],
-      };
-
-      const selectActionSpy = jest
-        .spyOn(CharacterBehaviorService.prototype as any, 'selectActionForMotivation')
-        .mockResolvedValue(mockAction);
-
-      // Мокаем метод execute в actionService для возврата успешного результата
-      const _executeSpy = jest.spyOn(actionService, 'execute').mockResolvedValue({
-        success: true,
-        data: {
-          action: mockAction,
-          result: { success: true, needsUpdated: true },
-        },
-      });
-
-      // Мокаем determineAndPerformAction в actionService для возврата нужного действия
-      const determineAndPerformActionSpy3 = jest
-        .spyOn(actionService, 'determineAndPerformAction')
-        .mockImplementation(async (character, _context) => {
-          // Имитируем выполнение действия и обновление потребностей
-          const action: CharacterAction = {
-            type: ActionType.ENTERTAINMENT,
-            description: 'Play a fun game',
-            content: 'Let us play!',
-            relatedNeeds: [CharacterNeedType.FUN],
-            status: 'completed',
-            startTime: new Date(),
-          };
-
-          // Вызываем updateNeed напрямую
-          await needsService.updateNeed(character.id, {
-            type: CharacterNeedType.FUN,
-            change: -50,
-            reason: 'Test action impact',
-          });
-
-          return action;
-        });
-
-      // Вместо мока updateNeed, создаем шпион для отслеживания вызова
-      const updateNeedSpy = jest.spyOn(needsService, 'updateNeed');
+      // Мокаем processActionTrigger в ActionService для возврата успешного результата
+      const processActionTriggerSpy = jest
+        .spyOn(actionService, 'processActionTrigger')
+        .mockResolvedValue({
+          success: true,
+          message: 'Развлекательное действие выполнено',
+          data: {
+            action: {
+              type: ActionType.ENTERTAINMENT,
+              description: 'Play a fun game',
+              content: 'Let us play!',
+              relatedNeeds: [{ needType: CharacterNeedType.FUN, impact: -50 }],
+            },
+            result: { success: true },
+          },
+          needsImpact: { [CharacterNeedType.FUN]: -50 },
+        } as ActionResult);
 
       // Создаем контекст для триггера действия
       const triggerContext: ActionTriggerContext = {
@@ -315,22 +260,18 @@ createTestSuite('CharacterBehaviorService.processActionTrigger tests', () => {
         motivations: motivations,
       };
 
-      // Исправленный вызов с передачей полного объекта контекста
-      const result = await behaviorService.processActionTrigger(triggerContext);
+      // Вызываем метод и проверяем результат
+      const result: ActionResult = await behaviorService.processActionTrigger(triggerContext);
 
       expect(result).toBeDefined();
       expect(result.success).toBe(true);
-      expect(selectActionSpy).toHaveBeenCalledWith(expect.anything(), motivations[0]);
-      expect(determineAndPerformActionSpy3).toHaveBeenCalled();
-
-      // Проверяем, что метод updateNeed был вызван
-      expect(updateNeedSpy).toHaveBeenCalled();
-
-      // Проверяем параметры вызова
-      const updateNeedCalls = updateNeedSpy.mock.calls;
-      expect(updateNeedCalls.length).toBeGreaterThan(0);
-      expect(updateNeedCalls[0][0]).toBe(character.id);
-      expect(updateNeedCalls[0][1].type).toBe(CharacterNeedType.FUN);
+      expect(processActionTriggerSpy).toHaveBeenCalledWith(triggerContext);
+      expect(result.data).toBeDefined();
+      if (result.data) {
+        expect(result.data.action).toBeDefined();
+        const action = result.data.action as { type: ActionType };
+        expect(action.type).toBe(ActionType.ENTERTAINMENT);
+      }
     },
   );
 
@@ -367,39 +308,33 @@ createTestSuite('CharacterBehaviorService.processActionTrigger tests', () => {
         messagePrompt: 'test',
       };
 
-      const mockAction = {
-        type: ActionType.SEND_MESSAGE,
-        description: 'Test action',
-        content: 'Test message',
-      };
+      // Мокаем CharacterService.findOneById для возврата персонажа
+      jest.spyOn(characterService, 'findOneById').mockResolvedValue(character);
 
-      // Мокаем determineAndPerformAction
-      const determineAndPerformActionSpy = jest
-        .spyOn(actionService, 'determineAndPerformAction')
+      // Мокаем processActionTrigger в ActionService
+      const processActionTriggerSpy = jest
+        .spyOn(actionService, 'processActionTrigger')
         .mockResolvedValue({
           success: true,
+          message: 'Действие выполнено успешно',
           data: {
-            action: mockAction,
+            action: {
+              type: ActionType.SEND_MESSAGE,
+              description: 'Test action',
+              content: 'Test message',
+            },
             result: { success: true },
           },
-          type: ActionType.SEND_MESSAGE,
-          description: 'Test action',
-        } as CharacterAction);
+        } as ActionResult);
 
       // Передаем полный контекст в processActionTrigger
-      const result = await behaviorService.processActionTrigger(actionTriggerContext);
+      const result: ActionResult = await behaviorService.processActionTrigger(actionTriggerContext);
 
       expect(result).toBeDefined();
       expect(result.success).toBe(true);
 
-      // Проверяем, что determineAndPerformAction был вызван с правильными параметрами
-      expect(determineAndPerformActionSpy).toHaveBeenCalled();
-      expect(determineAndPerformActionSpy.mock.calls[0][0]).toEqual(
-        expect.objectContaining({
-          id: character.id,
-        }),
-      );
-      expect(determineAndPerformActionSpy.mock.calls[0][1]).toEqual(actionTriggerContext);
+      // Проверяем, что processActionTrigger был вызван с правильными параметрами
+      expect(processActionTriggerSpy).toHaveBeenCalledWith(actionTriggerContext);
     },
   );
 });

@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { Context } from 'telegraf';
 import { LogService } from '../../logging/log.service';
+import { BaseService } from '../../common/base/base.service';
+import { getErrorMessage } from '../../common/utils/error.utils';
 
 /**
  * Интерфейс для парсинга callback данных
@@ -17,8 +19,10 @@ export interface ParsedCallback {
  * Включает действия, диалоги и настройки
  */
 @Injectable()
-export class CallbackHandler {
-  constructor(private readonly logService: LogService) {}
+export class CallbackHandler extends BaseService {
+  constructor(logService: LogService) {
+    super(logService);
+  }
 
   /**
    * Обработать callback query
@@ -31,7 +35,7 @@ export class CallbackHandler {
 
       const callbackData = this.parseCallbackData(ctx.callbackQuery.data);
 
-      this.logService.debug('Обработка callback', {
+      this.logDebug('Обработка callback', {
         userId: ctx.from?.id,
         action: callbackData.action,
         entityId: callbackData.entityId,
@@ -69,13 +73,13 @@ export class CallbackHandler {
 
         default:
           await ctx.answerCbQuery('❌ Неизвестное действие');
-          this.logService.warn('Неизвестное callback действие', { action: callbackData.action });
+          this.logWarning('Неизвестное callback действие', { action: callbackData.action });
       }
 
       await ctx.answerCbQuery();
     } catch (error) {
-      this.logService.error('Ошибка при обработке callback query', {
-        error: error instanceof Error ? error.message : String(error),
+      this.logError('Ошибка при обработке callback query', {
+        error: getErrorMessage(error),
         callbackData: (ctx.callbackQuery as { data?: string })?.data,
         userId: ctx.from?.id,
       });
@@ -104,9 +108,9 @@ export class CallbackHandler {
         ),
       };
     } catch (error) {
-      this.logService.warn('Ошибка парсинга callback данных', {
+      this.logWarning('Ошибка парсинга callback данных', {
         data,
-        error: error instanceof Error ? error.message : String(error),
+        error: getErrorMessage(error),
       });
       return { action: 'unknown' };
     }

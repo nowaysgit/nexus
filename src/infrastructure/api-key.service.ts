@@ -3,19 +3,21 @@ import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
 import { IApiKeyValidator, IApiKeyConfig } from '../common/interfaces/api-key.interface';
 import { LogService } from '../logging/log.service';
+import { BaseService } from '../common/base/base.service';
 
 /**
  * Единый сервис для проверки API-ключей
  * Консолидирует логику для всех мест, где требуется проверка API-ключа
  */
 @Injectable()
-export class ApiKeyService implements IApiKeyValidator {
+export class ApiKeyService extends BaseService implements IApiKeyValidator {
   private readonly config: IApiKeyConfig;
 
   constructor(
     private readonly configService: ConfigService,
-    private readonly logService: LogService,
+    logService: LogService,
   ) {
+    super(logService);
     this.config = {
       adminApiKey: this.configService.get<string>('admin.apiKey', ''),
       clientApiKey: this.configService.get<string>('api.key', ''),
@@ -89,19 +91,19 @@ export class ApiKeyService implements IApiKeyValidator {
 
     // Если локальный запрос и разрешены локальные запросы без ключа
     if (isLocalRequest && this.config.allowLocalWithoutKey) {
-      this.logService.debug(`Локальный запрос разрешен без ${keyType} API-ключа`);
+      this.logDebug(`Локальный запрос разрешен без ${keyType} API-ключа`);
       return true;
     }
 
     // Если ключ не настроен, разрешаем только локальные запросы
     if (!validApiKey) {
-      this.logService.warn(`${keyType} API-ключ не настроен, отклоняем внешний запрос`);
+      this.logWarning(`${keyType} API-ключ не настроен, отклоняем внешний запрос`);
       return false;
     }
 
     // Если ключ не предоставлен
     if (!requestApiKey) {
-      this.logService.warn(`${keyType} API-ключ не предоставлен в запросе`);
+      this.logWarning(`${keyType} API-ключ не предоставлен в запросе`);
       return false;
     }
 
@@ -109,30 +111,30 @@ export class ApiKeyService implements IApiKeyValidator {
     const isValid = requestApiKey === validApiKey;
 
     if (isTestMode) {
-      this.logService.debug(
+      this.logDebug(
         `Тестовый режим: Проверка ключей - запрос: "${requestApiKey}", валидный: "${validApiKey}"`,
       );
 
       // Для тестов: всегда считаем ключ 'test-api-key' валидным
       if (requestApiKey === 'test-api-key' && validApiKey === 'test-api-key') {
-        this.logService.debug(`В тестовом режиме: используется стандартный тестовый ключ`);
+        this.logDebug(`В тестовом режиме: используется стандартный тестовый ключ`);
         return true;
       }
     }
 
     if (!isValid) {
-      this.logService.warn(
+      this.logWarning(
         `Недействительный ${keyType} API-ключ от ${ip}. Ожидался: "${validApiKey}", получен: "${requestApiKey}"`,
       );
     } else {
-      this.logService.debug(`Действительный ${keyType} API-ключ от ${ip}`);
+      this.logDebug(`Действительный ${keyType} API-ключ от ${ip}`);
     }
 
     // Для тестов: более гибкая проверка ключей
     if (!isValid && isTestMode) {
       // Проверка на совпадение без учета регистра и пробелов
       if (requestApiKey.trim().toLowerCase() === validApiKey.trim().toLowerCase()) {
-        this.logService.debug(`В тестовом режиме: ключи совпадают с учетом регистра и пробелов`);
+        this.logDebug(`В тестовом режиме: ключи совпадают с учетом регистра и пробелов`);
         return true;
       }
     }
@@ -145,18 +147,18 @@ export class ApiKeyService implements IApiKeyValidator {
    */
   private logKeyStatus(keyName: string, key: string): void {
     if (!key) {
-      this.logService.warn(`${keyName}-ключ не настроен`);
+      this.logWarning(`${keyName}-ключ не настроен`);
       return;
     }
 
     const keyLength = key.length;
     const keyPrefix = key.substring(0, 3) + '...';
 
-    this.logService.debug(`${keyName}-ключ настроен: ${keyPrefix} (${keyLength} символов)`);
+    this.logDebug(`${keyName}-ключ настроен: ${keyPrefix} (${keyLength} символов)`);
 
     // В режиме разработки показываем полный ключ
     if (process.env.NODE_ENV === 'development') {
-      this.logService.debug(`${keyName}-ключ в режиме разработки: ${key}`);
+      this.logDebug(`${keyName}-ключ в режиме разработки: ${key}`);
     }
   }
 }

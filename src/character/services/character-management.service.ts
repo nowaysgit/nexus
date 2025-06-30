@@ -7,10 +7,10 @@ import { Need } from '../entities/need.entity';
 import { Action } from '../entities/action.entity';
 import { EventType, StoryEvent, StoryEventEffect } from '../entities/story-event.entity';
 import { CreateCharacterDto } from '../dto/create-character.dto';
-import { ErrorHandlingService } from '../../common/utils/error-handling/error-handling.service';
 import { CacheService } from '../../cache/cache.service';
 import { LogService } from '../../logging/log.service';
 import { CharacterNeedType } from '../enums/character-need-type.enum';
+import { BaseService } from '../../common/base/base.service';
 
 export interface ICharacterAnalysis {
   characterId: string;
@@ -42,7 +42,7 @@ export interface ICharacterAnalysis {
  * Координирует основную функциональность персонажей, объединяя логику из разных доменов
  */
 @Injectable()
-export class CharacterManagementService {
+export class CharacterManagementService extends BaseService {
   constructor(
     @InjectRepository(Character)
     private readonly characterRepository: Repository<Character>,
@@ -55,17 +55,16 @@ export class CharacterManagementService {
     @InjectRepository(StoryEvent)
     private readonly storyEventRepository: Repository<StoryEvent>,
     private readonly cacheService: CacheService,
-    private readonly errorHandler: ErrorHandlingService,
-    private readonly logService: LogService,
+    logService: LogService,
   ) {
-    this.logService.setContext(CharacterManagementService.name);
+    super(logService);
   }
 
   /**
    * Создание нового персонажа с базовыми настройками
    */
   async createCharacter(dto: CreateCharacterDto, userId: number | string): Promise<Character> {
-    try {
+    return this.withErrorHandling('создании персонажа', async () => {
       // Создание персонажа
       const character = this.characterRepository.create({
         ...dto,
@@ -86,20 +85,16 @@ export class CharacterManagementService {
         3600, // 1 час
       );
 
-      this.logService.log(`Character created successfully: ${savedCharacter.id}`);
+      this.logInfo(`Character created successfully: ${savedCharacter.id}`);
       return savedCharacter;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      this.logService.error('Error creating character', errorMessage);
-      throw error;
-    }
+    });
   }
 
   /**
    * Получение персонажа с полными данными
    */
   async getCharacterWithData(id: string): Promise<Character | null> {
-    try {
+    return this.withErrorHandling('получении персонажа с данными', async () => {
       // Попытка получить из кэша
       const cached = await this.cacheService.get<Character>(`character:${id}`);
       if (cached) {
@@ -118,13 +113,7 @@ export class CharacterManagementService {
       }
 
       return character;
-    } catch (error) {
-      this.logService.error('Ошибка при получении персонажа с данными', {
-        error: error instanceof Error ? error.message : String(error),
-        id,
-      });
-      return null;
-    }
+    });
   }
 
   // Removed duplicate methods - functionality delegated to specialized services:
@@ -141,35 +130,31 @@ export class CharacterManagementService {
     description: string,
     impact?: StoryEventEffect,
   ): Promise<StoryEvent> {
-    return this.errorHandler.withErrorHandling(
-      async () => {
-        const storyEvent = this.storyEventRepository.create({
-          characterId: parseInt(characterId, 10),
-          type: eventType as EventType,
-          title: description,
-          description,
-          triggers: {},
-          effects: impact,
-        });
+    return this.withErrorHandling('создании сюжетного события', async () => {
+      const storyEvent = this.storyEventRepository.create({
+        characterId: parseInt(characterId, 10),
+        type: eventType as EventType,
+        title: description,
+        description,
+        triggers: {},
+        effects: impact,
+      });
 
-        const savedStoryEvent = await this.storyEventRepository.save(storyEvent);
+      const savedStoryEvent = await this.storyEventRepository.save(storyEvent);
 
-        // Инвалидация кэша персонажа
-        await this.cacheService.del(`character:${characterId}`);
+      // Инвалидация кэша персонажа
+      await this.cacheService.del(`character:${characterId}`);
 
-        this.logService.log(`Story event created for character ${characterId}: ${eventType}`);
-        return savedStoryEvent;
-      },
-      'создании сюжетного события',
-      this.logService,
-    );
+      this.logInfo(`Story event created for character ${characterId}: ${eventType}`);
+      return savedStoryEvent;
+    });
   }
 
   /**
    * Получение анализа персонажа
    */
   async getCharacterAnalysis(characterId: string): Promise<ICharacterAnalysis> {
-    try {
+    return this.withErrorHandling('получении анализа персонажа', async () => {
       const character = await this.getCharacterWithData(characterId);
       if (!character) {
         throw new Error('Character not found');
@@ -192,13 +177,7 @@ export class CharacterManagementService {
         overallState: this.calculateOverallState(needsAnalysis, memoriesAnalysis, activityAnalysis),
         createdAt: new Date(),
       };
-    } catch (error) {
-      this.logService.error('Ошибка при получении анализа персонажа', {
-        error: error instanceof Error ? error.message : String(error),
-        characterId,
-      });
-      throw error;
-    }
+    });
   }
 
   /**

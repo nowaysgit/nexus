@@ -1,28 +1,33 @@
-import { createTestSuite, createTest, TestConfigType } from '../../lib/tester';
-import { TestModuleBuilder } from '../../lib/tester/utils/test-module-builder';
+import { createTestSuite, createTest, TestModuleBuilder } from '../../lib/tester';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { TestConfigurations } from '../../lib/tester/test-configurations';
-import { FixtureManager } from '../../lib/tester/fixtures/fixture-manager';
 import { DataSource, Repository } from 'typeorm';
-import { Type, DynamicModule } from '@nestjs/common';
+import { TestingModule } from '@nestjs/testing';
 
-import {
-  SpecializationService,
-  CompetenceLevel,
-} from '../../src/character/services/specialization.service';
+import { SpecializationService } from '../../src/character/services/specialization.service';
 import { CharacterResponseService } from '../../src/character/services/character-response.service';
 import { CharacterService } from '../../src/character/services/character.service';
-import { LLMService } from '../../src/llm/services/llm.service';
+import { CharacterArchetype } from '../../src/character/enums/character-archetype.enum';
 import { Character } from '../../src/character/entities/character.entity';
+import { LLMService } from '../../src/llm/services/llm.service';
+import { FixtureManager } from '../../lib/tester/fixtures/fixture-manager';
+
+// Modules
 import { CharacterModule } from '../../src/character/character.module';
 import { LLMModule } from '../../src/llm/llm.module';
 import { CacheModule } from '../../src/cache/cache.module';
 import { LoggingModule } from '../../src/logging/logging.module';
 import { MessageQueueModule } from '../../src/message-queue/message-queue.module';
 import { ValidationModule } from '../../src/validation/validation.module';
-import { MonitoringModule } from '../../src/monitoring/monitoring.module';
+import { MockMonitoringModule } from '../../lib/tester/mocks/mock-monitoring.module';
 import { PromptTemplateModule } from '../../src/prompt-template/prompt-template.module';
-import { CharacterArchetype } from '../../src/character/enums/character-archetype.enum';
+
+// Интерфейсы и типы
+enum CompetenceLevel {
+  BASIC = 'basic',
+  INTERMEDIATE = 'intermediate',
+  ADVANCED = 'advanced',
+  EXPERT = 'expert',
+}
 
 // Интерфейс для результата генерации LLM
 interface LLMGenerateResult {
@@ -39,11 +44,22 @@ interface LLMGenerateResult {
 createTestSuite('Specialization Workflow Integration Tests', () => {
   let fixtureManager: FixtureManager;
   let dataSource: DataSource;
+  let moduleRef: TestingModule;
 
   beforeAll(async () => {
     // Создаем общий модуль для получения DataSource
-    const moduleRef = await TestModuleBuilder.create()
-      .withImports([CharacterModule])
+    moduleRef = await TestModuleBuilder.create()
+      .withDatabase(false)
+      .withImports([
+        CharacterModule,
+        LLMModule,
+        CacheModule,
+        LoggingModule,
+        MessageQueueModule,
+        ValidationModule,
+        MockMonitoringModule,
+        PromptTemplateModule,
+      ])
       .withRequiredMocks()
       .compile();
 
@@ -56,33 +72,17 @@ createTestSuite('Specialization Workflow Integration Tests', () => {
     await fixtureManager.cleanDatabase();
   });
 
+  afterAll(async () => {
+    if (moduleRef) {
+      await moduleRef.close();
+    }
+  });
+
   createTest(
     {
       name: 'should create character and test specialization service',
-      configType: TestConfigType.INTEGRATION,
-      requiresDatabase: true,
     },
     async _context => {
-      const imports: (Type<any> | DynamicModule)[] = [
-        CharacterModule,
-        LLMModule,
-        CacheModule,
-        LoggingModule,
-        MessageQueueModule,
-        ValidationModule,
-        MonitoringModule,
-        PromptTemplateModule,
-      ];
-
-      const preparedImports = TestConfigurations.prepareImportsForTesting(imports);
-      const providers = TestConfigurations.requiredMocksAdder(preparedImports);
-
-      const moduleRef = await TestModuleBuilder.create()
-        .withImports(preparedImports)
-        .withProviders(providers)
-        .withRequiredMocks()
-        .compile();
-
       const characterService = moduleRef.get<CharacterService>(CharacterService);
       const specializationService = moduleRef.get<SpecializationService>(SpecializationService);
       const llmService = moduleRef.get<LLMService>(LLMService);
@@ -158,8 +158,6 @@ createTestSuite('Specialization Workflow Integration Tests', () => {
       } catch (error) {
         console.error('Ошибка в тесте:', error);
         throw error;
-      } finally {
-        await moduleRef.close();
       }
     },
   );
@@ -167,30 +165,8 @@ createTestSuite('Specialization Workflow Integration Tests', () => {
   createTest(
     {
       name: 'should handle response generation with specialization',
-      configType: TestConfigType.INTEGRATION,
-      requiresDatabase: true,
     },
     async _context => {
-      const imports: (Type<any> | DynamicModule)[] = [
-        CharacterModule,
-        LLMModule,
-        CacheModule,
-        LoggingModule,
-        MessageQueueModule,
-        ValidationModule,
-        MonitoringModule,
-        PromptTemplateModule,
-      ];
-
-      const preparedImports = TestConfigurations.prepareImportsForTesting(imports);
-      const providers = TestConfigurations.requiredMocksAdder(preparedImports);
-
-      const moduleRef = await TestModuleBuilder.create()
-        .withImports(preparedImports)
-        .withProviders(providers)
-        .withRequiredMocks()
-        .compile();
-
       const characterService = moduleRef.get<CharacterService>(CharacterService);
       const responseService = moduleRef.get<CharacterResponseService>(CharacterResponseService);
       const llmService = moduleRef.get<LLMService>(LLMService);
@@ -262,8 +238,6 @@ createTestSuite('Specialization Workflow Integration Tests', () => {
       } catch (error) {
         console.error('Ошибка в тесте:', error);
         throw error;
-      } finally {
-        await moduleRef.close();
       }
     },
   );

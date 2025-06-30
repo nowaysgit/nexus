@@ -7,19 +7,19 @@ import { ActionService } from '../../character/services/action.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Dialog } from '../../dialog/entities/dialog.entity';
-import { withErrorHandling } from '../../common/utils/error-handling/error-handling.utils';
 import { ModuleRef } from '@nestjs/core';
 import { LogService } from '../../logging/log.service';
-
 import { MessageFormatterService } from '../services/message-formatter.service';
 import { DialogService } from '../../dialog/services/dialog.service';
 import { CharacterService } from '../../character/services/character.service';
 import { AccessControlService } from '../services/access-control.service';
 import { ConfigService } from '@nestjs/config';
 import { MessageProcessingCoordinator } from '../../character/services/message-processing-coordinator.service';
+import { BaseService } from '../../common/base/base.service';
+import { getErrorMessage } from '../../common/utils/error.utils';
 
 @Injectable()
-export class MessageHandler {
+export class MessageHandler extends BaseService {
   constructor(
     private messageService: MessageService,
     private dialogService: DialogService,
@@ -34,8 +34,10 @@ export class MessageHandler {
     private readonly accessControlService: AccessControlService,
     private readonly configService: ConfigService,
     private readonly messageProcessingCoordinator: MessageProcessingCoordinator,
-    private readonly logService: LogService,
-  ) {}
+    logService: LogService,
+  ) {
+    super(logService);
+  }
 
   /**
    * Обработчик завершения общения с персонажем
@@ -105,7 +107,7 @@ export class MessageHandler {
     // Уведомляем ActionService о связи персонажа с чатом
     this.actionService.updateChatState(characterId.toString(), userId.toString(), true);
 
-    this.logService.log(
+    this.logInfo(
       `Активирован диалог #${dialog.id} между пользователем ${userId} и персонажем ${characterId}`,
     );
   }
@@ -114,85 +116,71 @@ export class MessageHandler {
    * Удаляет активный разговор
    */
   public async removeActiveConversation(userId: number): Promise<void> {
-    return withErrorHandling(
-      async () => {
-        const telegramId = userId.toString();
+    return this.withErrorHandling('удалении активного разговора', async () => {
+      const telegramId = userId.toString();
 
-        // Получаем все активные диалоги пользователя
-        const dialogs = await this.dialogRepository.find({
-          where: {
-            telegramId,
-            isActive: true,
-          },
-        });
+      // Получаем все активные диалоги пользователя
+      const dialogs = await this.dialogRepository.find({
+        where: {
+          telegramId,
+          isActive: true,
+        },
+      });
 
-        for (const dialog of dialogs) {
-          // Обновляем статус активности диалога
-          dialog.isActive = false;
-          await this.dialogRepository.save(dialog);
+      for (const dialog of dialogs) {
+        // Обновляем статус активности диалога
+        dialog.isActive = false;
+        await this.dialogRepository.save(dialog);
 
-          // Уведомляем ActionService об отключении связи персонажа с чатом
-          this.actionService.updateChatState(
-            dialog.characterId.toString(),
-            userId.toString(),
-            false,
-          );
+        // Уведомляем ActionService об отключении связи персонажа с чатом
+        this.actionService.updateChatState(dialog.characterId.toString(), userId.toString(), false);
 
-          this.logService.log(
-            `Деактивирован диалог #${dialog.id} между пользователем ${userId} и персонажем ${dialog.characterId}`,
-          );
-        }
-      },
-      'удалении активного разговора',
-      this.logService,
-      { userId },
-    );
+        this.logInfo(
+          `Деактивирован диалог #${dialog.id} между пользователем ${userId} и персонажем ${dialog.characterId}`,
+        );
+      }
+    });
   }
 
   // Обработка текстовых сообщений
   async handleMessage(ctx: Context): Promise<void> {
-    return await withErrorHandling(
-      async () => {
-        // Проверяем, что ctx.message существует и имеет свойство text
-        if (!ctx.message || !('text' in ctx.message)) {
-          return;
-        }
+    return this.withErrorHandling('обработке сообщения', async () => {
+      // Проверяем, что ctx.message существует и имеет свойство text
+      if (!ctx.message || !('text' in ctx.message)) {
+        return;
+      }
 
-        const messageText = ctx.message.text;
+      const messageText = ctx.message.text;
 
-        // Если это команда, пропускаем (команды обрабатываются отдельно)
-        if (messageText.startsWith('/')) {
-          return;
-        }
+      // Если это команда, пропускаем (команды обрабатываются отдельно)
+      if (messageText.startsWith('/')) {
+        return;
+      }
 
-        // Определяем текущее состояние
-        const userId = ctx.from?.id;
-        if (!userId) {
-          return;
-        }
+      // Определяем текущее состояние
+      const userId = ctx.from?.id;
+      if (!userId) {
+        return;
+      }
 
-        // Простая проверка состояния из сессии
-        const currentState = ctx.session?.state || 'initial';
+      // Простая проверка состояния из сессии
+      const currentState = ctx.session?.state || 'initial';
 
-        // Проверяем, ожидается ли ввод ключа доступа
-        if (currentState === 'waiting_for_access_key') {
-          await this.handleAccessKeyInput(ctx, messageText);
-          return;
-        }
+      // Проверяем, ожидается ли ввод ключа доступа
+      if (currentState === 'waiting_for_access_key') {
+        await this.handleAccessKeyInput(ctx, messageText);
+        return;
+      }
 
-        // Проверяем доступ пользователя
-        if (!this.accessControlService.hasAccess(userId)) {
-          await ctx.reply('У вас нет доступа к этой функции.');
-          return;
-        }
+      // Проверяем доступ пользователя
+      if (!this.accessControlService.hasAccess(userId)) {
+        await ctx.reply('У вас нет доступа к этой функции.');
+        return;
+      }
 
-        // Обрабатываем как сообщение персонажу
-        await this.handleCharacterChat(ctx);
-      },
-      'обработке сообщения',
-      this.logService,
-      { userId: ctx.from?.id },
-    );
+      // Обрабатываем как сообщение персонажу
+      await this.handleCharacterChat(ctx);
+    });
   }
 
   // Обработка ввода ключа доступа
@@ -209,8 +197,8 @@ export class MessageHandler {
         await ctx.reply('Неверный ключ доступа. Попробуйте еще раз.');
       }
     } catch (error) {
-      this.logService.error('Ошибка при валидации ключа', {
-        error: error instanceof Error ? error.message : String(error),
+      this.logError('Ошибка при валидации ключа', {
+        error: getErrorMessage(error),
       });
       throw error;
     }
@@ -221,7 +209,7 @@ export class MessageHandler {
     try {
       // Проверяем наличие необходимых данных в контексте
       if (!ctx.from?.id || !ctx.message || !('text' in ctx.message)) {
-        this.logService.warn('Недостаточно данных в контексте сообщения');
+        this.logWarning('Недостаточно данных в контексте сообщения');
         return;
       }
 
@@ -297,8 +285,8 @@ export class MessageHandler {
       // Отправляем ответ персонажа пользователю
       await ctx.reply(result.response);
     } catch (error) {
-      this.logService.error('Ошибка обработки текстового сообщения', {
-        error: error instanceof Error ? error.message : String(error),
+      this.logError('Ошибка обработки текстового сообщения', {
+        error: getErrorMessage(error),
         userId: ctx.from?.id,
         text: 'text' in ctx.message ? ctx.message.text : 'no-text',
       });
@@ -321,8 +309,8 @@ export class MessageHandler {
   }
 
   async handleSendErrorMessage(ctx: Context, error: Error): Promise<void> {
-    this.logService.error('Отправка сообщения об ошибке пользователю', {
-      error: error.message,
+    this.logError('Отправка сообщения об ошибке пользователю', {
+      error: getErrorMessage(error),
       userId: ctx.from?.id,
     });
 

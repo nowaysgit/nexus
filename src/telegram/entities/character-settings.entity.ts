@@ -26,16 +26,16 @@ export class TelegramCharacterSettings {
   actionNotifications!: boolean;
 
   @Column({
-    type: 'enum',
-    enum: ['all', 'start_end', 'completion', 'none'],
+    type: 'varchar',
+    length: 50,
     default: 'all',
     comment: 'Тип уведомлений',
   })
   notificationType!: 'all' | 'start_end' | 'completion' | 'none';
 
   @Column({
-    type: 'enum',
-    enum: ['simple', 'detailed', 'emoji'],
+    type: 'varchar',
+    length: 50,
     default: 'detailed',
     comment: 'Формат уведомлений',
   })
@@ -55,9 +55,9 @@ export class TelegramCharacterSettings {
   })
   maxDailyActions!: number;
 
-  @CreateDateColumn({ comment: 'Дата создания настроек' })
+  @CreateDateColumn({ type: 'datetime', comment: 'Дата создания настроек' })
   createdAt!: Date;
 
-  @UpdateDateColumn({ comment: 'Дата последнего обновления настроек' })
+  @UpdateDateColumn({ type: 'datetime', comment: 'Дата последнего обновления настроек' })
   updatedAt!: Date;
 }

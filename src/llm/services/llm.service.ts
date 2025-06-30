@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { LogService } from '../../logging/log.service';
+import { BaseService } from '../../common/base/base.service';
 import {
   ILLMMessage,
   ILLMRequestOptions,
@@ -7,29 +8,24 @@ import {
   ILLMJsonResult,
   ILLMStreamCallbacks,
   LLMProviderType,
-  LLMMessageRole,
   ILLMProvider,
 } from '../../common/interfaces/llm-provider.interface';
 import { LLMProviderManagerService } from './llm-provider-manager.service';
 
 // Реэкспортируем интерфейсы для использования в других модулях
-export {
-  ILLMMessage,
-  LLMProviderType,
-  LLMMessageRole,
-} from '../../common/interfaces/llm-provider.interface';
+export { ILLMMessage, LLMProviderType } from '../../common/interfaces/llm-provider.interface';
 
 /**
  * Единый LLM сервис для работы с различными провайдерами AI моделей
  * Предоставляет унифицированный интерфейс для всего приложения
  */
 @Injectable()
-export class LLMService {
+export class LLMService extends BaseService {
   constructor(
     private readonly providerManager: LLMProviderManagerService,
-    private readonly logService: LogService,
+    logService: LogService,
   ) {
-    this.logService.setContext(LLMService.name);
+    super(logService);
   }
 
   /**
@@ -39,19 +35,12 @@ export class LLMService {
     messages: ILLMMessage[],
     options?: ILLMRequestOptions,
   ): Promise<ILLMTextResult> {
-    try {
+    return this.withErrorHandling('генерации текста', async () => {
       const provider = this.providerManager.getActiveProvider();
-      this.logService.debug(`Генерация текста через провайдер: ${provider.providerName}`);
+      this.logDebug(`Генерация текста через провайдер: ${provider.providerName}`);
 
       return await provider.generateText(messages, options);
-    } catch (error) {
-      this.logService.error('Ошибка генерации текста', {
-        error: error instanceof Error ? error.message : String(error),
-        messagesCount: messages.length,
-        options,
-      });
-      throw error;
-    }
+    });
   }
 
   /**
@@ -61,19 +50,12 @@ export class LLMService {
     messages: ILLMMessage[],
     options?: ILLMRequestOptions,
   ): Promise<ILLMJsonResult<T>> {
-    try {
+    return this.withErrorHandling('генерации JSON', async () => {
       const provider = this.providerManager.getActiveProvider();
-      this.logService.debug(`Генерация JSON через провайдер: ${provider.providerName}`);
+      this.logDebug(`Генерация JSON через провайдер: ${provider.providerName}`);
 
       return await provider.generateJSON<T>(messages, options);
-    } catch (error) {
-      this.logService.error('Ошибка генерации JSON', {
-        error: error instanceof Error ? error.message : String(error),
-        messagesCount: messages.length,
-        options,
-      });
-      throw error;
-    }
+    });
   }
 
   /**
@@ -84,19 +66,12 @@ export class LLMService {
     callbacks: ILLMStreamCallbacks,
     options?: ILLMRequestOptions,
   ): Promise<void> {
-    try {
+    return this.withErrorHandling('потоковой генерации', async () => {
       const provider = this.providerManager.getActiveProvider();
-      this.logService.debug(`Потоковая генерация через провайдер: ${provider.providerName}`);
+      this.logDebug(`Потоковая генерация через провайдер: ${provider.providerName}`);
 
       return await provider.generateTextStream(messages, callbacks, options);
-    } catch (error) {
-      this.logService.error('Ошибка потоковой генерации', {
-        error: error instanceof Error ? error.message : String(error),
-        messagesCount: messages.length,
-        options,
-      });
-      throw error;
-    }
+    });
   }
 
   /**
@@ -104,12 +79,12 @@ export class LLMService {
    */
   estimateTokens(text: string): number {
     try {
-      const provider = this.providerManager.getActiveProvider();
-      return provider.estimateTokens(text);
-    } catch (error) {
-      this.logService.warn('Ошибка оценки токенов, используется простая оценка', {
-        error: error instanceof Error ? error.message : String(error),
+      return this.withErrorHandlingSync('оценки токенов', () => {
+        const provider = this.providerManager.getActiveProvider();
+        return provider.estimateTokens(text);
       });
+    } catch (_error) {
+      this.logWarning('Ошибка оценки токенов, используется простая оценка');
       // Простая оценка как fallback
       return Math.ceil(text.length / 4);
     }
@@ -120,12 +95,11 @@ export class LLMService {
    */
   async checkAvailability(): Promise<boolean> {
     try {
-      const provider = this.providerManager.getActiveProvider();
-      return await provider.checkAvailability();
-    } catch (error) {
-      this.logService.error('Ошибка проверки доступности активного провайдера', {
-        error: error instanceof Error ? error.message : String(error),
+      return await this.withErrorHandling('проверки доступности активного провайдера', async () => {
+        const provider = this.providerManager.getActiveProvider();
+        return await provider.checkAvailability();
       });
+    } catch (_error) {
       return false;
     }
   }
@@ -134,37 +108,27 @@ export class LLMService {
    * Переключение на другой провайдер
    */
   async switchProvider(providerType: LLMProviderType): Promise<void> {
-    try {
+    return this.withErrorHandling(`переключения на провайдер ${providerType}`, async () => {
       this.providerManager.setActiveProvider(providerType);
-      this.logService.log(`Переключен на провайдер: ${providerType}`);
+      this.logInfo(`Переключен на провайдер: ${providerType}`);
 
       // Проверяем доступность нового провайдера
       const isAvailable = await this.checkAvailability();
       if (!isAvailable) {
-        this.logService.warn(`Провайдер ${providerType} недоступен`);
+        this.logWarning(`Провайдер ${providerType} недоступен`);
       }
-    } catch (error) {
-      this.logService.error(`Ошибка переключения на провайдер ${providerType}`, {
-        error: error instanceof Error ? error.message : String(error),
-      });
-      throw error;
-    }
+    });
   }
 
   /**
    * Автоматический выбор лучшего доступного провайдера
    */
   async selectBestProvider(): Promise<LLMProviderType> {
-    try {
+    return this.withErrorHandling('автоматического выбора провайдера', async () => {
       const selectedProvider = await this.providerManager.selectBestAvailableProvider();
-      this.logService.log(`Автоматически выбран провайдер: ${selectedProvider}`);
+      this.logInfo(`Автоматически выбран провайдер: ${selectedProvider}`);
       return selectedProvider;
-    } catch (error) {
-      this.logService.error('Ошибка автоматического выбора провайдера', {
-        error: error instanceof Error ? error.message : String(error),
-      });
-      throw error;
-    }
+    });
   }
 
   /**
@@ -176,15 +140,10 @@ export class LLMService {
     models: string[];
     features: string[];
   } {
-    try {
+    return this.withErrorHandlingSync('получения информации об активном провайдере', () => {
       const provider = this.providerManager.getActiveProvider();
       return provider.getProviderInfo();
-    } catch (error) {
-      this.logService.error('Ошибка получения информации об активном провайдере', {
-        error: error instanceof Error ? error.message : String(error),
-      });
-      throw error;
-    }
+    });
   }
 
   /**

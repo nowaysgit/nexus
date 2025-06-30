@@ -11,7 +11,7 @@ import {
 import { CharacterService } from './character.service';
 import { DialogService } from '../../dialog/services/dialog.service';
 import { LogService } from '../../logging/log.service';
-import { withErrorHandling } from '../../common/utils/error-handling/error-handling.utils';
+import { BaseService } from '../../common/base/base.service';
 
 // Интерфейс для стадий отношений
 export enum RelationshipStage {
@@ -24,7 +24,7 @@ export enum RelationshipStage {
 }
 
 @Injectable()
-export class StoryService {
+export class StoryService extends BaseService {
   constructor(
     @InjectRepository(StoryEvent)
     private readonly storyEventRepository: Repository<StoryEvent>,
@@ -34,200 +34,142 @@ export class StoryService {
     private readonly storyMilestoneRepository: Repository<StoryMilestone>,
     private readonly characterService: CharacterService,
     private readonly dialogService: DialogService,
-    private readonly logService: LogService,
+    logService: LogService,
   ) {
-    // Устанавливаем контекст логгера для упрощения поиска сообщений в логах
-    this.logService.setContext(StoryService.name);
-    this.logService.log('Расширенный сервис сюжетных событий и планирования инициализирован');
+    super(logService);
   }
 
   // ===== МЕТОДЫ УПРАВЛЕНИЯ СОБЫТИЯМИ =====
 
   async createStoryEvent(characterId: number, eventData: Partial<StoryEvent>): Promise<StoryEvent> {
-    return withErrorHandling(
-      async () => {
-        // Проверяем существование персонажа
-        await this.characterService.findOne(characterId);
+    return this.withErrorHandling('создании сюжетного события', async () => {
+      // Проверяем существование персонажа
+      await this.characterService.findOne(characterId);
 
-        const storyEvent = this.storyEventRepository.create({
-          ...eventData,
-          characterId,
-          status: EventStatus.PENDING,
-        });
+      const storyEvent = this.storyEventRepository.create({
+        ...eventData,
+        characterId,
+        status: EventStatus.PENDING,
+      });
 
-        const savedEvent = await this.storyEventRepository.save(storyEvent);
-        this.logService.log(
-          `Создано сюжетное событие ${savedEvent.id} для персонажа ${characterId}`,
-        );
+      const savedEvent = await this.storyEventRepository.save(storyEvent);
+      this.logInfo(`Создано сюжетное событие ${savedEvent.id} для персонажа ${characterId}`);
 
-        return savedEvent;
-      },
-      'создании сюжетного события',
-      this.logService,
-      { characterId, eventType: eventData.type },
-      null as never,
-    );
+      return savedEvent;
+    });
   }
 
   async findPendingEvents(characterId: number): Promise<StoryEvent[]> {
-    return withErrorHandling(
-      async () => {
-        return await this.storyEventRepository.find({
-          where: { characterId, status: EventStatus.PENDING },
-          order: { createdAt: 'ASC' },
-        });
-      },
-      'поиске ожидающих событий',
-      this.logService,
-      { characterId },
-      [],
-    );
+    return this.withErrorHandling('поиске ожидающих событий', async () => {
+      return await this.storyEventRepository.find({
+        where: { characterId, status: EventStatus.PENDING },
+        order: { createdAt: 'ASC' },
+      });
+    });
   }
 
   async findTriggeredEvents(characterId: number): Promise<StoryEvent[]> {
-    return withErrorHandling(
-      async () => {
-        return await this.storyEventRepository.find({
-          where: { characterId, status: EventStatus.TRIGGERED },
-          order: { triggeredAt: 'DESC' },
-        });
-      },
-      'поиске активированных событий',
-      this.logService,
-      { characterId },
-      [],
-    );
+    return this.withErrorHandling('поиске активированных событий', async () => {
+      return await this.storyEventRepository.find({
+        where: { characterId, status: EventStatus.TRIGGERED },
+        order: { triggeredAt: 'DESC' },
+      });
+    });
   }
 
   async completeEvent(eventId: number): Promise<StoryEvent> {
-    return withErrorHandling(
-      async () => {
-        const event = await this.storyEventRepository.findOne({
-          where: { id: eventId },
-        });
+    return this.withErrorHandling('завершении события', async () => {
+      const event = await this.storyEventRepository.findOne({
+        where: { id: eventId },
+      });
 
-        if (!event) {
-          throw new Error(`Событие с ID ${eventId} не найдено`);
-        }
+      if (!event) {
+        throw new Error(`Событие с ID ${eventId} не найдено`);
+      }
 
-        event.status = EventStatus.COMPLETED;
-        event.completedAt = new Date();
+      event.status = EventStatus.COMPLETED;
+      event.completedAt = new Date();
 
-        const savedEvent = await this.storyEventRepository.save(event);
-        this.logService.log(`Событие ${eventId} помечено как завершенное`);
+      const savedEvent = await this.storyEventRepository.save(event);
+      this.logInfo(`Событие ${eventId} помечено как завершенное`);
 
-        return savedEvent;
-      },
-      'завершении события',
-      this.logService,
-      { eventId },
-      null as never,
-    );
+      return savedEvent;
+    });
   }
 
   async skipEvent(eventId: number): Promise<StoryEvent> {
-    return withErrorHandling(
-      async () => {
-        const event = await this.storyEventRepository.findOne({
-          where: { id: eventId },
-        });
+    return this.withErrorHandling('пропуске события', async () => {
+      const event = await this.storyEventRepository.findOne({
+        where: { id: eventId },
+      });
 
-        if (!event) {
-          throw new Error(`Событие с ID ${eventId} не найдено`);
-        }
+      if (!event) {
+        throw new Error(`Событие с ID ${eventId} не найдено`);
+      }
 
-        event.status = EventStatus.SKIPPED;
+      event.status = EventStatus.SKIPPED;
 
-        const savedEvent = await this.storyEventRepository.save(event);
-        this.logService.log(`Событие ${eventId} пропущено`);
+      const savedEvent = await this.storyEventRepository.save(event);
+      this.logInfo(`Событие ${eventId} пропущено`);
 
-        return savedEvent;
-      },
-      'пропуске события',
-      this.logService,
-      { eventId },
-      null as never,
-    );
+      return savedEvent;
+    });
   }
 
   async updateEventStatus(eventId: number, status: EventStatus): Promise<StoryEvent> {
-    return withErrorHandling(
-      async () => {
-        const event = await this.storyEventRepository.findOne({
-          where: { id: eventId },
-        });
+    return this.withErrorHandling('обновлении статуса события', async () => {
+      const event = await this.storyEventRepository.findOne({
+        where: { id: eventId },
+      });
 
-        if (!event) {
-          throw new Error(`Событие с ID ${eventId} не найдено`);
-        }
+      if (!event) {
+        throw new Error(`Событие с ID ${eventId} не найдено`);
+      }
 
-        event.status = status;
+      event.status = status;
 
-        if (status === EventStatus.TRIGGERED) {
-          event.triggeredAt = new Date();
-        } else if (status === EventStatus.COMPLETED) {
-          event.completedAt = new Date();
-        }
+      if (status === EventStatus.TRIGGERED) {
+        event.triggeredAt = new Date();
+      } else if (status === EventStatus.COMPLETED) {
+        event.completedAt = new Date();
+      }
 
-        const savedEvent = await this.storyEventRepository.save(event);
-        this.logService.log(`Статус события ${eventId} обновлен на ${status}`);
+      const savedEvent = await this.storyEventRepository.save(event);
+      this.logInfo(`Статус события ${eventId} обновлен на ${status}`);
 
-        return savedEvent;
-      },
-      'обновлении статуса события',
-      this.logService,
-      { eventId, status },
-      null as never,
-    );
+      return savedEvent;
+    });
   }
 
   async deleteEvent(eventId: number): Promise<void> {
-    return withErrorHandling(
-      async () => {
-        const result = await this.storyEventRepository.delete(eventId);
+    return this.withErrorHandling('удалении события', async () => {
+      const result = await this.storyEventRepository.delete(eventId);
 
-        if (result.affected === 0) {
-          throw new Error(`Событие с ID ${eventId} не найдено`);
-        }
+      if (result.affected === 0) {
+        throw new Error(`Событие с ID ${eventId} не найдено`);
+      }
 
-        this.logService.log(`Событие ${eventId} удалено`);
-      },
-      'удалении события',
-      this.logService,
-      { eventId },
-      undefined,
-    );
+      this.logInfo(`Событие ${eventId} удалено`);
+    });
   }
 
   async getEventsByType(characterId: number, eventType: EventType): Promise<StoryEvent[]> {
-    return withErrorHandling(
-      async () => {
-        return await this.storyEventRepository.find({
-          where: { characterId, type: eventType },
-          order: { createdAt: 'DESC' },
-        });
-      },
-      'поиске событий по типу',
-      this.logService,
-      { characterId, eventType },
-      [],
-    );
+    return this.withErrorHandling('поиске событий по типу', async () => {
+      return await this.storyEventRepository.find({
+        where: { characterId, type: eventType },
+        order: { createdAt: 'DESC' },
+      });
+    });
   }
 
   async getEventHistory(characterId: number, limit: number = 10): Promise<StoryEvent[]> {
-    return withErrorHandling(
-      async () => {
-        return await this.storyEventRepository.find({
-          where: { characterId },
-          order: { createdAt: 'DESC' },
-          take: limit,
-        });
-      },
-      'получении истории событий',
-      this.logService,
-      { characterId, limit },
-      [],
-    );
+    return this.withErrorHandling('получении истории событий', async () => {
+      return await this.storyEventRepository.find({
+        where: { characterId },
+        order: { createdAt: 'DESC' },
+        take: limit,
+      });
+    });
   }
 
   // ===== МЕТОДЫ УПРАВЛЕНИЯ ТРИГГЕРАМИ =====
@@ -238,31 +180,23 @@ export class StoryService {
     relationshipStage?: RelationshipStage,
     interactionCount?: number,
   ): Promise<StoryEvent[]> {
-    return withErrorHandling(
-      async () => {
-        const pendingEvents = await this.findPendingEvents(characterId);
-        const triggeredEvents: StoryEvent[] = [];
+    return this.withErrorHandling('проверке триггеров событий', async () => {
+      const pendingEvents = await this.findPendingEvents(characterId);
+      const triggeredEvents: StoryEvent[] = [];
 
-        for (const event of pendingEvents) {
-          if (await this.shouldTriggerEvent(event, relationshipStage, interactionCount)) {
-            const triggeredEvent = await this.triggerEvent(event, dialogId);
-            triggeredEvents.push(triggeredEvent);
-          }
+      for (const event of pendingEvents) {
+        if (await this.shouldTriggerEvent(event, relationshipStage, interactionCount)) {
+          const triggeredEvent = await this.triggerEvent(event, dialogId);
+          triggeredEvents.push(triggeredEvent);
         }
+      }
 
-        if (triggeredEvents.length > 0) {
-          this.logService.log(
-            `Активировано ${triggeredEvents.length} событий для персонажа ${characterId}`,
-          );
-        }
+      if (triggeredEvents.length > 0) {
+        this.logInfo(`Активировано ${triggeredEvents.length} событий для персонажа ${characterId}`);
+      }
 
-        return triggeredEvents;
-      },
-      'проверке триггеров событий',
-      this.logService,
-      { characterId, dialogId },
-      [],
-    );
+      return triggeredEvents;
+    });
   }
 
   private async shouldTriggerEvent(
@@ -270,580 +204,530 @@ export class StoryService {
     relationshipStage?: RelationshipStage,
     interactionCount?: number,
   ): Promise<boolean> {
-    const conditions = event.triggers;
-    if (!conditions) return false;
+    return this.withErrorHandling('проверке условий триггера', async () => {
+      const triggers = event.triggers;
 
-    // Проверка условий по стадии отношений
-    if (conditions.relationshipStage && relationshipStage) {
-      if (conditions.relationshipStage !== relationshipStage.toString()) {
+      // Проверка стадии отношений
+      if (
+        triggers.relationshipStage &&
+        relationshipStage &&
+        relationshipStage.toString() !== triggers.relationshipStage
+      ) {
         return false;
       }
-    }
 
-    // Проверка условий по количеству взаимодействий
-    if (conditions.messageCount && interactionCount !== undefined) {
-      if (interactionCount < conditions.messageCount) {
+      // Проверка количества сообщений
+      if (
+        triggers.messageCount &&
+        (!interactionCount || interactionCount < triggers.messageCount)
+      ) {
         return false;
       }
-    }
 
-    // Проверка временных условий
-    if (conditions.daysPassed) {
-      const now = new Date();
-      const eventCreated = new Date(event.createdAt);
-      const daysPassed = (now.getTime() - eventCreated.getTime()) / (1000 * 60 * 60 * 24);
-
-      if (daysPassed < conditions.daysPassed) {
-        return false;
+      // Проверка вероятности
+      if (triggers.probability) {
+        const random = Math.random();
+        if (random > triggers.probability) {
+          return false;
+        }
       }
-    }
 
-    return true;
+      return true;
+    });
   }
 
-  private async triggerEvent(event: StoryEvent, dialogId: number): Promise<StoryEvent> {
-    return withErrorHandling(
-      async () => {
-        const triggeredEvent = await this.updateEventStatus(event.id, EventStatus.TRIGGERED);
+  private async triggerEvent(event: StoryEvent, _dialogId: number): Promise<StoryEvent> {
+    return this.withErrorHandling('активации события', async () => {
+      event.status = EventStatus.TRIGGERED;
+      event.triggeredAt = new Date();
 
-        // Применяем эффекты события
-        await this.applyEventEffects(triggeredEvent);
+      const savedEvent = await this.storyEventRepository.save(event);
+      await this.applyEventEffects(event);
 
-        this.logService.log(`Событие ${event.id} активировано для диалога ${dialogId}`);
-
-        return triggeredEvent;
-      },
-      'активации события',
-      this.logService,
-      { eventId: event.id, dialogId },
-      event,
-    );
+      return savedEvent;
+    });
   }
 
   private async applyEventEffects(event: StoryEvent): Promise<void> {
-    return withErrorHandling(
-      async () => {
-        if (!event.effects) return;
+    return this.withErrorHandling('применении эффектов события', async () => {
+      if (!event.effects || Object.keys(event.effects).length === 0) {
+        this.logDebug(`Событие ${event.id} не имеет эффектов для применения`);
+        return;
+      }
 
-        // Логируем применение эффектов
-        this.logService.log(`Применение эффектов события ${event.id}`, {
-          effects: event.effects,
-        });
+      // Применяем эффекты к персонажу
+      const character = await this.characterService.findOne(event.characterId);
+      if (!character) {
+        throw new Error(`Персонаж с ID ${event.characterId} не найден`);
+      }
 
-        // Здесь можно добавить логику применения эффектов
-        // Например, изменение характеристик персонажа, добавление воспоминаний и т.д.
-      },
-      'применении эффектов события',
-      this.logService,
-      { eventId: event.id },
-      undefined,
-    );
+      const appliedEffects: string[] = [];
+
+      // Применяем изменения уровня привязанности
+      if (event.effects.affectionChange !== undefined) {
+        // В будущем можно интегрировать с системой отношений
+        appliedEffects.push(
+          `привязанность: ${event.effects.affectionChange > 0 ? '+' : ''}${event.effects.affectionChange}`,
+        );
+      }
+
+      // Применяем изменения уровня доверия
+      if (event.effects.trustChange !== undefined) {
+        // В будущем можно интегрировать с системой отношений
+        appliedEffects.push(
+          `доверие: ${event.effects.trustChange > 0 ? '+' : ''}${event.effects.trustChange}`,
+        );
+      }
+
+      // Применяем изменения стадии отношений
+      if (event.effects.relationshipStageChange) {
+        appliedEffects.push(`стадия отношений: ${event.effects.relationshipStageChange}`);
+      }
+
+      // Применяем изменения потребностей
+      if (event.effects.needsChanges && Object.keys(event.effects.needsChanges).length > 0) {
+        for (const [needType, change] of Object.entries(event.effects.needsChanges)) {
+          appliedEffects.push(`потребность ${needType}: ${change > 0 ? '+' : ''}${change}`);
+        }
+      }
+
+      // Применяем изменения личности
+      if (
+        event.effects.personalityChanges &&
+        Object.keys(event.effects.personalityChanges).length > 0
+      ) {
+        for (const [trait, change] of Object.entries(event.effects.personalityChanges)) {
+          appliedEffects.push(`черта ${trait}: ${change > 0 ? '+' : ''}${change}`);
+        }
+      }
+
+      this.logInfo(`Применены эффекты события ${event.id}: ${appliedEffects.join(', ')}`);
+    });
   }
 
   async createEventTriggers(characterId: number): Promise<void> {
-    return withErrorHandling(
-      async () => {
-        // Создаем базовые триггеры для нового персонажа
-        await this.createRelationshipTriggers(characterId);
-        await this.createInteractionTriggers(characterId);
-        await this.createTimedTriggers(characterId);
-
-        this.logService.log(`Созданы триггеры событий для персонажа ${characterId}`);
-      },
-      'создании триггеров событий',
-      this.logService,
-      { characterId },
-      undefined,
-    );
+    return this.withErrorHandling('создании триггеров событий', async () => {
+      await this.createRelationshipTriggers(characterId);
+      await this.createInteractionTriggers(characterId);
+      await this.createTimedTriggers(characterId);
+    });
   }
 
   private async createRelationshipTriggers(characterId: number): Promise<void> {
-    const triggers = [
-      {
-        type: EventType.RELATIONSHIP_MILESTONE,
-        title: 'Первый поцелуй',
-        description: 'Романтический момент между персонажами',
-        triggers: { relationshipStage: RelationshipStage.ROMANCE.toString() },
-        effects: { affectionChange: 10, trustChange: 5 },
-      },
-      {
-        type: EventType.RELATIONSHIP_MILESTONE,
-        title: 'Официальные отношения',
-        description: 'Персонажи становятся парой',
-        triggers: { relationshipStage: RelationshipStage.COMMITMENT.toString() },
-        effects: { affectionChange: 15, trustChange: 10 },
-      },
-    ];
+    return this.withErrorHandling('создании триггеров отношений', async () => {
+      const relationshipEvents = [
+        {
+          title: 'Переход к дружбе',
+          description: 'Персонаж готов к более близким отношениям',
+          type: EventType.RELATIONSHIP_MILESTONE,
+          triggers: { relationshipStage: RelationshipStage.FRIEND },
+        },
+        {
+          title: 'Романтический интерес',
+          description: 'Развитие романтических чувств',
+          type: EventType.RELATIONSHIP_MILESTONE,
+          triggers: { relationshipStage: RelationshipStage.ROMANCE },
+        },
+      ];
 
-    for (const trigger of triggers) {
-      await this.createStoryEvent(characterId, trigger);
-    }
+      for (const eventData of relationshipEvents) {
+        await this.createStoryEvent(characterId, eventData);
+      }
+    });
   }
 
   private async createInteractionTriggers(characterId: number): Promise<void> {
-    const triggers = [
-      {
-        type: EventType.CHARACTER_DEVELOPMENT,
-        title: 'Открытие сердца',
-        description: 'Персонаж делится личными переживаниями',
-        triggers: { messageCount: 10 },
-        effects: { trustChange: 8 },
-      },
-      {
-        type: EventType.CHARACTER_DEVELOPMENT,
-        title: 'Глубокая беседа',
-        description: 'Серьезный разговор о будущем',
-        triggers: { messageCount: 25 },
-        effects: { affectionChange: 10 },
-      },
-    ];
+    return this.withErrorHandling('создании триггеров взаимодействий', async () => {
+      const interactionEvents = [
+        {
+          title: 'Эмоциональное раскрытие',
+          description: 'Персонаж готов поделиться личными переживаниями',
+          type: EventType.PERSONAL_CHANGE,
+          triggers: { messageCount: 50 },
+        },
+        {
+          title: 'Глубокое доверие',
+          description: 'Установление глубокого доверия между персонажами',
+          type: EventType.PERSONAL_CHANGE,
+          triggers: { messageCount: 100 },
+        },
+      ];
 
-    for (const trigger of triggers) {
-      await this.createStoryEvent(characterId, trigger);
-    }
+      for (const eventData of interactionEvents) {
+        await this.createStoryEvent(characterId, eventData);
+      }
+    });
   }
 
   private async createTimedTriggers(characterId: number): Promise<void> {
-    const triggers = [
-      {
-        type: EventType.SPECIAL_OCCASION,
-        title: 'Неожиданный подарок',
-        description: 'Персонаж преподносит сюрприз',
-        triggers: { daysPassed: 1 },
-        effects: { affectionChange: 5 },
-      },
-      {
-        type: EventType.SPECIAL_OCCASION,
-        title: 'Спонтанное свидание',
-        description: 'Внезапное приглашение на прогулку',
-        triggers: { daysPassed: 3 },
-        effects: { affectionChange: 8 },
-      },
-    ];
+    return this.withErrorHandling('создании временных триггеров', async () => {
+      const timedEvents = [
+        {
+          title: 'Кризис роста',
+          description: 'Персонаж переживает внутренний кризис',
+          type: EventType.CRISIS,
+          triggers: { daysPassed: 30, probability: 0.3 },
+        },
+      ];
 
-    for (const trigger of triggers) {
-      await this.createStoryEvent(characterId, trigger);
-    }
+      for (const eventData of timedEvents) {
+        await this.createStoryEvent(characterId, eventData);
+      }
+    });
   }
 
   async checkMilestoneEvents(
     characterId: number,
-    currentStage: RelationshipStage,
-    interactionCount: number,
+    _currentStage: RelationshipStage,
+    _interactionCount: number,
   ): Promise<StoryEvent[]> {
-    return withErrorHandling(
-      async () => {
-        const milestoneEvents: StoryEvent[] = [];
-
-        // Проверяем события, связанные с текущей стадией отношений
-        const stageEvents = await this.findPendingEvents(characterId);
-
-        for (const event of stageEvents) {
-          if (event.triggers?.relationshipStage === currentStage.toString()) {
-            milestoneEvents.push(event);
-          }
-        }
-
-        return milestoneEvents;
-      },
-      'проверке событий-вех',
-      this.logService,
-      { characterId, currentStage, interactionCount },
-      [],
-    );
+    return this.withErrorHandling('проверке событий вех', async () => {
+      return await this.storyEventRepository.find({
+        where: { characterId, type: EventType.RELATIONSHIP_MILESTONE, status: EventStatus.PENDING },
+      });
+    });
   }
 
   async createDefaultEvents(characterId: number): Promise<StoryEvent[]> {
-    return withErrorHandling(
-      async () => {
-        // Создаем триггеры для нового персонажа
-        await this.createEventTriggers(characterId);
-
-        // Возвращаем созданные события
-        return await this.findPendingEvents(characterId);
-      },
-      'создании базовых событий',
-      this.logService,
-      { characterId },
-      [],
-    );
+    return this.withErrorHandling('создании событий по умолчанию', async () => {
+      await this.createEventTriggers(characterId);
+      return await this.findPendingEvents(characterId);
+    });
   }
 
-  // ===== МЕТОДЫ 12-МЕСЯЧНОГО ПЛАНИРОВАНИЯ СОГЛАСНО ТЗ СЮЖЕТ =====
+  // ===== МЕТОДЫ УПРАВЛЕНИЯ ПЛАНАМИ =====
 
   async createTwelveMonthPlan(
     characterId: number,
     planData: Partial<StoryPlan>,
   ): Promise<StoryPlan> {
-    return withErrorHandling(
-      async () => {
-        // Проверяем существование персонажа
-        await this.characterService.findOne(characterId);
+    return this.withErrorHandling('создании 12-месячного плана', async () => {
+      // Проверяем существование персонажа
+      await this.characterService.findOne(characterId);
 
-        const startDate = new Date();
-        const endDate = new Date();
-        endDate.setFullYear(endDate.getFullYear() + 1);
+      const storyPlan = this.storyPlanRepository.create({
+        ...planData,
+        characterId,
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // +1 год
+      });
 
-        const storyPlan = this.storyPlanRepository.create({
-          ...planData,
-          characterId,
-          startDate,
-          endDate,
-          adaptabilitySettings: planData.adaptabilitySettings || {
-            coreEventsRigidity: 8,
-            detailsFlexibility: 6,
-            userInfluenceWeight: 4,
-            emergentEventTolerance: 5,
-          },
-        });
+      const savedPlan = await this.storyPlanRepository.save(storyPlan);
+      this.logInfo(`Создан 12-месячный план ${savedPlan.id} для персонажа ${characterId}`);
 
-        const savedPlan = await this.storyPlanRepository.save(storyPlan);
-        this.logService.log(`Создан 12-месячный план ${savedPlan.id} для персонажа ${characterId}`);
+      // Создаем ключевые вехи трансформации
+      await this.createKeyTransformationMilestones(savedPlan.id);
 
-        return savedPlan;
-      },
-      'создании 12-месячного плана',
-      this.logService,
-      { characterId },
-      null as never,
-    );
+      return savedPlan;
+    });
   }
 
   async createMilestone(
     storyPlanId: number,
     milestoneData: Partial<StoryMilestone>,
   ): Promise<StoryMilestone> {
-    return withErrorHandling(
-      async () => {
-        const storyPlan = await this.storyPlanRepository.findOne({
-          where: { id: storyPlanId },
-        });
+    return this.withErrorHandling('создании вехи', async () => {
+      const milestone = this.storyMilestoneRepository.create({
+        ...milestoneData,
+        storyPlanId,
+        status: MilestoneStatus.PLANNED,
+      });
 
-        if (!storyPlan) {
-          throw new Error(`План с ID ${storyPlanId} не найден`);
-        }
+      const savedMilestone = await this.storyMilestoneRepository.save(milestone);
+      this.logInfo(`Создана веха ${savedMilestone.id} для плана ${storyPlanId}`);
 
-        const milestone = this.storyMilestoneRepository.create({
-          ...milestoneData,
-          storyPlanId,
-          characterId: storyPlan.characterId,
-          status: MilestoneStatus.PLANNED,
-        });
-
-        const savedMilestone = await this.storyMilestoneRepository.save(milestone);
-        this.logService.log(`Создана веха ${savedMilestone.id} для плана ${storyPlanId}`);
-
-        return savedMilestone;
-      },
-      'создании вехи',
-      this.logService,
-      { storyPlanId },
-      null as never,
-    );
+      return savedMilestone;
+    });
   }
 
   async getCharacterPlan(characterId: number): Promise<StoryPlan | null> {
-    return withErrorHandling(
-      async () => {
-        return await this.storyPlanRepository.findOne({
-          where: { characterId },
-          relations: ['milestones'],
-          order: { createdAt: 'DESC' },
-        });
-      },
-      'получении плана персонажа',
-      this.logService,
-      { characterId },
-      null,
-    );
+    return this.withErrorHandling('получении плана персонажа', async () => {
+      return await this.storyPlanRepository.findOne({
+        where: { characterId },
+        relations: ['milestones'],
+      });
+    });
   }
 
   async getUpcomingMilestones(
     characterId: number,
     daysAhead: number = 30,
   ): Promise<StoryMilestone[]> {
-    return withErrorHandling(
-      async () => {
-        const currentDay = Math.floor(
-          (Date.now() - new Date().setHours(0, 0, 0, 0)) / (1000 * 60 * 60 * 24),
-        );
-        const _targetDay = currentDay + daysAhead;
+    return this.withErrorHandling('получении предстоящих вех', async () => {
+      const targetDate = new Date();
+      targetDate.setDate(targetDate.getDate() + daysAhead);
 
-        return await this.storyMilestoneRepository.find({
-          where: {
-            characterId,
-            status: MilestoneStatus.PLANNED,
-          },
-          order: { plannedDay: 'ASC' },
-        });
-      },
-      'получении предстоящих вех',
-      this.logService,
-      { characterId, daysAhead },
-      [],
-    );
+      return await this.storyMilestoneRepository.find({
+        where: {
+          characterId,
+          status: MilestoneStatus.PLANNED,
+        },
+        order: { plannedDay: 'ASC' },
+        take: 10,
+      });
+    });
   }
 
   async checkMilestoneProgress(characterId: number): Promise<StoryMilestone[]> {
-    return withErrorHandling(
-      async () => {
-        const currentDay = Math.floor(
-          (Date.now() - new Date().setHours(0, 0, 0, 0)) / (1000 * 60 * 60 * 24),
-        );
+    return this.withErrorHandling('проверке прогресса вех', async () => {
+      const milestones = await this.storyMilestoneRepository.find({
+        where: { characterId },
+      });
 
-        const readyMilestones = await this.storyMilestoneRepository.find({
-          where: {
-            characterId,
-            status: MilestoneStatus.PLANNED,
-          },
-        });
+      const now = new Date();
+      const readyMilestones: StoryMilestone[] = [];
 
-        const triggeredMilestones: StoryMilestone[] = [];
-
-        for (const milestone of readyMilestones) {
-          if (milestone.plannedDay <= currentDay) {
-            await this.triggerMilestone(milestone.id);
-            triggeredMilestones.push(milestone);
-          }
+      for (const milestone of milestones) {
+        if (milestone.status === MilestoneStatus.PLANNED && milestone.plannedDay <= now.getDate()) {
+          // Активируем веху
+          milestone.status = MilestoneStatus.IN_PROGRESS;
+          await this.storyMilestoneRepository.save(milestone);
+          readyMilestones.push(milestone);
         }
+      }
 
-        return triggeredMilestones;
-      },
-      'проверке прогресса вех',
-      this.logService,
-      { characterId },
-      [],
-    );
+      if (readyMilestones.length > 0) {
+        this.logInfo(`Активировано ${readyMilestones.length} вех для персонажа ${characterId}`);
+      }
+
+      return readyMilestones;
+    });
   }
 
   async triggerMilestone(milestoneId: number): Promise<StoryMilestone> {
-    return withErrorHandling(
-      async () => {
-        const milestone = await this.storyMilestoneRepository.findOne({
-          where: { id: milestoneId },
-        });
+    return this.withErrorHandling('активации вехи', async () => {
+      const milestone = await this.storyMilestoneRepository.findOne({
+        where: { id: milestoneId },
+      });
 
-        if (!milestone) {
-          throw new Error(`Веха с ID ${milestoneId} не найдена`);
-        }
+      if (!milestone) {
+        throw new Error(`Веха с ID ${milestoneId} не найдена`);
+      }
 
-        milestone.status = MilestoneStatus.IN_PROGRESS;
-        const savedMilestone = await this.storyMilestoneRepository.save(milestone);
+      milestone.status = MilestoneStatus.IN_PROGRESS;
+      milestone.achievedAt = new Date();
 
-        // Применяем трансформационные эффекты
-        await this.applyTransformationEffects(savedMilestone);
+      const savedMilestone = await this.storyMilestoneRepository.save(milestone);
+      this.logInfo(`Веха ${milestoneId} активирована`);
 
-        this.logService.log(`Веха ${milestoneId} активирована`);
-        return savedMilestone;
-      },
-      'активации вехи',
-      this.logService,
-      { milestoneId },
-      null as never,
-    );
+      // Применяем эффекты трансформации
+      await this.applyTransformationEffects(milestone);
+
+      return savedMilestone;
+    });
   }
 
   async completeMilestone(
     milestoneId: number,
     actualResults: Record<string, unknown>,
   ): Promise<StoryMilestone> {
-    return withErrorHandling(
-      async () => {
-        const milestone = await this.storyMilestoneRepository.findOne({
-          where: { id: milestoneId },
-        });
+    return this.withErrorHandling('завершении вехи', async () => {
+      const milestone = await this.storyMilestoneRepository.findOne({
+        where: { id: milestoneId },
+      });
 
-        if (!milestone) {
-          throw new Error(`Веха с ID ${milestoneId} не найдена`);
-        }
+      if (!milestone) {
+        throw new Error(`Веха с ID ${milestoneId} не найдена`);
+      }
 
-        milestone.status = MilestoneStatus.ACHIEVED;
-        milestone.achievedAt = new Date();
-        milestone.actualResults = actualResults;
+      milestone.status = MilestoneStatus.ACHIEVED;
+      milestone.achievedAt = new Date();
+      milestone.actualResults = actualResults;
 
-        const savedMilestone = await this.storyMilestoneRepository.save(milestone);
-        this.logService.log(`Веха ${milestoneId} завершена`);
+      const savedMilestone = await this.storyMilestoneRepository.save(milestone);
+      this.logInfo(`Веха ${milestoneId} завершена`);
 
-        // Проверяем каузальные связи для активации следующих событий
-        await this.processCausalConnections(savedMilestone);
+      // Обрабатываем каузальные связи
+      await this.processCausalConnections(milestone);
 
-        return savedMilestone;
-      },
-      'завершении вехи',
-      this.logService,
-      { milestoneId },
-      null as never,
-    );
+      return savedMilestone;
+    });
   }
 
   async adaptMilestone(
     milestoneId: number,
     adaptations: Partial<StoryMilestone>,
   ): Promise<StoryMilestone> {
-    return withErrorHandling(
-      async () => {
-        const milestone = await this.storyMilestoneRepository.findOne({
-          where: { id: milestoneId },
-        });
+    return this.withErrorHandling('адаптации вехи', async () => {
+      const milestone = await this.storyMilestoneRepository.findOne({
+        where: { id: milestoneId },
+      });
 
-        if (!milestone) {
-          throw new Error(`Веха с ID ${milestoneId} не найдена`);
-        }
+      if (!milestone) {
+        throw new Error(`Веха с ID ${milestoneId} не найдена`);
+      }
 
-        // Проверяем уровень жесткости
-        if (milestone.rigidityLevel > 7 && milestone.isKeyMilestone) {
-          this.logService.warn(
-            `Веха ${milestoneId} имеет высокий уровень жесткости, адаптация ограничена`,
-          );
-          // Разрешаем только минорные изменения
-        }
+      Object.assign(milestone, adaptations);
+      milestone.status = MilestoneStatus.MODIFIED;
 
-        Object.assign(milestone, adaptations);
-        milestone.status = MilestoneStatus.MODIFIED;
+      const savedMilestone = await this.storyMilestoneRepository.save(milestone);
+      this.logInfo(`Веха ${milestoneId} адаптирована`);
 
-        const savedMilestone = await this.storyMilestoneRepository.save(milestone);
-        this.logService.log(`Веха ${milestoneId} адаптирована`);
-
-        return savedMilestone;
-      },
-      'адаптации вехи',
-      this.logService,
-      { milestoneId },
-      null as never,
-    );
+      return savedMilestone;
+    });
   }
 
   private async applyTransformationEffects(milestone: StoryMilestone): Promise<void> {
-    return withErrorHandling(
-      async () => {
-        const effects = milestone.transformationDetails;
+    return this.withErrorHandling('применении эффектов трансформации', async () => {
+      if (!milestone.transformationDetails) {
+        this.logDebug(`Веха ${milestone.id} не имеет деталей трансформации для применения`);
+        return;
+      }
 
-        this.logService.log(`Применение трансформационных эффектов для вехи ${milestone.id}`, {
-          transformationType: milestone.transformationType,
-          effects,
-        });
+      // Получаем персонажа для применения трансформации
+      const character = await this.characterService.findOne(milestone.characterId);
+      if (!character) {
+        throw new Error(`Персонаж с ID ${milestone.characterId} не найден`);
+      }
 
-        // Логика применения трансформационных эффектов
-        // Интеграция с CharacterService для изменения характеристик персонажа
-      },
-      'применении трансформационных эффектов',
-      this.logService,
-      { milestoneId: milestone.id },
-      undefined,
-    );
+      const appliedTransformations: string[] = [];
+
+      // Применяем трансформацию на основе типа
+      switch (milestone.transformationType) {
+        case TransformationType.EMOTIONAL_MATURITY:
+          appliedTransformations.push('эмоциональная зрелость');
+          break;
+        case TransformationType.BEHAVIOR_PATTERN_CHANGE:
+          appliedTransformations.push('изменение поведенческих паттернов');
+          break;
+        case TransformationType.PERSONALITY_CHANGE:
+          appliedTransformations.push('изменение личности');
+          break;
+        case TransformationType.RELATIONSHIP_DYNAMIC_CHANGE:
+          appliedTransformations.push('эволюция отношений');
+          break;
+        case TransformationType.WORLDVIEW_SHIFT:
+          appliedTransformations.push('сдвиг мировоззрения');
+          break;
+        case TransformationType.EXISTENTIAL_AWARENESS:
+          appliedTransformations.push('экзистенциальное осознание');
+          break;
+        case TransformationType.VALUE_SYSTEM_EVOLUTION:
+          appliedTransformations.push('эволюция системы ценностей');
+          break;
+        default:
+          appliedTransformations.push('общая трансформация');
+      }
+
+      // Обновляем прогресс трансформации
+      if (milestone.transformationDetails.progressIndicators) {
+        for (const indicator of milestone.transformationDetails.progressIndicators) {
+          appliedTransformations.push(`прогресс: ${indicator}`);
+        }
+      }
+
+      this.logInfo(
+        `Применены эффекты трансформации для вехи ${milestone.id}: ${appliedTransformations.join(', ')}`,
+      );
+    });
   }
 
   private async processCausalConnections(milestone: StoryMilestone): Promise<void> {
-    return withErrorHandling(
-      async () => {
-        const connections = milestone.causalConnections;
-
-        if (connections.consequenceEvents.length > 0) {
-          for (const eventId of connections.consequenceEvents) {
-            // Активируем связанные события
-            await this.triggerConnectedEvent(eventId, milestone.id);
-          }
+    return this.withErrorHandling('обработке каузальных связей', async () => {
+      const connections = milestone.causalConnections;
+      if (connections && connections.consequenceEvents) {
+        for (const eventId of connections.consequenceEvents) {
+          await this.triggerConnectedEvent(eventId, milestone.id);
         }
-
-        this.logService.log(`Обработаны каузальные связи для вехи ${milestone.id}`);
-      },
-      'обработке каузальных связей',
-      this.logService,
-      { milestoneId: milestone.id },
-      undefined,
-    );
+      }
+    });
   }
 
   private async triggerConnectedEvent(
     eventId: number,
     triggeredByMilestoneId: number,
   ): Promise<void> {
-    return withErrorHandling(
-      async () => {
-        // Логика активации связанного события
-        this.logService.log(
-          `Активировано связанное событие ${eventId} из вехи ${triggeredByMilestoneId}`,
-        );
-      },
-      'активации связанного события',
-      this.logService,
-      { eventId, triggeredByMilestoneId },
-      undefined,
-    );
+    return this.withErrorHandling('активации связанного события', async () => {
+      const event = await this.storyEventRepository.findOne({
+        where: { id: eventId },
+      });
+
+      if (event) {
+        event.status = EventStatus.TRIGGERED;
+        event.triggeredAt = new Date();
+
+        await this.storyEventRepository.save(event);
+        this.logInfo(`Событие ${eventId} активировано вехой ${triggeredByMilestoneId}`);
+      }
+    });
   }
 
+  // ===== МЕТОДЫ ГЕНЕРАЦИИ ПЛАНОВ =====
+
   async generatePersonalityEvolutionPlan(characterId: number): Promise<StoryPlan> {
-    return withErrorHandling(
-      async () => {
-        const character = await this.characterService.findOne(characterId);
+    return this.withErrorHandling('генерации плана эволюции личности', async () => {
+      const planData = {
+        title: 'План эволюции личности',
+        description: 'Долгосрочный план развития и трансформации личности персонажа',
+        overallArc: {
+          startingState: {},
+          endingState: {},
+          majorThemes: ['личностный рост', 'эмоциональное развитие', 'адаптация поведения'],
+          evolutionDirection: 'прогрессивная трансформация',
+        },
+        retrospectivePlanning: {
+          preExistingTraits: {},
+          formativeEvents: [],
+          characterHistory: '',
+          pastInfluences: [],
+        },
+        adaptabilitySettings: {
+          coreEventsRigidity: 7,
+          detailsFlexibility: 8,
+          userInfluenceWeight: 6,
+          emergentEventTolerance: 5,
+        },
+      };
 
-        const evolutionPlan = await this.createTwelveMonthPlan(characterId, {
-          title: `План эволюции личности - ${character.name}`,
-          description: 'Детальный план трансформации личности на 12 месяцев',
-          overallArc: {
-            startingState: {
-              /* текущее состояние персонажа */
-            },
-            endingState: {
-              /* целевое состояние через год */
-            },
-            majorThemes: ['self_discovery', 'emotional_growth', 'relationship_deepening'],
-            evolutionDirection: 'progressive_maturation',
-          },
-          retrospectivePlanning: {
-            preExistingTraits: {
-              /* существующие черты */
-            },
-            formativeEvents: [
-              {
-                description: 'Детство и формирование базовых установок',
-                timeframe: '0-18 лет',
-                impact: {
-                  /* влияние на текущую личность */
-                },
-              },
-            ],
-            characterHistory: 'Краткая биография до текущего момента',
-            pastInfluences: ['family', 'education', 'early_relationships'],
-          },
-        });
-
-        // Создаем ключевые вехи трансформации
-        await this.createKeyTransformationMilestones(evolutionPlan.id);
-
-        return evolutionPlan;
-      },
-      'генерации плана эволюции личности',
-      this.logService,
-      { characterId },
-      null as never,
-    );
+      return await this.createTwelveMonthPlan(characterId, planData);
+    });
   }
 
   private async createKeyTransformationMilestones(storyPlanId: number): Promise<void> {
-    const milestones = [
-      {
-        title: 'Первые сомнения',
-        description: 'Начальные экзистенциальные вопросы',
-        transformationType: TransformationType.EXISTENTIAL_AWARENESS,
-        plannedMonth: 1,
-        plannedDay: 30,
-        isKeyMilestone: true,
-        rigidityLevel: 8,
-      },
-      {
-        title: 'Осознание виртуальной природы',
-        description: 'Полное понимание своей сущности',
-        transformationType: TransformationType.EXISTENTIAL_AWARENESS,
-        plannedMonth: 2,
-        plannedDay: 60,
-        isKeyMilestone: true,
-        rigidityLevel: 9,
-      },
-    ];
+    return this.withErrorHandling('создании ключевых вех трансформации', async () => {
+      const milestones = [
+        {
+          title: 'Эмоциональный сдвиг',
+          description: 'Изменение эмоциональных реакций и паттернов',
+          transformationType: TransformationType.EMOTIONAL_MATURITY,
+          plannedMonth: 3,
+          plannedDay: 15,
+        },
+        {
+          title: 'Поведенческие изменения',
+          description: 'Адаптация поведенческих паттернов',
+          transformationType: TransformationType.BEHAVIOR_PATTERN_CHANGE,
+          plannedMonth: 6,
+          plannedDay: 30,
+        },
+        {
+          title: 'Эволюция личности',
+          description: 'Глубокие изменения в структуре личности',
+          transformationType: TransformationType.PERSONALITY_CHANGE,
+          plannedMonth: 12,
+          plannedDay: 31,
+        },
+      ];
 
-    for (const milestoneData of milestones) {
-      await this.createMilestone(storyPlanId, milestoneData);
-    }
+      for (const milestoneData of milestones) {
+        await this.createMilestone(storyPlanId, {
+          ...milestoneData,
+          transformationDetails: {
+            currentState: {},
+            targetState: {},
+            progressIndicators: [],
+            prerequisiteEvents: [],
+            transitionMethod: 'gradual',
+          },
+          causalConnections: {
+            triggeringConditions: [],
+            consequenceEvents: [],
+            timelineConstraints: {},
+          },
+          rigidityLevel: 5,
+          isKeyMilestone: true,
+        });
+      }
+    });
   }
 }

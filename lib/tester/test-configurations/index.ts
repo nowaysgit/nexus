@@ -1,3 +1,4 @@
+import { ActionExecutorService } from '../../../src/character/services/action-executor.service';
 /* eslint-disable */
 
 /**
@@ -41,6 +42,10 @@ import { EncryptionService } from '../../../src/infrastructure/encryption.servic
 import { MockDialogRepositoryModule } from '../mocks/mock-dialog-repository.module';
 import { MockLogService } from '../mocks/log.service.mock';
 import { MockRollbarService } from '../mocks/rollbar.service.mock';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Test, TestingModule } from '@nestjs/testing';
+import { TelegrafTokenMockModule } from '../mocks/telegraf-token.module';
+import { TestConfigType } from '../index';
 
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -200,6 +205,26 @@ export function requiredMocksAdder(
 
   updatedProviders = [...updatedProviders, ...telegramStubProviders];
 
+  // Добавляем ActionExecutorService, если его еще нет
+  const hasActionExecutorService = updatedProviders.some(
+    (p: any) => p?.provide === ActionExecutorService || (p as any)?.constructor?.name === "ActionExecutorService",
+  );
+
+  if (!hasActionExecutorService) {
+    updatedProviders.push({
+      provide: ActionExecutorService,
+      useValue: {
+        determineAndPerformAction: jest.fn(),
+        isPerformingAction: jest.fn(),
+        getCurrentAction: jest.fn(),
+        interruptAction: jest.fn(),
+        canExecute: jest.fn(),
+        execute: jest.fn(),
+        processActionTrigger: jest.fn(),
+      },
+    });
+  }
+
   return updatedProviders;
 }
 
@@ -210,6 +235,7 @@ export function requiredMocksAdder(
  */
 export function prepareImportsForTesting(
   imports: (Type<any> | DynamicModule)[] = [],
+  configType?: TestConfigType,
 ): (Type<any> | DynamicModule)[] {
   let updatedImports = [...imports];
 
@@ -242,6 +268,64 @@ export function prepareImportsForTesting(
     return mod;
   });
 
+  // Заменяем TypeOrmModule на MockTypeOrmModule только для unit тестов, НЕ для интеграционных
+  if (configType !== TestConfigType.INTEGRATION) {
+    updatedImports = updatedImports.map(mod => {
+      // Заменяем TypeOrmModule.forFeature() на MockTypeOrmModule.forFeature()
+      if ((mod as any)?.module === TypeOrmModule && (mod as any)?.providers?.length > 0) {
+        const { MockTypeOrmModule } = require('../mocks/mock-typeorm.module');
+        
+        // Если это forRoot - заменяем на MockTypeOrmModule.forRoot()
+        if ((mod as any)?.global === true) {
+          return MockTypeOrmModule.forRoot();
+        }
+        
+        // Иначе это forFeature - заменяем на MockTypeOrmModule.forFeature()
+        // Извлекаем entities из провайдеров
+        const entities = [];
+        const providers = (mod as any).providers || [];
+        
+        for (const provider of providers) {
+          if (provider && provider.provide && typeof provider.provide === 'string') {
+            const match = provider.provide.match(/^(.+)Repository$/);
+            if (match) {
+              const entityName = match[1];
+              // Ищем entity в ALL_TEST_ENTITIES по имени
+              const { ALL_TEST_ENTITIES } = require('../entities');
+              const entity = ALL_TEST_ENTITIES.find(e => e.name === entityName);
+              if (entity) {
+                entities.push(entity);
+              }
+            }
+          }
+        }
+        
+        return MockTypeOrmModule.forFeature(entities);
+      }
+      
+      // Заменяем прямые ссылки на TypeOrmModule
+      if (mod === TypeOrmModule) {
+        const { MockTypeOrmModule } = require('../mocks/mock-typeorm.module');
+        return MockTypeOrmModule.forRoot();
+      }
+      
+      return mod;
+    });
+
+    // Добавляем MockTypeOrmModule.forRoot() если его еще нет
+    const hasMockTypeOrm = updatedImports.some(imp =>
+      (imp as any)?.module?.name === 'MockTypeOrmModule' || 
+      (imp as any)?.name === 'MockTypeOrmModule'
+    );
+
+    if (!hasMockTypeOrm && !updatedImports.some(imp =>
+      (imp as any)?.module === TypeOrmModule || imp === TypeOrmModule
+    )) {
+      const { MockTypeOrmModule } = require('../mocks/mock-typeorm.module');
+      updatedImports.push(MockTypeOrmModule.forRoot());
+    }
+  }
+
   // Ensure ConfigModule is imported at root for ConfigService availability with базовой тестовой конфигурацией
   if (!updatedImports.some(mod => (mod as any)?.module === ConfigModule || mod === ConfigModule)) {
     updatedImports.push(
@@ -271,11 +355,6 @@ export function prepareImportsForTesting(
     );
   }
 
-  // Always include MockTypeOrmModule for DataSource availability
-  if (!updatedImports.some(mod => (mod as any)?.module === MockTypeOrmModule || mod === MockTypeOrmModule)) {
-    updatedImports.push(MockTypeOrmModule.forRoot());
-  }
-
   // Ensure TelegrafTokenMockModule is imported to предоставлять TELEGRAF_TOKEN глобально
   const { TelegrafTokenMockModule } = require('../mocks/telegraf-token.module');
   if (!updatedImports.some(mod => (mod as any)?.module === TelegrafTokenMockModule || mod === TelegrafTokenMockModule)) {
@@ -291,8 +370,41 @@ export function prepareImportsForTesting(
     updatedImports.push(MockTelegramModule.forRoot());
   }
 
-  // Ensure MockDialogRepositoryModule imported to satisfy DialogRepository DI
-  if (!updatedImports.some(mod => (mod as any)?.module === MockDialogRepositoryModule || mod === MockDialogRepositoryModule)) {
+  // Для интеграционных тестов добавляем настоящий TypeOrmModule.forRoot() если его нет
+  if (configType === TestConfigType.INTEGRATION) {
+    const hasTypeOrmModule = updatedImports.some(imp =>
+      (imp as any)?.module === TypeOrmModule || imp === TypeOrmModule
+    );
+
+    if (!hasTypeOrmModule) {
+      // Добавляем настоящий TypeOrmModule.forRoot() для интеграционных тестов
+      updatedImports.push(TypeOrmModule.forRoot({
+        type: 'postgres',
+        host: process.env.TEST_DB_HOST || 'localhost',
+        port: parseInt(process.env.TEST_DB_PORT || '5433', 10),
+        username: process.env.TEST_DB_USERNAME || 'test_user',
+        password: process.env.TEST_DB_PASSWORD || 'test_password',
+        database: process.env.TEST_DB_NAME || 'nexus_test',
+        synchronize: true,
+        dropSchema: true,
+        logging: false,
+        entities: ['src/**/*.entity{.ts,.js}'],
+        retryAttempts: 3,
+        retryDelay: 2000,
+        extra: {
+          max: 1,
+          min: 1,
+          connectionTimeoutMillis: 5000,
+          idleTimeoutMillis: 10000,
+          acquireTimeoutMillis: 5000,
+        },
+      }));
+    }
+  }
+
+  // Ensure MockDialogRepositoryModule imported to satisfy DialogRepository DI только для НЕ интеграционных тестов
+  if (configType !== TestConfigType.INTEGRATION && 
+      !updatedImports.some(mod => (mod as any)?.module === MockDialogRepositoryModule || mod === MockDialogRepositoryModule)) {
     updatedImports.push(MockDialogRepositoryModule);
   }
 
@@ -349,6 +461,26 @@ export function addTelegrafTokenProvider(providers: any[] = []): any[] {
     updatedProviders.push({
       provide: TELEGRAF_TOKEN,
       useValue: 'test-telegram-token',
+    });
+  }
+
+  // Добавляем ActionExecutorService, если его еще нет
+  const hasActionExecutorService = updatedProviders.some(
+    (p: any) => p?.provide === ActionExecutorService || (p as any)?.constructor?.name === "ActionExecutorService",
+  );
+
+  if (!hasActionExecutorService) {
+    updatedProviders.push({
+      provide: ActionExecutorService,
+      useValue: {
+        determineAndPerformAction: jest.fn(),
+        isPerformingAction: jest.fn(),
+        getCurrentAction: jest.fn(),
+        interruptAction: jest.fn(),
+        canExecute: jest.fn(),
+        execute: jest.fn(),
+        processActionTrigger: jest.fn(),
+      },
     });
   }
 

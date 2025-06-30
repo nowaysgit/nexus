@@ -1,8 +1,6 @@
-import { LogService } from '../../logging/log.service';
-import { withErrorHandling } from '../../common/utils/error-handling/error-handling.utils';
-
 /**
  * Декоратор для автоматической обработки ошибок в методах
+ * Теперь работает с BaseService
  */
 export function WithErrorHandling(
   options: {
@@ -11,23 +9,27 @@ export function WithErrorHandling(
     defaultValue?: unknown;
   } = {},
 ) {
-  return function (target: unknown, propertyKey: string, descriptor: PropertyDescriptor) {
+  return function (_target: unknown, propertyKey: string, descriptor: PropertyDescriptor) {
     const originalMethod = descriptor.value as (...args: unknown[]) => Promise<unknown>;
-    const targetConstructor = target as { constructor: { name: string } };
-    const logger = new LogService(null, null, null).setContext(
-      options.loggerContext || targetConstructor.constructor.name,
-    );
 
-    descriptor.value = async function (...args: unknown[]): Promise<unknown> {
+    descriptor.value = async function (this: any, ...args: unknown[]): Promise<unknown> {
       const errorMessage = options.errorMessage || `выполнении метода ${propertyKey}`;
 
-      return withErrorHandling(
-        async () => originalMethod.apply(this, args) as Promise<unknown>,
-        errorMessage,
-        logger,
-        { method: propertyKey, args },
-        options.defaultValue,
-      );
+      // Проверяем, что объект наследует от BaseService
+      if (typeof this.withErrorHandling === 'function') {
+        return this.withErrorHandling(
+          errorMessage,
+          async () => originalMethod.apply(this, args) as Promise<unknown>,
+        );
+      } else {
+        // Fallback для объектов, не наследующих от BaseService
+        try {
+          return (await originalMethod.apply(this, args)) as Promise<unknown>;
+        } catch (error) {
+          console.error(`Ошибка при ${errorMessage}:`, error);
+          return options.defaultValue;
+        }
+      }
     };
 
     return descriptor;

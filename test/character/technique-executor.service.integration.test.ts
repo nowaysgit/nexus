@@ -8,6 +8,12 @@ import { FixtureManager } from '../../lib/tester/fixtures/fixture-manager';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { TechniqueExecutorService } from '../../src/character/services/technique-executor.service';
+import { TechniqueStrategyService } from '../../src/character/services/technique-strategy.service';
+import { TechniqueValidatorService } from '../../src/character/services/technique-validator.service';
+import { TechniqueAnalyzerService } from '../../src/character/services/technique-analyzer.service';
+import { TechniqueGeneratorService } from '../../src/character/services/technique-generator.service';
+import { TechniqueAdapterService } from '../../src/character/services/technique-adapter.service';
+import { TechniqueHistoryService } from '../../src/character/services/technique-history.service';
 import { NeedsService } from '../../src/character/services/needs.service';
 import { EmotionalStateService } from '../../src/character/services/emotional-state.service';
 import { LLMService } from '../../src/llm/services/llm.service';

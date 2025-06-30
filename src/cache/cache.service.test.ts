@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CacheService } from './cache.service';
 import { LogService } from '../logging/log.service';
+import { MockLogService } from '../../lib/tester/mocks/log.service.mock';
 
 describe('CacheService', () => {
   let service: CacheService;
@@ -8,19 +9,12 @@ describe('CacheService', () => {
   let _logService: LogService;
 
   beforeEach(async () => {
-    const logServiceMock = {
-      log: jest.fn(),
-      debug: jest.fn(),
-      error: jest.fn(),
-      warn: jest.fn(),
-    };
-
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CacheService,
         {
           provide: LogService,
-          useValue: logServiceMock,
+          useClass: MockLogService,
         },
       ],
     }).compile();
@@ -219,7 +213,7 @@ describe('CacheService', () => {
       const info = service.getInfo();
 
       expect(info).toHaveProperty('type', 'SimpleMemoryCache');
-      expect(info).toHaveProperty('version', '1.0.0');
+      expect(info).toHaveProperty('version', '1.1.0');
       expect(info).toHaveProperty('description');
       expect(info).toHaveProperty('stats');
       expect(info).toHaveProperty('settings');

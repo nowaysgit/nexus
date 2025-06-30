@@ -3,7 +3,6 @@ import {
   Column,
   PrimaryGeneratedColumn,
   CreateDateColumn,
-  UpdateDateColumn,
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
@@ -35,8 +34,7 @@ export class Need {
   character: Character;
 
   @Column({
-    type: 'enum',
-    enum: CharacterNeedType,
+    type: 'varchar',
   })
   type: CharacterNeedType;
 
@@ -58,13 +56,13 @@ export class Need {
   @Column('float')
   threshold: number;
 
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   lastUpdated: Date;
 
   @Column({ default: true })
   isActive: boolean;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'datetime' })
   createdAt: Date;
 
   /**

@@ -1,11 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { LLMService } from '../../llm/services/llm.service';
 import { LLMMessageRole } from '../../common/interfaces/llm-provider.interface';
 import { DialogService } from '../../dialog/services/dialog.service';
 import { Message } from '../../dialog/entities/message.entity';
 import { LogService } from '../../logging/log.service';
 import { PromptTemplateService } from '../../prompt-template/prompt-template.service';
-import { withErrorHandling } from '../../common/utils/error-handling/error-handling.utils';
+import { BaseService } from '../../common/base/base.service';
 
 export enum DataImportanceLevel {
   CRITICAL = 'critical',
@@ -49,44 +49,37 @@ export interface IContextWindow {
 }
 
 @Injectable()
-export class ContextCompressionService {
+export class ContextCompressionService extends BaseService {
   private readonly maxContextTokens = 8000;
   private readonly compressionThreshold = 0.8;
 
   constructor(
     private readonly llmService: LLMService,
-    private readonly dialogService: DialogService,
+    @Optional() private readonly dialogService: DialogService,
     private readonly promptTemplateService: PromptTemplateService,
-    private readonly logService: LogService,
+    logService: LogService,
   ) {
-    this.logService.log('Сервис интеллектуальной компрессии контекста инициализирован');
+    super(logService);
+    this.logInfo('Сервис интеллектуальной компрессии контекста инициализирован');
   }
 
   async analyzeAndCompressContext(
     contextData: string,
-    characterId: number,
+    __characterId: number,
     compressionType: CompressionType = CompressionType.SEMANTIC,
   ): Promise<ICompressionResult> {
-    return withErrorHandling(
-      async () => {
-        const segments = await this.segmentContext(contextData);
-        const classifiedSegments = await this.classifyInformationImportance(segments);
+    return this.withErrorHandling('анализе и компрессии контекста', async () => {
+      const segments = await this.segmentContext(contextData);
+      const classifiedSegments = await this.classifyInformationImportance(segments);
 
-        const compressionResult = await this.performMultilevelCompression(
-          classifiedSegments,
-          compressionType,
-        );
+      const compressionResult = await this.performMultilevelCompression(
+        classifiedSegments,
+        compressionType,
+      );
 
-        this.logService.log(
-          `Контекст сжат с коэффициентом ${compressionResult.compressionRatio}:1`,
-        );
-        return compressionResult;
-      },
-      'анализе и компрессии контекста',
-      this.logService,
-      { characterId, compressionType },
-      null as never,
-    );
+      this.logInfo(`Контекст сжат с коэффициентом ${compressionResult.compressionRatio}:1`);
+      return compressionResult;
+    });
   }
 
   async generateAdaptiveContext(
@@ -94,23 +87,17 @@ export class ContextCompressionService {
     userId: number,
     currentDialog: string,
   ): Promise<string> {
-    return withErrorHandling(
-      async () => {
-        const contextWindow = await this.getCharacterContextWindow(characterId, userId);
+    return this.withErrorHandling('генерации адаптивного контекста', async () => {
+      const contextWindow = await this.getCharacterContextWindow(characterId, userId);
 
-        if (contextWindow.totalTokens > this.maxContextTokens * this.compressionThreshold) {
-          await this.performDynamicCompression(contextWindow);
-        }
+      if (contextWindow.totalTokens > this.maxContextTokens * this.compressionThreshold) {
+        await this.performDynamicCompression(contextWindow);
+      }
 
-        const adaptiveContext = await this.assembleAdaptiveContext(contextWindow, currentDialog);
+      const adaptiveContext = await this.assembleAdaptiveContext(contextWindow, currentDialog);
 
-        return adaptiveContext;
-      },
-      'генерации адаптивного контекста',
-      this.logService,
-      { characterId, userId },
-      '',
-    );
+      return adaptiveContext;
+    });
   }
 
   /**
@@ -147,38 +134,32 @@ export class ContextCompressionService {
   private async classifyInformationImportance(
     segments: IContextSegment[],
   ): Promise<IContextSegment[]> {
-    return withErrorHandling(
-      async () => {
-        const classifiedSegments: IContextSegment[] = [];
+    return this.withErrorHandling('классификации важности информации', async () => {
+      const classifiedSegments: IContextSegment[] = [];
 
-        for (const segment of segments) {
-          const importance = await this.determineImportanceLevel(segment.content);
-          const relevanceScore = await this.calculateRelevanceScore(segment.content);
+      for (const segment of segments) {
+        const importance = await this.determineImportanceLevel(segment.content);
+        const relevanceScore = await this.calculateRelevanceScore(segment.content);
 
-          classifiedSegments.push({
-            ...segment,
-            importance,
-            relevanceScore,
-          });
-        }
-
-        return classifiedSegments.sort((a, b) => {
-          const importanceWeight =
-            this.getImportanceWeight(a.importance) - this.getImportanceWeight(b.importance);
-          if (importanceWeight !== 0) return importanceWeight;
-          return b.relevanceScore - a.relevanceScore;
+        classifiedSegments.push({
+          ...segment,
+          importance,
+          relevanceScore,
         });
-      },
-      'классификации важности информации',
-      this.logService,
-      { segmentsCount: segments.length },
-      [],
-    );
+      }
+
+      return classifiedSegments.sort((a, b) => {
+        const importanceWeight =
+          this.getImportanceWeight(a.importance) - this.getImportanceWeight(b.importance);
+        if (importanceWeight !== 0) return importanceWeight;
+        return b.relevanceScore - a.relevanceScore;
+      });
+    });
   }
 
   private async determineImportanceLevel(content: string): Promise<DataImportanceLevel> {
-    return withErrorHandling(
-      async () => {
+    return this.withErrorHandling('определении уровня важности', async () => {
+      try {
         // Используем PromptTemplateService для создания промпта анализа важности
         const prompt = this.promptTemplateService.createPrompt('context-importance-analysis', {
           content: content.substring(0, 500), // Ограничиваем длину для эффективности
@@ -193,12 +174,27 @@ export class ContextCompressionService {
         if (level.includes('critical')) return DataImportanceLevel.CRITICAL;
         if (level.includes('significant')) return DataImportanceLevel.SIGNIFICANT;
         return DataImportanceLevel.BACKGROUND;
-      },
-      'определении уровня важности',
-      this.logService,
-      { contentLength: content.length },
-      DataImportanceLevel.BACKGROUND,
-    );
+      } catch (_error) {
+        // Fallback для тестов и случаев когда LLM недоступен
+        this.logDebug('LLM недоступен для анализа важности, используется fallback');
+
+        // Простая эвристика на основе ключевых слов
+        const criticalKeywords = ['важно', 'критично', 'срочно', 'проблема', 'ошибка'];
+        const significantKeywords = ['интересно', 'нравится', 'хочу', 'думаю', 'чувствую'];
+
+        const lowerContent = content.toLowerCase();
+
+        if (criticalKeywords.some(keyword => lowerContent.includes(keyword))) {
+          return DataImportanceLevel.CRITICAL;
+        }
+
+        if (significantKeywords.some(keyword => lowerContent.includes(keyword))) {
+          return DataImportanceLevel.SIGNIFICANT;
+        }
+
+        return DataImportanceLevel.BACKGROUND;
+      }
+    });
   }
 
   private async calculateRelevanceScore(content: string): Promise<number> {
@@ -253,7 +249,10 @@ export class ContextCompressionService {
     userId: number,
   ): Promise<IContextWindow> {
     // Получаем реальные сообщения из диалогов
-    const messages = await this.dialogService.getDialogHistory(String(userId), characterId, 100);
+    let messages: Message[] = [];
+    if (this.dialogService) {
+      messages = await this.dialogService.getDialogHistory(String(userId), characterId, 100);
+    }
 
     // Конвертируем в сегменты контекста
     const segments = await this.convertMessagesToSegments(messages);
@@ -274,9 +273,7 @@ export class ContextCompressionService {
   }
 
   private async performDynamicCompression(contextWindow: IContextWindow): Promise<void> {
-    this.logService.log(
-      `Выполняется динамическая компрессия для персонажа ${contextWindow.characterId}`,
-    );
+    this.logInfo(`Выполняется динамическая компрессия для персонажа ${contextWindow.characterId}`);
   }
 
   private async assembleAdaptiveContext(

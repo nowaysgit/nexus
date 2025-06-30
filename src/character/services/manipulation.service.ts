@@ -21,6 +21,7 @@ import { PromptTemplateService } from '../../prompt-template/prompt-template.ser
 import { LogService } from '../../logging/log.service';
 import { LLMMessageRole } from '../../common/interfaces/llm-provider.interface';
 import { IManipulationContext } from '../interfaces/technique.interfaces';
+import { BaseService } from '../../common/base/base.service';
 
 export interface ITechniqueExecution {
   id: string;
@@ -43,7 +44,7 @@ export interface ITechniqueStrategy {
 }
 
 @Injectable()
-export class ManipulationService {
+export class ManipulationService extends BaseService {
   private readonly strategies = new Map<number, ITechniqueStrategy>();
   private readonly activeExecutions = new Map<number, ITechniqueExecution[]>();
 
@@ -58,9 +59,11 @@ export class ManipulationService {
     private readonly emotionalStateService: EmotionalStateService,
     private readonly llmService: LLMService,
     private readonly promptTemplateService: PromptTemplateService,
-    private readonly logService: LogService,
+    logService: LogService,
     private readonly eventEmitter: EventEmitter2,
-  ) {}
+  ) {
+    super(logService);
+  }
 
   /**
    * Инициализация стратегии манипулятивных техник для персонажа
@@ -76,9 +79,7 @@ export class ManipulationService {
 
     // Проверяем наличие personality
     if (!character.personality) {
-      this.logService.warn(
-        `Character ${characterId} has no personality data, using default values`,
-      );
+      this.logWarning(`Character ${characterId} has no personality data, using default values`);
       character.personality = {
         traits: ['neutral'],
         hobbies: ['general'],
@@ -97,7 +98,7 @@ export class ManipulationService {
     };
 
     this.strategies.set(characterId, strategy);
-    this.logService.log(`Manipulation strategy initialized for character ${characterId}`, {
+    this.logInfo(`Manipulation strategy initialized for character ${characterId}`, {
       characterId,
     });
 
@@ -141,7 +142,7 @@ export class ManipulationService {
     try {
       analysisResult = analysisResponse;
     } catch (error) {
-      this.logService.error(`Failed to parse analysis response for character ${characterId}`, {
+      this.logError(`Failed to parse analysis response for character ${characterId}`, {
         error: error.message,
       });
       return null;
@@ -164,7 +165,7 @@ export class ManipulationService {
       chosenTechnique = ManipulativeTechniqueType.EMOTIONAL_BLACKMAIL;
     }
 
-    this.logService.log(`Technique chosen for character ${characterId}: ${chosenTechnique}`, {
+    this.logInfo(`Technique chosen for character ${characterId}: ${chosenTechnique}`, {
       characterId,
       userId,
       technique: chosenTechnique,
@@ -306,15 +307,12 @@ export class ManipulationService {
 
         return manipulativeResponse;
       } catch (error) {
-        this.logService.error(
-          `Error executing technique ${technique} for character ${characterId}`,
-          {
-            error: error.message,
-            characterId,
-            userId,
-            technique,
-          },
-        );
+        this.logError(`Error executing technique ${technique} for character ${characterId}`, {
+          error: error.message,
+          characterId,
+          userId,
+          technique,
+        });
         throw error;
       }
     } else {
@@ -377,14 +375,11 @@ export class ManipulationService {
 
         return { success: true, message: manipulativeResponse };
       } catch (error) {
-        this.logService.error(
-          `Error executing technique ${selectedTechnique.techniqueType} for context`,
-          {
-            error: error.message,
-            context,
-            selectedTechnique,
-          },
-        );
+        this.logError(`Error executing technique ${selectedTechnique.techniqueType} for context`, {
+          error: error.message,
+          context,
+          selectedTechnique,
+        });
         return { success: false, message: 'Техника не может быть применена в данный момент.' };
       }
     }
@@ -477,7 +472,7 @@ export class ManipulationService {
       profile.lastUpdate = new Date();
       const savedProfile = await this.userManipulationProfileRepository.save(profile);
 
-      this.logService.log(
+      this.logInfo(
         `Updated manipulation profile for user ${numericUserId} with character ${numericCharacterId}`,
         {
           userId: numericUserId,
@@ -488,7 +483,7 @@ export class ManipulationService {
 
       return savedProfile;
     } catch (error) {
-      this.logService.error(`Failed to update user manipulation profile`, {
+      this.logError(`Failed to update user manipulation profile`, {
         error: error.message,
         userId: numericUserId,
         characterId: numericCharacterId,
@@ -521,7 +516,7 @@ export class ManipulationService {
       { role: LLMMessageRole.USER, content: 'Сгенерируй ответ применяя указанную технику' },
     ]);
 
-    this.logService.log(`Generated manipulative response using ${execution.techniqueType}`, {
+    this.logInfo(`Generated manipulative response using ${execution.techniqueType}`, {
       technique: execution.techniqueType,
       characterId: execution.characterId,
     });
@@ -540,7 +535,7 @@ export class ManipulationService {
           await this.evaluateEffectiveness(execution);
         }
       }
-      this.logService.log(`Effectiveness monitored for character ${characterId}`, { characterId });
+      this.logInfo(`Effectiveness monitored for character ${characterId}`, { characterId });
     }
   }
 
@@ -619,7 +614,7 @@ export class ManipulationService {
     ).length;
 
     if (recentAggressiveCount > 2) {
-      this.logService.warn(`Ethical limit exceeded for character ${characterId}`, { characterId });
+      this.logWarning(`Ethical limit exceeded for character ${characterId}`, { characterId });
       return false;
     }
 
@@ -653,7 +648,7 @@ export class ManipulationService {
     });
     this.activeExecutions.set(characterId, []);
 
-    this.logService.warn(`Emergency disable activated for character ${characterId}`, {
+    this.logWarning(`Emergency disable activated for character ${characterId}`, {
       characterId,
     });
   }
@@ -714,7 +709,7 @@ export class ManipulationService {
       return result || 0; // Возвращаем результат или 0, если не удалось преобразовать
     } catch (error) {
       console.error('Error converting UUID to numeric:', error);
-      this.logService.warn('Не удалось преобразовать UUID в числовой ID', {
+      this.logWarning('Не удалось преобразовать UUID в числовой ID', {
         uuid,
         error: error.message,
       });

@@ -21,6 +21,10 @@ import {
   TechniqueIntensity,
 } from '../../src/character/enums/technique.enums';
 import { MockNeedsService, MockEmotionalStateService } from '../../lib/tester/mocks/jest.mocks';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { CharacterRepository } from '../../src/character/repositories/character.repository';
+import { TechniqueExecutionRepository } from '../../src/character/repositories/technique-execution.repository';
+import { UserManipulationProfileRepository } from '../../src/character/repositories/user-manipulation-profile.repository';
 
 createTestSuite('ManipulationService Tests', () => {
   let fixtureManager: FixtureManager;
@@ -69,15 +73,127 @@ createTestSuite('ManipulationService Tests', () => {
         TypeOrmModule.forFeature([Character, TechniqueExecution, UserManipulationProfile]),
       ])
       .withProviders([
+        {
+          provide: getRepositoryToken(Character),
+          useValue: {
+            findOne: jest.fn().mockImplementation(async () => {
+              const character = await fixtureManager.createCharacter({});
+              return character;
+            }),
+            find: jest.fn().mockResolvedValue([]),
+            save: jest.fn().mockImplementation(async entity => entity),
+            update: jest.fn().mockResolvedValue({ affected: 1 }),
+            delete: jest.fn().mockResolvedValue({ affected: 1 }),
+            create: jest.fn().mockImplementation(entity => entity),
+          },
+        },
+        {
+          provide: getRepositoryToken(TechniqueExecution),
+          useValue: {
+            findOne: jest.fn().mockResolvedValue(null),
+            find: jest.fn().mockResolvedValue([]),
+            save: jest.fn().mockImplementation(async entity => ({
+              id: 1,
+              ...entity,
+            })),
+            update: jest.fn().mockResolvedValue({ affected: 1 }),
+            delete: jest.fn().mockResolvedValue({ affected: 1 }),
+            create: jest.fn().mockImplementation(entity => entity),
+          },
+        },
+        {
+          provide: getRepositoryToken(UserManipulationProfile),
+          useValue: {
+            findOne: jest.fn().mockResolvedValue(null),
+            find: jest.fn().mockResolvedValue([]),
+            save: jest.fn().mockImplementation(async entity => ({
+              id: 1,
+              userId: entity.userId,
+              characterId: entity.characterId,
+              vulnerabilities: entity.vulnerabilities || [],
+              successfulTechniques: entity.successfulTechniques || [],
+              resistedTechniques: entity.resistedTechniques || [],
+              emotionalTriggers: entity.emotionalTriggers || [],
+            })),
+            update: jest.fn().mockResolvedValue({ affected: 1 }),
+            delete: jest.fn().mockResolvedValue({ affected: 1 }),
+            create: jest.fn().mockImplementation(entity => entity),
+          },
+        },
+        {
+          provide: CharacterRepository,
+          useValue: {
+            findById: jest.fn().mockImplementation(async () => {
+              const character = await fixtureManager.createCharacter({});
+              return character;
+            }),
+            findByUserId: jest.fn().mockResolvedValue([]),
+            save: jest.fn().mockImplementation(async entity => entity),
+            update: jest.fn().mockResolvedValue({ affected: 1 }),
+            delete: jest.fn().mockResolvedValue({ affected: 1 }),
+          },
+        },
+        {
+          provide: TechniqueExecutionRepository,
+          useValue: {
+            findById: jest.fn().mockResolvedValue(null),
+            findByCharacterId: jest.fn().mockResolvedValue([]),
+            findByUserId: jest.fn().mockResolvedValue([]),
+            save: jest.fn().mockImplementation(async entity => ({
+              id: 1,
+              ...entity,
+            })),
+            update: jest.fn().mockResolvedValue({ affected: 1 }),
+            delete: jest.fn().mockResolvedValue({ affected: 1 }),
+          },
+        },
+        {
+          provide: UserManipulationProfileRepository,
+          useValue: {
+            findById: jest.fn().mockResolvedValue(null),
+            findByUserAndCharacter: jest.fn().mockResolvedValue(null),
+            findByCharacterId: jest.fn().mockResolvedValue([]),
+            findByUserId: jest.fn().mockResolvedValue([]),
+            save: jest.fn().mockImplementation(async entity => ({
+              id: 1,
+              userId: entity.userId,
+              characterId: entity.characterId,
+              vulnerabilities: entity.vulnerabilities || [],
+              successfulTechniques: entity.successfulTechniques || [],
+              resistedTechniques: entity.resistedTechniques || [],
+              emotionalTriggers: entity.emotionalTriggers || [],
+            })),
+            update: jest.fn().mockResolvedValue({ affected: 1 }),
+            delete: jest.fn().mockResolvedValue({ affected: 1 }),
+            create: jest.fn().mockImplementation(entity => entity),
+          },
+        },
+        {
+          provide: NeedsService,
+          useValue: mockNeedsService,
+        },
+        {
+          provide: EmotionalStateService,
+          useValue: mockEmotionalStateService,
+        },
+        {
+          provide: LLMService,
+          useValue: mockLLMService,
+        },
+        {
+          provide: PromptTemplateService,
+          useValue: mockPromptTemplateService,
+        },
+        {
+          provide: LogService,
+          useValue: mockLogService,
+        },
+        {
+          provide: EventEmitter2,
+          useValue: mockEventEmitter,
+        },
         ManipulationService,
-        { provide: LogService, useValue: mockLogService },
-        { provide: LLMService, useValue: mockLLMService },
-        { provide: PromptTemplateService, useValue: mockPromptTemplateService },
-        { provide: NeedsService, useValue: mockNeedsService },
-        { provide: EmotionalStateService, useValue: mockEmotionalStateService },
-        { provide: EventEmitter2, useValue: mockEventEmitter },
       ])
-      .withRequiredMocks()
       .compile();
 
     dataSource = moduleRef.get<DataSource>(DataSource);

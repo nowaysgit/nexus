@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Character } from '../../character/entities/character.entity';
-import { withErrorHandling } from '../../common/utils/error-handling/error-handling.utils';
+import { BaseService } from '../../common/base/base.service';
 import { Retry } from '../../common/decorators/retry.decorator';
 import { CharacterMetadata } from '../interfaces/telegram.interfaces';
 import { LogService } from '../../logging/log.service';
@@ -34,16 +34,15 @@ export interface MessageTemplate {
  * Функциональность клавиатур вынесена в отдельный KeyboardFormatterService
  */
 @Injectable()
-export class MessageFormatterService {
-  private readonly logService: LogService;
+export class MessageFormatterService extends BaseService {
   private readonly maxMessageLength = 4096;
 
   constructor(
     private readonly configService: ConfigService,
     logService: LogService,
   ) {
-    this.logService = logService.setContext(MessageFormatterService.name);
-    this.logService.log('Объединенный MessageFormatterService инициализирован');
+    super(logService);
+    this.logInfo('Объединенный MessageFormatterService инициализирован');
   }
 
   // Эмодзи для различных типов сообщений
@@ -89,7 +88,7 @@ export class MessageFormatterService {
 
       return message;
     } catch (error) {
-      this.logService.error('Ошибка форматирования сообщения', {
+      this.logError('Ошибка форматирования сообщения', {
         error: error instanceof Error ? error.message : String(error),
       });
       return template.content; // Возвращаем исходный контент в случае ошибки
@@ -200,141 +199,111 @@ export class MessageFormatterService {
    */
   @Retry()
   async formatHelpMessage(): Promise<string> {
-    return withErrorHandling(
-      async () => {
-        let message = `*Справка по использованию бота*\n\n`;
+    return this.withErrorHandling('форматировании справочного сообщения', async () => {
+      let message = `*Справка по использованию бота*\n\n`;
 
-        message += `🎭 *Персонажи*\n`;
-        message += `• /characters - Список ваших персонажей\n`;
-        message += `• /create - Создать нового персонажа\n`;
-        message += `• /archive - Архивировать персонажа\n\n`;
+      message += `🎭 *Персонажи*\n`;
+      message += `• /characters - Список ваших персонажей\n`;
+      message += `• /create - Создать нового персонажа\n`;
+      message += `• /archive - Архивировать персонажа\n\n`;
 
-        message += `💬 *Общение*\n`;
-        message += `• Просто напишите сообщение для общения с активным персонажем\n`;
-        message += `• Используйте кнопки для быстрых действий\n\n`;
+      message += `💬 *Общение*\n`;
+      message += `• Просто напишите сообщение для общения с активным персонажем\n`;
+      message += `• Используйте кнопки для быстрых действий\n\n`;
 
-        message += `⚙️ *Настройки*\n`;
-        message += `• /settings - Настройки персонажа\n`;
-        message += `• /help - Эта справка\n\n`;
+      message += `⚙️ *Настройки*\n`;
+      message += `• /settings - Настройки персонажа\n`;
+      message += `• /help - Эта справка\n\n`;
 
-        message += `_Для получения дополнительной помощи обратитесь к администратору._`;
+      message += `_Для получения дополнительной помощи обратитесь к администратору._`;
 
-        return message;
-      },
-      'форматировании справочного сообщения',
-      this.logService,
-      {},
-      'Справка временно недоступна',
-    );
+      return message;
+    });
   }
 
   /**
    * Форматирует информацию о персонаже
    */
   async formatCharacterInfo(character: CharacterMetadata): Promise<string> {
-    return withErrorHandling(
-      async () => {
-        let message = `🎭 *${character.name}*\n\n`;
+    return this.withErrorHandling('форматировании информации о персонаже', async () => {
+      let message = `🎭 *${character.name}*\n\n`;
 
-        if (character.description) {
-          message += `📝 *Описание:*\n${character.description}\n\n`;
-        }
+      if (character.description) {
+        message += `📝 *Описание:*\n${character.description}\n\n`;
+      }
 
-        message += `📅 *Создан:* ${character.createdAt.toLocaleDateString('ru-RU')}\n`;
-        message += `🔄 *Обновлен:* ${character.updatedAt.toLocaleDateString('ru-RU')}\n`;
+      message += `📅 *Создан:* ${character.createdAt.toLocaleDateString('ru-RU')}\n`;
+      message += `🔄 *Обновлен:* ${character.updatedAt.toLocaleDateString('ru-RU')}\n`;
 
-        if (character.isArchived) {
-          message += `\n📦 *Статус:* Архивирован`;
-        }
+      if (character.isArchived) {
+        message += `\n📦 *Статус:* Архивирован`;
+      }
 
-        return message;
-      },
-      'форматировании информации о персонаже',
-      this.logService,
-      { characterId: character.id },
-      `Информация о персонаже ${character.name}`,
-    );
+      return message;
+    });
   }
 
   /**
    * Форматирует информацию о новом персонаже
    */
   async formatNewCharacterInfo(character: CharacterMetadata): Promise<string> {
-    return withErrorHandling(
-      async () => {
-        let message = `🎉 *Новый персонаж создан!*\n\n`;
-        message += `🎭 *Имя:* ${character.name}\n`;
+    return this.withErrorHandling('форматировании информации о новом персонаже', async () => {
+      let message = `🎉 *Новый персонаж создан!*\n\n`;
+      message += `🎭 *Имя:* ${character.name}\n`;
 
-        if (character.description) {
-          message += `📝 *Описание:* ${character.description}\n`;
-        }
+      if (character.description) {
+        message += `📝 *Описание:* ${character.description}\n`;
+      }
 
-        message += `\n✨ Персонаж готов к общению!`;
+      message += `\n✨ Персонаж готов к общению!`;
 
-        return message;
-      },
-      'форматировании информации о новом персонаже',
-      this.logService,
-      { characterId: character.id },
-      `Создан персонаж ${character.name}`,
-    );
+      return message;
+    });
   }
 
   /**
    * Форматирует список персонажей
    */
   async formatCharacterList(characters: CharacterMetadata[]): Promise<string> {
-    return withErrorHandling(
-      async () => {
-        if (characters.length === 0) {
-          return `🎭 *Ваши персонажи*\n\nУ вас пока нет персонажей.\nИспользуйте /create для создания нового персонажа.`;
+    return this.withErrorHandling('форматировании списка персонажей', async () => {
+      if (characters.length === 0) {
+        return `🎭 *Ваши персонажи*\n\nУ вас пока нет персонажей.\nИспользуйте /create для создания нового персонажа.`;
+      }
+
+      let message = `🎭 *Ваши персонажи* (${characters.length})\n\n`;
+
+      characters.forEach(character => {
+        const status = character.isArchived ? '📦' : '✨';
+        message += `${status} *${character.name}*\n`;
+        if (character.description) {
+          const shortDesc =
+            character.description.length > 50
+              ? character.description.substring(0, 50) + '...'
+              : character.description;
+          message += `   _${shortDesc}_\n`;
         }
+        message += `\n`;
+      });
 
-        let message = `🎭 *Ваши персонажи* (${characters.length})\n\n`;
-
-        characters.forEach(character => {
-          const status = character.isArchived ? '📦' : '✨';
-          message += `${status} *${character.name}*\n`;
-          if (character.description) {
-            const shortDesc =
-              character.description.length > 50
-                ? character.description.substring(0, 50) + '...'
-                : character.description;
-            message += `   _${shortDesc}_\n`;
-          }
-          message += `\n`;
-        });
-
-        return message;
-      },
-      'форматировании списка персонажей',
-      this.logService,
-      { count: characters.length },
-      'Список персонажей недоступен',
-    );
+      return message;
+    });
   }
 
   /**
    * Форматирует статус персонажа
    */
   async formatCharacterStatus(character: CharacterMetadata, status: string): Promise<string> {
-    return withErrorHandling(
-      async () => {
-        let message = `🎭 *${character.name}*\n\n`;
-        message += `📊 *Текущий статус:* ${this.formatStatus(status)}\n`;
+    return this.withErrorHandling('форматировании статуса персонажа', async () => {
+      let message = `🎭 *${character.name}*\n\n`;
+      message += `📊 *Текущий статус:* ${this.formatStatus(status)}\n`;
 
-        const statusEmoji = this.getStatusEmoji(status);
-        if (statusEmoji) {
-          message = `${statusEmoji} ${message}`;
-        }
+      const statusEmoji = this.getStatusEmoji(status);
+      if (statusEmoji) {
+        message = `${statusEmoji} ${message}`;
+      }
 
-        return message;
-      },
-      'форматировании статуса персонажа',
-      this.logService,
-      { characterId: character.id, status },
-      `Статус персонажа ${character.name}: ${status}`,
-    );
+      return message;
+    });
   }
 
   /**
@@ -355,37 +324,31 @@ export class MessageFormatterService {
       message?: string;
     },
   ): Promise<string> {
-    return withErrorHandling(
-      async () => {
-        let message = `🎭 *${characterName}*\n\n`;
-        message += `⚡ *Действие:* ${action.name}\n`;
+    return this.withErrorHandling('форматировании прогресса действия', async () => {
+      let message = `🎭 *${characterName}*\n\n`;
+      message += `⚡ *Действие:* ${action.name}\n`;
 
-        if (action.description) {
-          message += `📝 *Описание:* ${action.description}\n`;
-        }
+      if (action.description) {
+        message += `📝 *Описание:* ${action.description}\n`;
+      }
 
-        // Прогресс-бар
-        const progressBar = this.createProgressBar(progress.percentage);
-        message += `\n📊 *Прогресс:* ${progress.percentage}%\n${progressBar}\n`;
+      // Прогресс-бар
+      const progressBar = this.createProgressBar(progress.percentage);
+      message += `\n📊 *Прогресс:* ${progress.percentage}%\n${progressBar}\n`;
 
-        message += `📈 *Статус:* ${this.formatStatus(progress.status)}\n`;
+      message += `📈 *Статус:* ${this.formatStatus(progress.status)}\n`;
 
-        if (progress.timeRemaining) {
-          const minutes = Math.ceil(progress.timeRemaining / 60);
-          message += `⏱️ *Осталось:* ~${minutes} мин.\n`;
-        }
+      if (progress.timeRemaining) {
+        const minutes = Math.ceil(progress.timeRemaining / 60);
+        message += `⏱️ *Осталось:* ~${minutes} мин.\n`;
+      }
 
-        if (progress.message) {
-          message += `\n💬 ${progress.message}`;
-        }
+      if (progress.message) {
+        message += `\n💬 ${progress.message}`;
+      }
 
-        return message;
-      },
-      'форматировании прогресса действия',
-      this.logService,
-      { characterName, actionId: action.id },
-      `${characterName} выполняет ${action.name}`,
-    );
+      return message;
+    });
   }
 
   // === ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ===

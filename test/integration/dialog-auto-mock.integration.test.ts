@@ -1,43 +1,31 @@
-import { createTestSuite, createTest, TestConfigType } from '../../lib/tester';
-import { Test, TestingModule } from '@nestjs/testing';
-import { DialogModule } from '../../src/dialog/dialog.module';
+import { TestModuleBuilder } from '../../lib/tester/utils/test-module-builder';
 import { DialogService } from '../../src/dialog/services/dialog.service';
 import { UserService } from '../../src/user/services/user.service';
-import { TestConfigurations } from '../../lib/tester/test-configurations';
+import { TestingModule } from '@nestjs/testing';
 
-createTestSuite('DialogService Integration с автоматическим моком', () => {
+describe('DialogService Unit с автоматическим моком', () => {
   let service: DialogService;
-  let moduleRef: TestingModule;
+  let mockUserService: any;
 
   beforeAll(async () => {
-    const mockUserService = { findById: jest.fn() };
+    mockUserService = {
+      findById: jest.fn(),
+      createUser: jest.fn(),
+      updateUser: jest.fn(),
+      deleteUser: jest.fn(),
+      findByTelegramId: jest.fn(),
+    };
 
-    const rawImports = [DialogModule];
-    const imports = TestConfigurations.prepareImportsForTesting(rawImports);
-
-    const baseProviders = [{ provide: UserService, useValue: mockUserService }];
-
-    const providers = TestConfigurations.requiredMocksAdder(imports, baseProviders);
-
-    moduleRef = await Test.createTestingModule({
-      imports,
-      providers,
-    }).compile();
+    const moduleRef: TestingModule = await TestModuleBuilder.create()
+      .withProviders([DialogService, { provide: UserService, useValue: mockUserService }])
+      .compile();
 
     service = moduleRef.get<DialogService>(DialogService);
   });
 
-  afterAll(async () => {
-    await moduleRef.close();
+  it('должен автоматически добавлять мок UserService', async () => {
+    expect(service).toBeDefined();
+    expect(mockUserService).toBeDefined();
+    expect(mockUserService.findById).toBeDefined();
   });
-
-  createTest(
-    {
-      name: 'должен автоматически добавлять мок UserService',
-      configType: TestConfigType.INTEGRATION,
-    },
-    async () => {
-      expect(service).toBeDefined();
-    },
-  );
 });

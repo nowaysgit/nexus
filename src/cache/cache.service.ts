@@ -8,6 +8,7 @@ import { LogService } from '../logging/log.service';
 interface CacheItem<T> {
   value: T;
   expiresAt: number;
+  createdAt: number;
 }
 
 /**
@@ -26,32 +27,78 @@ export class CacheService implements OnModuleDestroy {
   private misses = 0;
 
   // Интервал очистки
-  private cleanupInterval: NodeJS.Timeout;
+  private cleanupInterval: NodeJS.Timeout | null = null;
+
+  // Флаг, указывающий, что сервис был остановлен
+  private isStopped = false;
 
   constructor(private readonly logService: LogService) {
-    // Запускаем очистку каждые 5 минут
-    this.cleanupInterval = setInterval(
-      () => {
-        this.cleanExpired();
-      },
-      5 * 60 * 1000,
-    );
+    // Запускаем очистку каждую минуту, но только если не в тестовом окружении
+    if (process.env.NODE_ENV !== 'test') {
+      this.startCleanupInterval();
+    }
 
+    this.logService.setContext('CacheService');
     this.logService.log('Упрощенный кэш инициализирован');
   }
 
-  onModuleDestroy() {
+  /**
+   * Запускает интервал очистки
+   */
+  private startCleanupInterval(): void {
+    // Сначала останавливаем существующий интервал, если есть
+    this.stopCleanupInterval();
+
+    // Запускаем новый интервал очистки каждую минуту вместо 5 минут
+    // для более частой очистки истекших элементов
+    this.cleanupInterval = setInterval(() => {
+      this.cleanExpired();
+    }, 60 * 1000);
+
+    // Убеждаемся, что интервал не блокирует завершение процесса
+    if (this.cleanupInterval.unref) {
+      this.cleanupInterval.unref();
+    }
+  }
+
+  /**
+   * Останавливает интервал очистки
+   */
+  private stopCleanupInterval(): void {
     if (this.cleanupInterval) {
       clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
     }
+  }
+
+  /**
+   * Метод для явной остановки сервиса (полезно для тестов)
+   */
+  async stop(): Promise<void> {
+    this.isStopped = true;
+    this.stopCleanupInterval();
     this.storage.clear();
-    this.logService.log('Упрощенный кэш очищен');
+    this.hits = 0;
+    this.misses = 0;
+    this.logService.log('Кэш остановлен и очищен');
+  }
+
+  onModuleDestroy() {
+    this.isStopped = true;
+    this.stopCleanupInterval();
+    this.storage.clear();
+    this.logService.log('Упрощенный кэш очищен при уничтожении модуля');
   }
 
   /**
    * Получить значение из кэша
    */
   async get<T>(key: string, defaultValue?: T): Promise<T | null> {
+    // Проверяем, что сервис не остановлен
+    if (this.isStopped) {
+      return defaultValue !== undefined ? defaultValue : null;
+    }
+
     const normalizedKey = this.normalizeKey(key);
     const item = this.storage.get(normalizedKey) as CacheItem<T> | undefined;
 
@@ -74,22 +121,43 @@ export class CacheService implements OnModuleDestroy {
    * Установить значение в кэш
    */
   async set<T>(key: string, value: T, ttl?: number): Promise<void> {
-    const normalizedKey = this.normalizeKey(key);
-    const actualTtl = ttl !== undefined ? ttl : this.defaultTtl;
-    const expiresAt = Date.now() + actualTtl * 1000;
-
-    // Проверяем лимит
-    if (!this.storage.has(normalizedKey) && this.storage.size >= this.maxItems) {
-      this.evictOldest();
+    // Проверяем, что сервис не остановлен
+    if (this.isStopped) {
+      return;
     }
 
-    this.storage.set(normalizedKey, { value, expiresAt });
+    // Не кэшируем null или undefined значения
+    if (value === null || value === undefined) {
+      return;
+    }
+
+    const normalizedKey = this.normalizeKey(key);
+    const actualTtl = ttl !== undefined ? ttl : this.defaultTtl;
+    const now = Date.now();
+    const expiresAt = now + actualTtl * 1000;
+
+    // Проверяем лимит и очищаем истекшие элементы, если приближаемся к лимиту
+    if (!this.storage.has(normalizedKey) && this.storage.size >= this.maxItems * 0.9) {
+      this.cleanExpired();
+
+      // Если после очистки все еще превышаем лимит, удаляем старые элементы
+      if (this.storage.size >= this.maxItems) {
+        this.evictOldest();
+      }
+    }
+
+    this.storage.set(normalizedKey, { value, expiresAt, createdAt: now });
   }
 
   /**
    * Проверить наличие ключа
    */
   async has(key: string): Promise<boolean> {
+    // Проверяем, что сервис не остановлен
+    if (this.isStopped) {
+      return false;
+    }
+
     const normalizedKey = this.normalizeKey(key);
     const item = this.storage.get(normalizedKey);
 
@@ -112,6 +180,11 @@ export class CacheService implements OnModuleDestroy {
    * Удалить ключ
    */
   async del(key: string): Promise<boolean> {
+    // Проверяем, что сервис не остановлен
+    if (this.isStopped) {
+      return false;
+    }
+
     const normalizedKey = this.normalizeKey(key);
     return this.storage.delete(normalizedKey);
   }
@@ -137,11 +210,20 @@ export class CacheService implements OnModuleDestroy {
    * Получить все ключи
    */
   async keys(): Promise<string[]> {
+    // Проверяем, что сервис не остановлен
+    if (this.isStopped) {
+      return [];
+    }
+
     const keys: string[] = [];
+    const now = Date.now();
 
     for (const [key, item] of this.storage) {
-      if (!this.isExpired(item)) {
+      if (item.expiresAt > now) {
         keys.push(this.denormalizeKey(key));
+      } else {
+        // Удаляем истекшие элементы при обходе
+        this.storage.delete(key);
       }
     }
 
@@ -152,6 +234,21 @@ export class CacheService implements OnModuleDestroy {
    * Получить статистику кэша
    */
   async getStats(): Promise<CacheStats> {
+    // Проверяем, что сервис не остановлен
+    if (this.isStopped) {
+      return {
+        size: 0,
+        hitRate: 0,
+        hits: 0,
+        misses: 0,
+        totalRequests: 0,
+        createdAt: new Date(),
+      };
+    }
+
+    // Очищаем истекшие элементы перед подсчетом статистики
+    this.cleanExpired();
+
     const total = this.hits + this.misses;
     return {
       size: this.storage.size,
@@ -170,13 +267,14 @@ export class CacheService implements OnModuleDestroy {
     const stats = this.getStats();
     return {
       type: 'SimpleMemoryCache',
-      version: '1.0.0',
-      description: 'Упрощенный кэш в памяти',
+      version: '1.1.0',
+      description: 'Упрощенный кэш в памяти с защитой от утечек',
       stats,
       settings: {
         defaultTtl: this.defaultTtl,
         maxItems: this.maxItems,
         keyPrefix: this.keyPrefix,
+        isStopped: this.isStopped,
       },
     };
   }
@@ -207,41 +305,55 @@ export class CacheService implements OnModuleDestroy {
   }
 
   /**
-   * Удаляет самый старый элемент
+   * Удаляет самые старые элементы из кэша
    */
   private evictOldest(): void {
-    let oldestKey: string | undefined;
-    let oldestTime = Infinity;
-
-    for (const [key, item] of this.storage) {
-      if (item.expiresAt < oldestTime) {
-        oldestTime = item.expiresAt;
-        oldestKey = key;
-      }
+    // Если кэш пуст, нечего удалять
+    if (this.storage.size === 0) {
+      return;
     }
 
-    if (oldestKey) {
-      this.storage.delete(oldestKey);
-      this.logService.debug(`Удален старый элемент кэша: ${oldestKey}`);
+    // Количество элементов для удаления (10% от максимального размера или минимум 1)
+    const evictionCount = Math.max(1, Math.floor(this.maxItems * 0.1));
+
+    // Преобразуем Map в массив пар [ключ, значение]
+    const entries = Array.from(this.storage.entries());
+
+    // Сортируем по времени создания (от старых к новым)
+    entries.sort((a, b) => a[1].createdAt - b[1].createdAt);
+
+    // Удаляем самые старые элементы
+    for (let i = 0; i < Math.min(evictionCount, entries.length); i++) {
+      this.storage.delete(entries[i][0]);
     }
+
+    this.logService.debug(
+      `Удалено ${Math.min(evictionCount, entries.length)} старых элементов из кэша`,
+    );
   }
 
   /**
-   * Очищает истекшие элементы
+   * Очищает истекшие элементы кэша
    */
   private cleanExpired(): void {
     const now = Date.now();
-    let cleaned = 0;
+    let expiredCount = 0;
 
+    // Удаляем все истекшие элементы
     for (const [key, item] of this.storage) {
-      if (now > item.expiresAt) {
+      if (item.expiresAt <= now) {
         this.storage.delete(key);
-        cleaned++;
+        expiredCount++;
       }
     }
 
-    if (cleaned > 0) {
-      this.logService.debug(`Очищено истекших элементов кэша: ${cleaned}`);
+    // Если размер кэша приближается к лимиту (более 90%), удаляем старые элементы
+    if (this.storage.size > this.maxItems * 0.9) {
+      this.evictOldest();
+    }
+
+    if (expiredCount > 0) {
+      this.logService.debug(`Очищено ${expiredCount} истекших элементов кэша`);
     }
   }
 }

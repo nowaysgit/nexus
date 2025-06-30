@@ -131,9 +131,15 @@ createTestSuite('DialogService Tests', () => {
         id: 1,
         telegramId: '123456789',
         characterId: 1,
-        userId: 1,
+        userId: 'test-user-uuid',
+        title: null,
+        startedAt: new Date(),
+        lastMessageAt: new Date(),
         isActive: true,
         lastInteractionDate: new Date(),
+        character: null,
+        user: null,
+        messages: [],
       };
 
       const mockCharacter = {
@@ -168,8 +174,15 @@ createTestSuite('DialogService Tests', () => {
         id: 1,
         telegramId: '123456789',
         characterId: 1,
-        userId: 1,
+        userId: 'test-user-uuid',
+        title: null,
+        startedAt: new Date(),
+        lastMessageAt: new Date(),
         isActive: true,
+        lastInteractionDate: null,
+        character: null,
+        user: null,
+        messages: [],
       };
 
       mockDialogRepository.findOne.mockResolvedValue(mockDialog as Dialog);
@@ -193,8 +206,15 @@ createTestSuite('DialogService Tests', () => {
         id: 1,
         telegramId: '123456789',
         characterId: 1,
-        userId: 1,
+        userId: 'test-user-uuid',
+        title: null,
+        startedAt: new Date(),
+        lastMessageAt: new Date(),
         isActive: true,
+        lastInteractionDate: null,
+        character: null,
+        user: null,
+        messages: [],
       };
 
       // Создаем объект сообщения с минимально необходимыми полями
@@ -249,8 +269,15 @@ createTestSuite('DialogService Tests', () => {
         id: 1,
         telegramId: '123456789',
         characterId: 1,
-        userId: 1,
+        userId: 'test-user-uuid',
+        title: null,
+        startedAt: new Date(),
+        lastMessageAt: new Date(),
         isActive: true,
+        lastInteractionDate: null,
+        character: null,
+        user: null,
+        messages: [],
       };
 
       // Создаем массив сообщений с минимально необходимыми полями

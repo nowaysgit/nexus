@@ -65,7 +65,7 @@ export class StoryPlan {
   @Column({ type: 'date' })
   endDate: Date;
 
-  @Column({ type: 'jsonb' })
+  @Column({ type: 'json' })
   overallArc: {
     startingState: Record<string, unknown>;
     endingState: Record<string, unknown>;
@@ -73,7 +73,7 @@ export class StoryPlan {
     evolutionDirection: string;
   };
 
-  @Column({ type: 'jsonb' })
+  @Column({ type: 'json' })
   retrospectivePlanning: {
     preExistingTraits: Record<string, unknown>;
     formativeEvents: Array<{
@@ -95,7 +95,7 @@ export class StoryPlan {
   @Column()
   characterId: number;
 
-  @Column({ type: 'jsonb' })
+  @Column({ type: 'json' })
   adaptabilitySettings: {
     coreEventsRigidity: number; // 1-10
     detailsFlexibility: number; // 1-10
@@ -103,10 +103,10 @@ export class StoryPlan {
     emergentEventTolerance: number; // 1-10
   };
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'datetime' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'datetime' })
   updatedAt: Date;
 }
 
@@ -121,10 +121,10 @@ export class StoryMilestone {
   @Column({ type: 'text' })
   description: string;
 
-  @Column({ type: 'enum', enum: TransformationType })
+  @Column({ type: 'varchar', length: 50 })
   transformationType: TransformationType;
 
-  @Column({ type: 'enum', enum: MilestoneStatus, default: MilestoneStatus.PLANNED })
+  @Column({ type: 'varchar', length: 50, default: MilestoneStatus.PLANNED })
   status: MilestoneStatus;
 
   @Column({ type: 'int' })
@@ -133,10 +133,10 @@ export class StoryMilestone {
   @Column({ type: 'int' })
   plannedDay: number; // относительный день от начала
 
-  @Column({ type: 'jsonb' })
+  @Column({ type: 'json' })
   transformationDetails: TransformationDetails;
 
-  @Column({ type: 'jsonb' })
+  @Column({ type: 'json' })
   causalConnections: CausalConnection;
 
   @Column({ type: 'int', default: 5 })
@@ -159,15 +159,15 @@ export class StoryMilestone {
   @Column()
   storyPlanId: number;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'datetime', nullable: true })
   achievedAt: Date;
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column({ type: 'json', nullable: true })
   actualResults: Record<string, unknown>;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'datetime' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'datetime' })
   updatedAt: Date;
 }

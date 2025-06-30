@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InlineKeyboardMarkup } from 'telegraf/types';
 import { ConfigService } from '@nestjs/config';
 import { Character } from '../../character/entities/character.entity';
-import { withErrorHandling } from '../../common/utils/error-handling/error-handling.utils';
+import { BaseService } from '../../common/base/base.service';
 import { MessageFormatterService } from './message-formatter.service';
 import { KeyboardFormatterService } from './keyboard-formatter.service';
 import { CharacterMetadata, TelegramSendOptions } from '../interfaces/telegram.interfaces';
@@ -11,6 +11,7 @@ import { LogService } from '../../logging/log.service';
 import { CharacterManagementService } from '../../character/services/character-management.service';
 import { TelegramService } from '../telegram.service';
 import { Context } from '../interfaces/context.interface';
+import { getErrorMessage } from '../../common/utils/error.utils';
 
 /**
  * Интерфейс прогресса действия
@@ -22,7 +23,7 @@ export interface ActionProgress {
 }
 
 @Injectable()
-export class MessageService {
+export class MessageService extends BaseService {
   private readonly lastSentProgressNotifications = new Map<string, number>();
 
   constructor(
@@ -32,9 +33,9 @@ export class MessageService {
     private readonly errorHandlingService: ErrorHandlingService,
     private readonly characterManagementService: CharacterManagementService,
     private readonly telegramService: TelegramService,
-    private readonly logService: LogService,
+    logService: LogService,
   ) {
-    this.logService.setContext(MessageService.name);
+    super(logService);
   }
 
   /**
@@ -52,13 +53,9 @@ export class MessageService {
     try {
       // Используем TelegramService вместо прямого обращения к bot
       await this.telegramService.sendMessage(chatId, message, options);
-      this.logService.debug(`Сообщение отправлено в чат ${chatId}`);
+      this.logDebug(`Сообщение отправлено в чат ${chatId}`);
     } catch (error) {
-      this.logService.error(
-        `Ошибка при отправке сообщения в чат ${chatId}: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      );
+      this.logError(`Ошибка при отправке сообщения в чат ${chatId}: ${getErrorMessage(error)}`);
       throw error;
     }
   }
@@ -79,93 +76,77 @@ export class MessageService {
       metadata?: Record<string, unknown>;
     } = {},
   ): Promise<void> {
-    return withErrorHandling(
-      async () => {
-        // Добавляем метаданные для отслеживания
-        const sendOptions: TelegramSendOptions = {
-          parse_mode: 'Markdown',
-          metadata: {
-            characterId: options.characterId,
-            isProactive: options.isProactive,
-            actionType: options.actionType,
-            ...options.metadata,
-          },
-        };
+    return this.withErrorHandling('отправке сообщения пользователю', async () => {
+      // Добавляем метаданные для отслеживания
+      const sendOptions: TelegramSendOptions = {
+        parse_mode: 'Markdown',
+        metadata: {
+          characterId: options.characterId,
+          isProactive: options.isProactive,
+          actionType: options.actionType,
+          ...options.metadata,
+        },
+      };
 
-        // Используем TelegramService вместо прямого обращения к bot
-        await this.telegramService.sendMessage(chatId, message, sendOptions);
-      },
-      'отправке сообщения пользователю',
-      this.logService,
-      { chatId, messageLength: message.length, options },
-    );
+      // Используем TelegramService вместо прямого обращения к bot
+      await this.telegramService.sendMessage(chatId, message, sendOptions);
+    });
   }
 
   // Отправка главного меню
   async sendMainMenu(ctx: Context): Promise<void> {
-    return withErrorHandling(
-      async () => {
-        const keyboard = this.keyboardFormatter.createMainMenuKeyboard();
-        await ctx.reply('Главное меню', {
-          reply_markup: keyboard as InlineKeyboardMarkup,
-        });
-      },
-      'отправке главного меню',
-      this.logService,
-      { chatId: ctx.message?.chat.id },
-    );
+    return this.withErrorHandling('отправке главного меню', async () => {
+      const keyboard = this.keyboardFormatter.createMainMenuKeyboard();
+      await ctx.reply('Главное меню', {
+        reply_markup: keyboard as InlineKeyboardMarkup,
+      });
+    });
   }
 
   // Отправка информации о персонаже
   async sendCharacterInfo(ctx: Context, character: Character): Promise<void> {
-    return withErrorHandling(
-      async () => {
-        // Преобразуем Character в CharacterMetadata
-        const characterMetadata: CharacterMetadata = {
-          id: character.id.toString(),
-          name: character.name,
-          description: character.biography || '',
-          isArchived: Boolean(character.isArchived),
-          createdAt: character.createdAt,
-          updatedAt: character.updatedAt,
-        };
+    return this.withErrorHandling('отправке информации о персонаже', async () => {
+      // Преобразуем Character в CharacterMetadata
+      const characterMetadata: CharacterMetadata = {
+        id: character.id.toString(),
+        name: character.name,
+        description: character.biography || '',
+        isArchived: Boolean(character.isArchived),
+        createdAt: character.createdAt,
+        updatedAt: character.updatedAt,
+      };
 
-        const messageText = await this.messageFormatter.formatCharacterInfo(characterMetadata);
-        const keyboard =
-          await this.keyboardFormatter.createCharacterProfileKeyboard(characterMetadata);
+      const messageText = await this.messageFormatter.formatCharacterInfo(characterMetadata);
+      const keyboard =
+        await this.keyboardFormatter.createCharacterProfileKeyboard(characterMetadata);
 
-        await ctx.reply(messageText, {
-          parse_mode: 'Markdown',
-          reply_markup: keyboard as InlineKeyboardMarkup,
-        });
-      },
-      'отправке информации о персонаже',
-      this.logService,
-      { chatId: ctx.message?.chat.id, characterId: character.id },
-    );
+      await ctx.reply(messageText, {
+        parse_mode: 'Markdown',
+        reply_markup: keyboard as InlineKeyboardMarkup,
+      });
+    });
   }
 
   // Отправка состояния персонажа
   async sendCharacterStatus(ctx: Context, character: Character): Promise<void> {
-    return withErrorHandling(
-      async () => {
-        // Получаем данные персонажа с анализом
-        const characterAnalysis = await this.characterManagementService.getCharacterAnalysis(
-          character.id.toString(),
-        );
+    return this.withErrorHandling('отправке статуса персонажа', async () => {
+      // Получаем данные персонажа с анализом
+      const characterAnalysis = await this.characterManagementService.getCharacterAnalysis(
+        character.id.toString(),
+      );
 
-        // Преобразуем Character в CharacterMetadata
-        const characterMetadata: CharacterMetadata = {
-          id: character.id.toString(),
-          name: character.name,
-          description: character.biography || '',
-          isArchived: Boolean(character.isArchived),
-          createdAt: character.createdAt,
-          updatedAt: character.updatedAt,
-        };
+      // Преобразуем Character в CharacterMetadata
+      const characterMetadata: CharacterMetadata = {
+        id: character.id.toString(),
+        name: character.name,
+        description: character.biography || '',
+        isArchived: Boolean(character.isArchived),
+        createdAt: character.createdAt,
+        updatedAt: character.updatedAt,
+      };
 
-        // Формируем информацию о состоянии персонажа
-        const status = `
+      // Формируем информацию о состоянии персонажа
+      const status = `
 Привязанность: ${character.affection || 0}/100
 Доверие: ${character.trust || 0}/100
 Энергия: ${character.energy || 0}/100
@@ -173,127 +154,107 @@ export class MessageService {
 Общее состояние: ${characterAnalysis.overallState}
 `;
 
-        const statusText = await this.messageFormatter.formatCharacterStatus(
-          characterMetadata,
-          status,
-        );
+      const statusText = await this.messageFormatter.formatCharacterStatus(
+        characterMetadata,
+        status,
+      );
 
-        // Создаем действия для персонажа
-        const actions = ['Подарок', 'Комплимент', 'Вопрос', 'Игра', 'Прогулка'];
-        const keyboard = this.keyboardFormatter.createActionKeyboard(
-          character.id.toString(),
-          actions,
-        );
+      // Создаем действия для персонажа
+      const actions = ['Подарок', 'Комплимент', 'Вопрос', 'Игра', 'Прогулка'];
+      const keyboard = this.keyboardFormatter.createActionKeyboard(
+        character.id.toString(),
+        actions,
+      );
 
-        await ctx.reply(statusText, {
-          parse_mode: 'Markdown',
-          reply_markup: keyboard as InlineKeyboardMarkup,
-        });
-      },
-      'отправке статуса персонажа',
-      this.logService,
-      { chatId: ctx.message?.chat.id, characterId: character.id },
-    );
+      await ctx.reply(statusText, {
+        parse_mode: 'Markdown',
+        reply_markup: keyboard as InlineKeyboardMarkup,
+      });
+    });
   }
 
   // Отправка информации о созданном персонаже
   async sendNewCharacterInfo(ctx: Context, character: Character): Promise<void> {
-    return withErrorHandling(
-      async () => {
-        // Преобразуем Character в CharacterMetadata
-        const characterMetadata: CharacterMetadata = {
-          id: character.id.toString(),
-          name: character.name,
-          description: character.biography || '',
-          isArchived: Boolean(character.isArchived),
-          createdAt: character.createdAt,
-          updatedAt: character.updatedAt,
-        };
+    return this.withErrorHandling('отправке информации о новом персонаже', async () => {
+      // Преобразуем Character в CharacterMetadata
+      const characterMetadata: CharacterMetadata = {
+        id: character.id.toString(),
+        name: character.name,
+        description: character.biography || '',
+        isArchived: Boolean(character.isArchived),
+        createdAt: character.createdAt,
+        updatedAt: character.updatedAt,
+      };
 
-        const messageText = await this.messageFormatter.formatNewCharacterInfo(characterMetadata);
-        const keyboard =
-          await this.keyboardFormatter.createCharacterProfileKeyboard(characterMetadata);
+      const messageText = await this.messageFormatter.formatNewCharacterInfo(characterMetadata);
+      const keyboard =
+        await this.keyboardFormatter.createCharacterProfileKeyboard(characterMetadata);
 
-        await ctx.reply(messageText, {
-          parse_mode: 'Markdown',
-          reply_markup: keyboard as InlineKeyboardMarkup,
-        });
-      },
-      'отправке информации о новом персонаже',
-      this.logService,
-      { chatId: ctx.message?.chat.id, characterId: character.id },
-    );
+      await ctx.reply(messageText, {
+        parse_mode: 'Markdown',
+        reply_markup: keyboard as InlineKeyboardMarkup,
+      });
+    });
   }
 
   // Отправка списка персонажей
   async sendCharacterList(ctx: Context, characters: Character[]): Promise<void> {
-    return withErrorHandling(
-      async () => {
-        // Операция отправки списка персонажей
+    return this.withErrorHandling('отправке списка персонажей', async () => {
+      // Операция отправки списка персонажей
 
-        // Преобразуем массив Character в массив CharacterMetadata
-        const characterMetadatas: CharacterMetadata[] = characters.map(character => ({
-          id: character.id.toString(),
-          name: character.name,
-          description: character.biography || '',
-          isArchived: Boolean(character.isArchived),
-          createdAt: character.createdAt,
-          updatedAt: character.updatedAt,
-        }));
+      // Преобразуем массив Character в массив CharacterMetadata
+      const characterMetadatas: CharacterMetadata[] = characters.map(character => ({
+        id: character.id.toString(),
+        name: character.name,
+        description: character.biography || '',
+        isArchived: Boolean(character.isArchived),
+        createdAt: character.createdAt,
+        updatedAt: character.updatedAt,
+      }));
 
-        const messageText = await this.messageFormatter.formatCharacterList(characterMetadatas);
-        const keyboard = this.keyboardFormatter.createCharacterListKeyboard(characterMetadatas);
+      const messageText = await this.messageFormatter.formatCharacterList(characterMetadatas);
+      const keyboard = this.keyboardFormatter.createCharacterListKeyboard(characterMetadatas);
 
-        await ctx.reply(messageText, {
-          parse_mode: 'Markdown',
-          reply_markup: keyboard as InlineKeyboardMarkup,
-        });
-      },
-      'отправке списка персонажей',
-      this.logService,
-      { chatId: ctx.message?.chat.id, charactersCount: characters.length },
-    );
+      await ctx.reply(messageText, {
+        parse_mode: 'Markdown',
+        reply_markup: keyboard as InlineKeyboardMarkup,
+      });
+    });
   }
 
   // Отправка кнопок выбора архетипа
   async sendArchetypeSelection(ctx: Context): Promise<void> {
-    return withErrorHandling(
-      async () => {
-        const messageText =
-          'Выберите архетип персонажа. ИИ дополнит его биографию, внешность и другие детали автоматически.';
+    return this.withErrorHandling('отправке выбора архетипа', async () => {
+      const messageText =
+        'Выберите архетип персонажа. ИИ дополнит его биографию, внешность и другие детали автоматически.';
 
-        const archetypes = [
-          'Герой',
-          'Мудрец',
-          'Шут',
-          'Творец',
-          'Бунтарь',
-          'Искатель',
-          'Любовник',
-          'Заботливый',
-          'Правитель',
-          'Маг',
-          'Простодушный',
-          'Славный малый',
-        ];
+      const archetypes = [
+        'Герой',
+        'Мудрец',
+        'Шут',
+        'Творец',
+        'Бунтарь',
+        'Искатель',
+        'Любовник',
+        'Заботливый',
+        'Правитель',
+        'Маг',
+        'Простодушный',
+        'Славный малый',
+      ];
 
-        const keyboard = this.keyboardFormatter.createArchetypeKeyboard(archetypes);
+      const keyboard = this.keyboardFormatter.createArchetypeKeyboard(archetypes);
 
-        await ctx.reply(messageText, {
-          reply_markup: keyboard as InlineKeyboardMarkup,
-        });
-      },
-      'отправке выбора архетипа',
-      this.logService,
-      { chatId: ctx.message?.chat.id },
-    );
+      await ctx.reply(messageText, {
+        reply_markup: keyboard as InlineKeyboardMarkup,
+      });
+    });
   }
 
   // Отправка справочной информации
   async sendHelpMessage(ctx: Context): Promise<void> {
-    return withErrorHandling(
-      async () => {
-        const helpText = `
+    return this.withErrorHandling('отправке справочной информации', async () => {
+      const helpText = `
 *Основные команды:*
 /start - Начать взаимодействие с ботом
 /help - Показать справку
@@ -313,42 +274,33 @@ export class MessageService {
 - Персонажи могут проявлять инициативу
 `;
 
-        await ctx.reply(helpText, {
-          parse_mode: 'Markdown',
-        });
-      },
-      'отправке справочной информации',
-      this.logService,
-      { chatId: ctx.message?.chat.id },
-    );
+      await ctx.reply(helpText, {
+        parse_mode: 'Markdown',
+      });
+    });
   }
 
   // Отправка меню действий персонажа
   async sendCharacterActionsMenu(ctx: Context, characterId: number): Promise<void> {
-    return withErrorHandling(
-      async () => {
-        // Получаем персонажа через CharacterManagementService
-        const character = await this.characterManagementService.getCharacterWithData(
-          characterId.toString(),
-        );
+    return this.withErrorHandling('отправке меню действий персонажа', async () => {
+      // Получаем персонажа через CharacterManagementService
+      const character = await this.characterManagementService.getCharacterWithData(
+        characterId.toString(),
+      );
 
-        if (!character) {
-          await ctx.reply('Персонаж не найден.');
-          return;
-        }
+      if (!character) {
+        await ctx.reply('Персонаж не найден.');
+        return;
+      }
 
-        const keyboard = this.keyboardFormatter.createCharacterActionsKeyboard(
-          character.id.toString(),
-        );
+      const keyboard = this.keyboardFormatter.createCharacterActionsKeyboard(
+        character.id.toString(),
+      );
 
-        await ctx.reply(`Выберите действие для персонажа ${character.name}:`, {
-          reply_markup: keyboard as InlineKeyboardMarkup,
-        });
-      },
-      'отправке меню действий персонажа',
-      this.logService,
-      { chatId: ctx.message?.chat.id, characterId },
-    );
+      await ctx.reply(`Выберите действие для персонажа ${character.name}:`, {
+        reply_markup: keyboard as InlineKeyboardMarkup,
+      });
+    });
   }
 
   // Отправка подтверждения
@@ -358,20 +310,15 @@ export class MessageService {
     action: string,
     entityId: number,
   ): Promise<void> {
-    return withErrorHandling(
-      async () => {
-        const keyboard = this.keyboardFormatter.createConfirmationKeyboard(
-          action,
-          entityId.toString(),
-        );
+    return this.withErrorHandling('отправке сообщения с подтверждением', async () => {
+      const keyboard = this.keyboardFormatter.createConfirmationKeyboard(
+        action,
+        entityId.toString(),
+      );
 
-        await ctx.reply(message, {
-          reply_markup: keyboard as InlineKeyboardMarkup,
-        });
-      },
-      'отправке сообщения с подтверждением',
-      this.logService,
-      { chatId: ctx.message?.chat.id, action, entityId },
-    );
+      await ctx.reply(message, {
+        reply_markup: keyboard as InlineKeyboardMarkup,
+      });
+    });
   }
 }

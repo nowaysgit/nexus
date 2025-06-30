@@ -2,6 +2,8 @@
     console.log("Cursor Auto Resume and Connection Error Handler: Running");
     let lastResumeClick = 0;
     let lastMessageSent = 0;
+    // Таймаут для отложенной отправки сообщения после предупреждения о превышении лимита
+    let rateLimitTimeout = null;
 
     function handleResume() {
         const currentTime = Date.now();
@@ -10,7 +12,7 @@
         const elements = document.querySelectorAll("body *");
         for (const element of elements) {
             if (element && element.textContent &&
-                (element.textContent.includes("stop the agent after 25 tool calls") ||
+                (element.textContent.includes("stop the agent after ") ||
                     element.textContent.includes("Note: we default stop"))) {
                 const links = element.querySelectorAll('a, span.markdown-link, [role="link"], [data-link]');
                 for (const link of links) {
@@ -23,6 +25,28 @@
                 }
             }
         }
+    }
+
+    // Обработка уведомления о превышении лимита запросов к модели
+    function handleRateLimit() {
+        // Если таймер уже установлен, повторно не создаём
+        if (rateLimitTimeout) return false;
+
+        // Ищем всплывающее окно с предупреждением «You've hit your rate limit»
+        const rateLimitPopup = Array.from(document.querySelectorAll('.composer-warning-popup'))
+            .find(el => el.textContent && el.textContent.includes("You've hit your rate limit"));
+
+        if (rateLimitPopup) {
+            console.log('Rate limit detected, scheduling "Продолжи" message in 1 hour');
+            sendMessageToChat("Продолжи");
+            rateLimitTimeout = setTimeout(() => {
+                sendMessageToChat("Продолжи");
+                console.log('Rate limit timeout executed: message "Продолжи" sent');
+                rateLimitTimeout = null; // Сбрасываем таймер после выполнения
+            }, 60 * 30 * 1000); // 30 минут в миллисекундах
+            return true;
+        }
+        return false;
     }
 
     function handleConnectionError() {
@@ -65,10 +89,20 @@
         if (chatInput) {
             // Фокусируемся на поле ввода
             chatInput.focus();
+            // Создание события клика
+            const clickEvent = new MouseEvent("click", {
+                bubbles: true,    // Всплывает как настоящий клик
+                cancelable: true, // Можно отменить через preventDefault()
+                view: window,     // Ссылка на window
+                buttons: 1        // Левая кнопка мыши
+            });
+            
+            // Отправка события
+            chatInput.dispatchEvent(clickEvent);
 
             // Очищаем текущее содержимое инпута безопасным способом
-            document.execCommand('selectAll', false, null);
-            document.execCommand('delete', false, null);
+            document.execCommand("selectAll", false, null);
+            document.execCommand("delete", false, null); // Попытка прямого удалени
 
             // Вставляем текст сообщения
             document.execCommand('insertText', false, message);
@@ -159,11 +193,13 @@
     setInterval(() => {
         handleResume();
         handleConnectionError();
+        handleRateLimit();
         handleAwaitNextMove();
     }, 5000); // Проверять каждые 5 секунд
 
     // Вызываем сразу при запуске
     handleResume();
     handleConnectionError();
+    handleRateLimit();
     handleAwaitNextMove();
 }(); 

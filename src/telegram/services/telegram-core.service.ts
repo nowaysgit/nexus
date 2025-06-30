@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
+import { OnEvent, EventEmitter2 } from '@nestjs/event-emitter';
 import { LogService } from '../../logging/log.service';
 import { Context } from '../interfaces/context.interface';
-import { withErrorHandling } from '../../common/utils/error-handling/error-handling.utils';
+import { BaseService } from '../../common/base/base.service';
+import { getErrorMessage } from '../../common/utils/error.utils';
 
 // === ТИПЫ И ИНТЕРФЕЙСЫ ===
 
@@ -27,9 +29,12 @@ interface CallbackAction {
  * Объединяет команды, callback обработку и базовое управление состояниями
  */
 @Injectable()
-export class TelegramCoreService {
-  constructor(private readonly logService: LogService) {
-    this.logService.setContext(TelegramCoreService.name);
+export class TelegramCoreService extends BaseService {
+  constructor(
+    logService: LogService,
+    private readonly eventEmitter: EventEmitter2,
+  ) {
+    super(logService);
   }
 
   // === КОМАНДЫ ===
@@ -45,7 +50,7 @@ export class TelegramCoreService {
    */
   registerCommand(command: Command): void {
     this.commands.set(command.name, command);
-    this.logService.log(`Зарегистрирована команда: /${command.name}`);
+    this.logInfo(`Зарегистрирована команда: /${command.name}`);
   }
 
   /**
@@ -94,28 +99,22 @@ export class TelegramCoreService {
    * Обрабатывает команду
    */
   async executeCommand(ctx: Context, commandName: string, args: string[] = []): Promise<void> {
-    return withErrorHandling(
-      async () => {
-        const command = this.commands.get(commandName);
-        if (!command) {
-          await ctx.reply(`Команда /${commandName} не найдена.`);
-          return;
-        }
+    return this.withErrorHandling(`выполнении команды /${commandName}`, async () => {
+      const command = this.commands.get(commandName);
+      if (!command) {
+        await ctx.reply(`Команда /${commandName} не найдена.`);
+        return;
+      }
 
-        // Проверяем количество аргументов
-        if (command.argsCount !== undefined && args.length < command.argsCount) {
-          await ctx.reply(`Команда /${commandName} требует ${command.argsCount} аргумент(ов).`);
-          return;
-        }
+      // Проверяем количество аргументов
+      if (command.argsCount !== undefined && args.length < command.argsCount) {
+        await ctx.reply(`Команда /${commandName} требует ${command.argsCount} аргумент(ов).`);
+        return;
+      }
 
-        // Выполняем команду
-        await command.handler(ctx, ...args);
-      },
-      `выполнении команды /${commandName}`,
-      this.logService,
-      { userId: ctx.from?.id, args },
-      undefined,
-    );
+      // Выполняем команду
+      await command.handler(ctx, ...args);
+    });
   }
 
   /**
@@ -156,7 +155,7 @@ export class TelegramCoreService {
    */
   registerCallbackAction(action: CallbackAction): void {
     this.callbackActions.push(action);
-    this.logService.log(`Зарегистрирован callback обработчик: ${action.pattern}`);
+    this.logInfo(`Зарегистрирован callback обработчик: ${action.pattern}`);
   }
 
   /**
@@ -170,33 +169,27 @@ export class TelegramCoreService {
    * Обрабатывает callback запрос
    */
   async handleCallback(ctx: Context, callbackData: string): Promise<boolean> {
-    return withErrorHandling(
-      async () => {
-        for (const action of this.callbackActions) {
-          let isMatch = false;
+    return this.withErrorHandling(`обработке callback запроса: ${callbackData}`, async () => {
+      for (const action of this.callbackActions) {
+        let isMatch = false;
 
-          if (typeof action.pattern === 'string') {
-            isMatch = callbackData === action.pattern || callbackData.startsWith(action.pattern);
-          } else if (action.pattern instanceof RegExp) {
-            isMatch = action.pattern.test(callbackData);
-          }
-
-          if (isMatch) {
-            await action.handler(ctx, callbackData);
-            return true;
-          }
+        if (typeof action.pattern === 'string') {
+          isMatch = callbackData === action.pattern || callbackData.startsWith(action.pattern);
+        } else if (action.pattern instanceof RegExp) {
+          isMatch = action.pattern.test(callbackData);
         }
 
-        // Если не найден подходящий обработчик
-        this.logService.warn(`Не найден обработчик для callback: ${callbackData}`);
-        await ctx.answerCbQuery('Действие не поддерживается');
-        return false;
-      },
-      `обработке callback запроса: ${callbackData}`,
-      this.logService,
-      { userId: ctx.from?.id, callbackData },
-      false,
-    );
+        if (isMatch) {
+          await action.handler(ctx, callbackData);
+          return true;
+        }
+      }
+
+      // Если не найден подходящий обработчик
+      this.logWarning(`Не найден обработчик для callback: ${callbackData}`);
+      await ctx.answerCbQuery('Действие не поддерживается');
+      return false;
+    });
   }
 
   /**
@@ -242,15 +235,9 @@ export class TelegramCoreService {
    * Отвечает на callback запрос
    */
   async answerCallback(ctx: Context, text?: string, showAlert: boolean = false): Promise<void> {
-    return withErrorHandling(
-      async () => {
-        await ctx.answerCbQuery(text, { show_alert: showAlert });
-      },
-      'ответе на callback запрос',
-      this.logService,
-      { userId: ctx.from?.id, text, showAlert },
-      undefined,
-    );
+    return this.withErrorHandling('ответе на callback запрос', async () => {
+      await ctx.answerCbQuery(text, { show_alert: showAlert });
+    });
   }
 
   /**
@@ -262,23 +249,17 @@ export class TelegramCoreService {
     onConfirm: () => Promise<void>,
     onCancel?: () => Promise<void>,
   ): Promise<void> {
-    return withErrorHandling(
-      async () => {
-        if (callbackData.endsWith('_confirm')) {
-          await onConfirm();
-          await this.answerCallback(ctx, 'Подтверждено');
-        } else if (callbackData.endsWith('_cancel')) {
-          if (onCancel) {
-            await onCancel();
-          }
-          await this.answerCallback(ctx, 'Отменено');
+    return this.withErrorHandling('обработке callback подтверждения', async () => {
+      if (callbackData.endsWith('_confirm')) {
+        await onConfirm();
+        await this.answerCallback(ctx, 'Подтверждено');
+      } else if (callbackData.endsWith('_cancel')) {
+        if (onCancel) {
+          await onCancel();
         }
-      },
-      'обработке callback подтверждения',
-      this.logService,
-      { userId: ctx.from?.id, callbackData },
-      undefined,
-    );
+        await this.answerCallback(ctx, 'Отменено');
+      }
+    });
   }
 
   /**
@@ -292,5 +273,41 @@ export class TelegramCoreService {
       commandsCount: this.commands.size,
       callbackActionsCount: this.callbackActions.length,
     };
+  }
+
+  /**
+   * Обработчик события для отправки инициативного сообщения
+   */
+  @OnEvent('telegram.send_initiative_message')
+  async handleSendInitiativeMessage(payload: {
+    characterId: number;
+    message: string;
+    context: string;
+  }): Promise<void> {
+    try {
+      this.logInfo(
+        `Получен запрос на отправку инициативного сообщения для персонажа ${payload.characterId}`,
+        {
+          messageLength: payload.message.length,
+          context: payload.context,
+        },
+      );
+
+      // Эмитируем событие для получения активных диалогов персонажа
+      this.eventEmitter.emit('telegram.get_active_dialogs', {
+        characterId: payload.characterId,
+        message: payload.message,
+        context: payload.context,
+      });
+
+      this.logInfo(
+        `Запрос на получение активных диалогов отправлен для персонажа ${payload.characterId}`,
+      );
+    } catch (error) {
+      this.logError('Ошибка обработки запроса на отправку инициативного сообщения', {
+        payload,
+        error: getErrorMessage(error),
+      });
+    }
   }
 }

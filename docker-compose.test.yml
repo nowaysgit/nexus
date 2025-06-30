@@ -1,10 +1,14 @@
 version: '3.8'
 
+networks:
+  test-network:
+    name: nexus_test-network
+
 services:
   # Тестовая база данных PostgreSQL
   postgres-test:
     image: postgres:15-alpine
-    container_name: nexus-postgres-test
+    container_name: nexus-test-postgres
     environment:
       POSTGRES_DB: nexus_test
       POSTGRES_USER: test_user
@@ -14,35 +18,41 @@ services:
       - "5433:5432"
     volumes:
       - postgres_test_data:/var/lib/postgresql/data
+      - ./scripts/init-test-db.sql:/docker-entrypoint-initdb.d/init-test-db.sql
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U test_user -d nexus_test" ]
       interval: 5s
-      timeout: 5s
+      timeout: 3s
       retries: 5
+      start_period: 10s
+    # Более простые настройки для стабильности
+    command: >
+      postgres -c listen_addresses='*' -c shared_buffers=128MB -c max_connections=100 -c log_connections=on -c log_disconnections=on -c log_statement=all -c wal_level=minimal -c max_wal_senders=0 -c archive_mode=off -c fsync=off -c synchronous_commit=off -c full_page_writes=off
+    restart: unless-stopped
     networks:
       - test-network
 
-  # Redis для тестового кэширования
-  test-redis:
-    image: redis:7-alpine
-    container_name: nexus-test-redis
-    ports:
-      - "6380:6379"
+  test-runner:
+    image: node:18-alpine
+    container_name: nexus-test-runner
+    working_dir: /app
+    environment:
+      - NODE_ENV=test
+      - POSTGRES_HOST=nexus-test-postgres
+      - DB_TEST_HOST=nexus-test-postgres
+      - DB_TEST_PORT=5432
+      - DB_TEST_NAME=nexus_test
+      - DB_TEST_USER=test_user
+      - DB_TEST_PASSWORD=test_password
     volumes:
-      - test_redis_data:/data
+      - .:/app
+      - /app/node_modules
     networks:
       - test-network
-    healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+    command: sh -c "yarn install && yarn test:all:combined"
 
 volumes:
   postgres_test_data:
-  test_redis_data:
-    driver: local
-
-networks:
-  test-network:
-    driver: bridge

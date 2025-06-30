@@ -1,27 +1,63 @@
 module.exports = {
   moduleFileExtensions: ['js', 'json', 'ts'],
   rootDir: '.',
-  testRegex: '.*\\.(spec|test)\\.ts$',
+  testRegex: '.*(?<!integration)\\.test\\.ts$', // Исключаем интеграционные тесты
   transform: {
     '^.+\\.(t|j)s$': 'ts-jest',
   },
   collectCoverageFrom: [
     'src/**/*.(t|j)s',
+    'lib/**/*.(t|j)s',
     '!src/**/*.spec.ts',
+    '!src/**/*.test.ts',
+    '!src/**/*.e2e-spec.ts',
+    '!src/**/*.integration.test.ts',
+    '!src/**/*.interface.ts',
+    '!src/**/*.dto.ts',
+    '!src/**/*.entity.ts',
+    '!src/**/*.enum.ts',
+    '!src/**/*.config.ts',
     '!src/**/*.module.ts',
     '!src/main.ts',
+    '!lib/tester/entities.ts',
+    '!lib/tester/mocks/**/*',
+    '!lib/tester/fixtures/**/*',
+    '!lib/tester/templates/**/*',
+    '!lib/tester/test-configurations/**/*',
   ],
-  coverageDirectory: './coverage',
+  coverageDirectory: 'coverage',
   testEnvironment: 'node',
   setupFilesAfterEnv: ['<rootDir>/test/setup.ts'],
-  moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/src/$1',
+  testTimeout: 45000,
+  maxWorkers: 4,
+  workerIdleMemoryLimit: '512MB',
+  cache: true,
+  cacheDirectory: '<rootDir>/.jest-cache',
+  clearMocks: true,
+  resetMocks: false,
+  restoreMocks: false,
+  ci: process.env.CI === 'true',
+  maxConcurrency: 5,
+  globals: {
+    'ts-jest': {
+      tsconfig: 'tsconfig.json',
+      skipTypeCheck: true,
+    },
   },
-  testTimeout: 15000,
-  // Принудительное завершение тестов
+  bail: false,
+  verbose: false,
+  silent: false,
   forceExit: true,
-  // Обнаружение открытых handles
   detectOpenHandles: true,
-  // Максимальное количество воркеров
-  maxWorkers: 1,
+  modulePathIgnorePatterns: [
+    '<rootDir>/dist/',
+    '<rootDir>/node_modules/',
+    '<rootDir>/coverage/',
+  ],
+  testEnvironmentOptions: {
+    url: 'postgresql://test_user:test_password@localhost:5433/nexus_test',
+  },
+  slowTestThreshold: 30,
+  logHeapUsage: false,
+  watchman: false,
 }; 

@@ -1,5 +1,6 @@
 import { TestConfigType, createTest, createTestSuite } from '../../lib/tester';
 import { Context } from 'telegraf';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { TelegramCoreService } from '../../src/telegram/services/telegram-core.service';
 import { LogService } from '../../src/logging/log.service';
@@ -69,13 +70,22 @@ const createMockContext = (overrides: Partial<ExtendedContext> = {}): ExtendedCo
 createTestSuite('TelegramCoreService Integration Tests', () => {
   let telegramServiceOld: TelegramCoreService;
   let logService: LogService;
+  let eventEmitter: EventEmitter2;
 
   beforeEach(() => {
     // Создаем мок LogService с необходимыми методами
     logService = new MockLogService() as unknown as LogService;
 
+    // Создаем мок EventEmitter2
+    eventEmitter = {
+      emit: jest.fn(),
+      on: jest.fn(),
+      off: jest.fn(),
+      removeAllListeners: jest.fn(),
+    } as unknown as EventEmitter2;
+
     // Создаем экземпляр TelegramCoreService напрямую
-    telegramServiceOld = new TelegramCoreService(logService);
+    telegramServiceOld = new TelegramCoreService(logService, eventEmitter);
   });
 
   createTest(

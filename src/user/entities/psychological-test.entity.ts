@@ -30,18 +30,18 @@ export class PsychologicalTest {
   @JoinColumn({ name: 'userId' })
   user: User;
 
-  @Column({ type: 'jsonb' })
+  @Column({ type: 'json' })
   answers: Record<number, number>;
 
-  @Column({ type: 'jsonb' })
+  @Column({ type: 'json' })
   scores: Record<string, number>;
 
-  @Column({ type: 'enum', enum: PersonalityType })
+  @Column({ type: 'varchar', length: 50 })
   personalityType: PersonalityType;
 
   @Column({ type: 'text', nullable: true })
   additionalNotes: string;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'datetime' })
   createdAt: Date;
 }

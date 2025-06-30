@@ -71,13 +71,13 @@ export class Character {
    * Пол персонажа
    */
   @Column({
-    type: 'enum',
-    enum: CharacterGender,
+    type: 'varchar',
+    length: 50,
     default: CharacterGender.FEMALE,
   })
   gender: CharacterGender;
 
-  @Column({ type: 'enum', enum: CharacterArchetype })
+  @Column({ type: 'varchar', length: 50 })
   archetype: CharacterArchetype;
 
   @Column({ type: 'text' })
@@ -89,33 +89,33 @@ export class Character {
   /**
    * Данные о личности персонажа в структурированном виде
    */
-  @Column({ type: 'jsonb' })
+  @Column({ type: 'json' })
   personality: PersonalityData;
 
   /**
    * Детализированный психологический профиль согласно ТЗ ПЕРСОНА
    */
-  @Column({ type: 'jsonb', nullable: true })
+  @Column({ type: 'json', nullable: true })
   psychologicalProfile: PsychologicalProfile;
 
   /**
    * Система предпочтений персонажа согласно ТЗ ПЕРСОНА
    */
-  @Column({ type: 'jsonb', nullable: true })
+  @Column({ type: 'json', nullable: true })
   preferences: PreferencesSystem;
 
   /**
    * Психологический портрет идеального партнера согласно ТЗ ПЕРСОНА
    */
-  @Column({ type: 'jsonb', nullable: true })
+  @Column({ type: 'json', nullable: true })
   idealPartner: IdealPartnerProfile;
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column({ type: 'json', nullable: true })
   knowledgeAreas: string[];
 
   @Column({
-    type: 'enum',
-    enum: RelationshipStage,
+    type: 'varchar',
+    length: 50,
     default: RelationshipStage.ACQUAINTANCE,
   })
   relationshipStage: RelationshipStage;
@@ -166,12 +166,12 @@ export class Character {
   })
   motivations: CharacterMotivation[];
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'datetime' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'datetime' })
   updatedAt: Date;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'datetime', nullable: true })
   lastInteraction: Date;
 }

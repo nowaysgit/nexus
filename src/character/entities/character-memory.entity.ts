@@ -36,8 +36,8 @@ export class CharacterMemory {
   content: string;
 
   @Column({
-    type: 'enum',
-    enum: MemoryType,
+    type: 'varchar',
+    length: 50,
     default: MemoryType.CONVERSATION,
   })
   type: MemoryType;
@@ -48,13 +48,13 @@ export class CharacterMemory {
   })
   importance: MemoryImportance;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'datetime', nullable: true })
   memoryDate: Date;
 
   @Column({ default: 0 })
   recallCount: number;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'datetime', nullable: true })
   lastRecalled: Date;
 
   @Column({ default: true })
@@ -72,7 +72,7 @@ export class CharacterMemory {
   @Column({ type: 'text', nullable: true })
   summary: string;
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column({ type: 'json', nullable: true })
   metadata: Record<string, any>;
 
   @CreateDateColumn()

@@ -78,21 +78,99 @@ export function toUuid(id: number | string): string {
 }
 
 /**
- * Преобразует ID любого типа (number, string, UUID) в числовой ID
- * Если ID уже является числом, возвращает его без изменений
- * Если ID является UUID, преобразует в число
- *
- * @param id - Идентификатор любого типа
- * @returns Числовой идентификатор
+ * Утилиты для конвертации ID между string и number в тестовом окружении
+ * Решает проблемы совместимости типов между PostgreSQL и SQLite
  */
-export function toNumeric(id: number | string): number {
+
+/**
+ * Преобразует ID в числовой формат
+ * @param id ID в любом формате (string или number)
+ * @returns ID в числовом формате
+ */
+export function toNumeric(id: string | number | undefined | null): number | null {
+  if (id === undefined || id === null) {
+    return null;
+  }
+
   if (typeof id === 'number') {
     return id;
   }
 
-  if (isUuid(id)) {
-    return uuidToNumeric(id);
+  // Проверка на UUID формат (если это UUID, возвращаем null)
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (uuidRegex.test(id)) {
+    return null;
   }
 
-  return parseInt(id, 10);
+  const numericId = parseInt(id, 10);
+  return isNaN(numericId) ? null : numericId;
+}
+
+/**
+ * Преобразует ID в строковый формат
+ * @param id ID в любом формате (string или number)
+ * @returns ID в строковом формате
+ */
+export function toStringId(id: string | number | undefined | null): string | null {
+  if (id === undefined || id === null) {
+    return null;
+  }
+
+  return String(id);
+}
+
+/**
+ * Адаптер для работы с ID в тестах с SQLite
+ * Предоставляет методы для преобразования и сравнения ID разных типов
+ */
+export class IdAdapter {
+  /**
+   * Преобразует ID в формат, подходящий для запросов к базе данных
+   */
+  static toDbFormat(id: string | number | undefined | null): number | null {
+    return toNumeric(id);
+  }
+
+  /**
+   * Преобразует ID из базы данных в числовой формат
+   */
+  static fromDbFormat(id: string | number | undefined | null): number | null {
+    return toNumeric(id);
+  }
+
+  /**
+   * Преобразует ID в строковый формат
+   */
+  static toString(id: string | number | undefined | null): string | null {
+    return toStringId(id);
+  }
+
+  /**
+   * Сравнивает два ID, независимо от их типа
+   */
+  static areEqual(
+    id1: string | number | undefined | null,
+    id2: string | number | undefined | null,
+  ): boolean {
+    if (id1 === undefined || id1 === null || id2 === undefined || id2 === null) {
+      return id1 === id2;
+    }
+
+    return String(id1) === String(id2);
+  }
+
+  /**
+   * Выводит отладочную информацию об ID
+   */
+  static debug(label: string, id: string | number | undefined | null): void {
+    console.log(`[IdAdapter] ${label}: ${id}, тип: ${typeof id}`);
+  }
+}
+
+/**
+ * Проверяет, используется ли SQLite в тестовом окружении
+ * @returns true, если используется SQLite
+ */
+export function isUsingSQLite(): boolean {
+  return process.env.USE_SQLITE === 'true' || process.env.DB_TYPE === 'sqlite';
 }

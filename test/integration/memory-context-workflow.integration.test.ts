@@ -1,8 +1,7 @@
-import { createTestSuite, createTest, TestConfigType, TestModuleBuilder } from '../../lib/tester';
+import { createTestSuite, createTest, TestModuleBuilder } from '../../lib/tester';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { TestConfigurations } from '../../lib/tester/test-configurations';
 import { TestingModule } from '@nestjs/testing';
-import { DataSource } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { FixtureManager } from '../../lib/tester/fixtures/fixture-manager';
 
 import { MemoryService } from '../../src/character/services/memory.service';
@@ -12,20 +11,16 @@ import { UserService } from '../../src/user/services/user.service';
 import { Character } from '../../src/character/entities/character.entity';
 import { User } from '../../src/user/entities/user.entity';
 import { CharacterMemory } from '../../src/character/entities/character-memory.entity';
-import { Repository } from 'typeorm';
 import { MemoryType } from '../../src/character/interfaces/memory.interfaces';
 import { MemoryImportanceLevel } from '../../src/character/entities/character-memory.entity';
 import { CharacterArchetype } from '../../src/character/enums/character-archetype.enum';
 import { CharacterModule } from '../../src/character/character.module';
-import { ContextCompressionModule } from '../../src/character/context-compression.module';
-import { UserModule } from '../../src/user/user.module';
-import { DialogModule } from '../../src/dialog/dialog.module';
 import { LLMModule } from '../../src/llm/llm.module';
 import { CacheModule } from '../../src/cache/cache.module';
 import { LoggingModule } from '../../src/logging/logging.module';
 import { MessageQueueModule } from '../../src/message-queue/message-queue.module';
 import { ValidationModule } from '../../src/validation/validation.module';
-import { MonitoringModule } from '../../src/monitoring/monitoring.module';
+import { MockMonitoringModule } from '../../lib/tester/mocks/mock-monitoring.module';
 import { PromptTemplateModule } from '../../src/prompt-template/prompt-template.module';
 
 createTestSuite('Memory and Context Workflow Integration Tests', () => {
@@ -34,26 +29,18 @@ createTestSuite('Memory and Context Workflow Integration Tests', () => {
   let dataSource: DataSource;
 
   beforeAll(async () => {
-    const rawImports = [
-      CharacterModule,
-      ContextCompressionModule,
-      UserModule,
-      DialogModule,
-      LLMModule,
-      CacheModule,
-      LoggingModule,
-      MessageQueueModule,
-      ValidationModule,
-      MonitoringModule,
-      PromptTemplateModule,
-    ];
-
-    const imports = TestConfigurations.prepareImportsForTesting(rawImports);
-    const providers = TestConfigurations.requiredMocksAdder(imports);
-
     moduleRef = await TestModuleBuilder.create()
-      .withImports(imports as any)
-      .withProviders(providers as any)
+      .withDatabase(false)
+      .withImports([
+        CharacterModule,
+        LLMModule,
+        CacheModule,
+        LoggingModule,
+        MessageQueueModule,
+        ValidationModule,
+        MockMonitoringModule,
+        PromptTemplateModule,
+      ])
       .withRequiredMocks()
       .compile();
 
@@ -74,7 +61,6 @@ createTestSuite('Memory and Context Workflow Integration Tests', () => {
   createTest(
     {
       name: 'should create character and test memory service',
-      configType: TestConfigType.INTEGRATION,
     },
     async () => {
       const characterService = moduleRef.get(CharacterService);
@@ -158,7 +144,6 @@ createTestSuite('Memory and Context Workflow Integration Tests', () => {
   createTest(
     {
       name: 'should handle context compression service',
-      configType: TestConfigType.INTEGRATION,
     },
     async () => {
       const characterService = moduleRef.get(CharacterService);

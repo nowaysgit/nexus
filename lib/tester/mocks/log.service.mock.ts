@@ -121,7 +121,8 @@ export class MockLogService implements LoggerService {
    */
   debug(message: string, meta?: Record<string, any>): void {
     // Заглушка
-    console.log(`[MOCK DEBUG] ${this.context || 'global'}: ${message}`);
+    const metaStr = meta ? ` | ${JSON.stringify(meta)}` : '';
+    console.log(`[MOCK DEBUG] ${this.context || 'global'}: ${message}${metaStr}`);
     this.winstonLogger.debug(this.formatMessage(message), this.enrichMeta(meta));
   }
 

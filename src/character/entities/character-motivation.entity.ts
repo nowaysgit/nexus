@@ -52,15 +52,15 @@ export class CharacterMotivation {
   priority: number;
 
   /** Связанная потребность */
-  @Column({ type: 'enum', enum: CharacterNeedType })
+  @Column({ type: 'varchar', length: 50 })
   relatedNeed: CharacterNeedType;
 
   /** Текущий статус мотивации */
-  @Column({ type: 'enum', enum: MotivationStatus, default: MotivationStatus.ACTIVE })
+  @Column({ type: 'varchar', length: 50, default: MotivationStatus.ACTIVE })
   status: MotivationStatus;
 
   /** Интенсивность мотивации */
-  @Column({ type: 'enum', enum: MotivationIntensity, default: MotivationIntensity.MODERATE })
+  @Column({ type: 'varchar', length: 50, default: MotivationIntensity.MODERATE })
   intensity: MotivationIntensity;
 
   /** Пороговое значение для активации мотивации */
@@ -84,7 +84,7 @@ export class CharacterMotivation {
   successProbability: number;
 
   /** Потенциальное вознаграждение за выполнение */
-  @Column({ type: 'jsonb', nullable: true })
+  @Column({ type: 'json', nullable: true })
   potentialReward: {
     needReduction?: number;
     emotionalBenefit?: string;
@@ -93,7 +93,7 @@ export class CharacterMotivation {
   };
 
   /** Механизм обратной связи - результат последнего выполнения */
-  @Column({ type: 'jsonb', nullable: true })
+  @Column({ type: 'json', nullable: true })
   feedback: {
     lastAttemptResult?: 'success' | 'failure' | 'blocked';
     lastAttemptTime?: Date;
@@ -102,11 +102,11 @@ export class CharacterMotivation {
   };
 
   /** Время последнего обновления значения */
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'datetime', nullable: true })
   lastUpdated: Date;
 
   /** Время истечения мотивации (для временных мотиваций) */
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'datetime', nullable: true })
   expiresAt: Date;
 
   /** Связь с персонажем */
@@ -119,10 +119,10 @@ export class CharacterMotivation {
   @Column()
   characterId: number;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'datetime' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'datetime' })
   updatedAt: Date;
 
   /**

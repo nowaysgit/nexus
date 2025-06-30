@@ -6,14 +6,7 @@ import { InfrastructureModule } from '../../src/infrastructure/infrastructure.mo
 import { LoggingModule } from '../../src/logging/logging.module';
 import { Request } from 'express';
 
-// Интерфейс для мока Request объекта
-interface MockRequestOptions {
-  headers?: Record<string, string | string[]>;
-  query?: Record<string, string | string[]>;
-  path?: string;
-  ip?: string;
-  connection?: { remoteAddress: string };
-}
+// MockRequestOptions удален - больше не используется
 
 // Интерфейс для комплексных данных в тесте
 interface ComplexTestData {
@@ -29,18 +22,7 @@ interface ComplexTestData {
   };
 }
 
-// Мок Request объекта для тестов
-function createMockRequest(options: MockRequestOptions = {}): Request {
-  const mockRequest = {
-    headers: options.headers || {},
-    query: options.query || {},
-    path: options.path || '/api/test',
-    ip: options.ip || '127.0.0.1',
-    connection: options.connection || { remoteAddress: '127.0.0.1' },
-  };
-
-  return mockRequest as unknown as Request;
-}
+// Мок Request объекта удален - больше не используется в этом файле
 
 createTestSuite('Infrastructure Integration Tests', () => {
   createTest(
@@ -149,79 +131,9 @@ createTestSuite('Infrastructure Integration Tests', () => {
     },
   );
 
-  createTest(
-    {
-      name: 'должен извлекать API ключи из запросов',
-      configType: TestConfigType.BASIC,
-      imports: [
-        InfrastructureModule,
-        LoggingModule,
-        ConfigModule.forRoot({
-          isGlobal: true,
-          load: [
-            () => ({
-              api: {
-                key: 'test-api-key',
-              },
-            }),
-          ],
-        }),
-      ],
-      requiresDatabase: false,
-    },
-    async ({ get }) => {
-      const apiKeyService = get<ApiKeyService>(ApiKeyService);
+  // API Key тесты перенесены в test/infrastructure/api-key.service.test.ts
 
-      // Запрос с ключом в заголовке
-      const headerRequest = createMockRequest({
-        headers: { 'x-api-key': 'test-api-key' },
-      });
-      expect(apiKeyService.extractApiKey(headerRequest)).toBe('test-api-key');
-
-      // Запрос с ключом в query параметрах
-      const queryRequest = createMockRequest({
-        query: { api_key: 'test-api-key' },
-      });
-      expect(apiKeyService.extractApiKey(queryRequest)).toBe('test-api-key');
-
-      // Запрос без ключа
-      const noKeyRequest = createMockRequest();
-      expect(apiKeyService.extractApiKey(noKeyRequest)).toBeUndefined();
-    },
-  );
-
-  createTest(
-    {
-      name: 'должен разрешать локальные запросы без ключа',
-      configType: TestConfigType.BASIC,
-      imports: [
-        InfrastructureModule,
-        LoggingModule,
-        ConfigModule.forRoot({
-          isGlobal: true,
-          load: [
-            () => ({
-              api: {
-                key: 'test-api-key',
-              },
-            }),
-          ],
-        }),
-      ],
-      requiresDatabase: false,
-    },
-    async ({ get }) => {
-      const apiKeyService = get<ApiKeyService>(ApiKeyService);
-
-      // Локальный запрос без ключа
-      const localRequest = createMockRequest({
-        ip: '127.0.0.1',
-      });
-
-      const isValid = apiKeyService.validateClientApiKey(localRequest);
-      expect(isValid).toBe(true);
-    },
-  );
+  // Локальные запросы API Key тесты перенесены в unit тесты
 
   createTest(
     {
@@ -262,102 +174,5 @@ createTestSuite('Infrastructure Integration Tests', () => {
     },
   );
 
-  createTest(
-    {
-      name: 'должен разрешать внешние запросы с правильным ключом',
-      configType: TestConfigType.BASIC,
-      imports: [
-        InfrastructureModule,
-        LoggingModule,
-        ConfigModule.forRoot({
-          isGlobal: true,
-          load: [
-            () => ({
-              api: {
-                key: 'test-api-key',
-              },
-            }),
-          ],
-        }),
-      ],
-      requiresDatabase: false,
-    },
-    async ({ get }) => {
-      const apiKeyService = get<ApiKeyService>(ApiKeyService);
-
-      // Внешний запрос с правильным ключом
-      const validRequest = createMockRequest({
-        ip: '8.8.8.8',
-        headers: { 'x-api-key': 'test-api-key' },
-      });
-
-      const isValid = apiKeyService.validateClientApiKey(validRequest);
-      expect(isValid).toBe(true);
-    },
-  );
-
-  createTest(
-    {
-      name: 'должен блокировать внешние запросы с неправильным ключом',
-      configType: TestConfigType.BASIC,
-      imports: [
-        InfrastructureModule,
-        LoggingModule,
-        ConfigModule.forRoot({
-          isGlobal: true,
-          load: [
-            () => ({
-              api: {
-                key: 'test-api-key',
-              },
-            }),
-          ],
-        }),
-      ],
-      requiresDatabase: false,
-    },
-    async ({ get }) => {
-      const apiKeyService = get<ApiKeyService>(ApiKeyService);
-
-      // Запрос с неправильным ключом
-      const invalidRequest = createMockRequest({
-        ip: '8.8.8.8',
-        headers: { 'x-api-key': 'wrong-key' },
-      });
-      const isValid = apiKeyService.validateClientApiKey(invalidRequest);
-      expect(isValid).toBe(false);
-    },
-  );
-
-  createTest(
-    {
-      name: 'должен блокировать внешние запросы без ключа',
-      configType: TestConfigType.BASIC,
-      imports: [
-        InfrastructureModule,
-        LoggingModule,
-        ConfigModule.forRoot({
-          isGlobal: true,
-          load: [
-            () => ({
-              api: {
-                key: 'test-api-key',
-              },
-            }),
-          ],
-        }),
-      ],
-      requiresDatabase: false,
-    },
-    async ({ get }) => {
-      const apiKeyService = get<ApiKeyService>(ApiKeyService);
-
-      // Внешний запрос без ключа
-      const noKeyRequest = createMockRequest({
-        ip: '8.8.8.8',
-      });
-      const isValid = apiKeyService.validateClientApiKey(noKeyRequest);
-      expect(isValid).toBe(false);
-    },
-  );
+  // Все остальные API Key тесты перенесены в unit тесты
 });

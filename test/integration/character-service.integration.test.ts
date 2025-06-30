@@ -1,18 +1,10 @@
 import { TestingModule } from '@nestjs/testing';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { ConfigModule } from '@nestjs/config';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 // Entities
 import { Character } from '../../src/character/entities/character.entity';
 import { CharacterNeedType } from '../../src/character/enums/character-need-type.enum';
-import { CharacterMotivation } from '../../src/character/entities/character-motivation.entity';
-import { Need } from '../../src/character/entities/need.entity';
-import { Action } from '../../src/character/entities/action.entity';
-import { CharacterMemory } from '../../src/character/entities/character-memory.entity';
-import { StoryEvent } from '../../src/character/entities/story-event.entity';
-import { StoryPlan, StoryMilestone } from '../../src/character/entities/story-plan.entity';
 
 // Services
 import { CharacterService } from '../../src/character/services/character.service';
@@ -36,19 +28,7 @@ createTestSuite('Character Service Integration Tests', () => {
 
   beforeEach(async () => {
     moduleRef = await TestModuleBuilder.create()
-      .withImports([
-        ConfigModule.forRoot({ isGlobal: true }),
-        TypeOrmModule.forFeature([
-          Character,
-          Need,
-          CharacterMotivation,
-          Action,
-          CharacterMemory,
-          StoryEvent,
-          StoryPlan,
-          StoryMilestone,
-        ]),
-      ] as any[])
+      .withDatabase(false)
       .withProviders([
         CharacterService,
         NeedsService,
@@ -180,8 +160,12 @@ createTestSuite('Character Service Integration Tests', () => {
         isActive: true,
       });
 
+      // Преобразуем character.id в число для MemoryService
+      const characterIdAsNumber =
+        typeof character.id === 'string' ? parseInt(character.id, 10) : character.id;
+
       const memory = await memoryService.createMemory(
-        character.id,
+        characterIdAsNumber,
         'Встреча с важным клиентом',
         MemoryType.EVENT,
         8,
@@ -189,10 +173,10 @@ createTestSuite('Character Service Integration Tests', () => {
       );
 
       expect(memory).toBeDefined();
-      expect(memory.characterId).toBe(character.id);
+      expect(memory.characterId).toBe(characterIdAsNumber);
       expect(memory.content).toBe('Встреча с важным клиентом');
 
-      const memories = await memoryService.getRecentMemories(character.id);
+      const memories = await memoryService.getRecentMemories(characterIdAsNumber);
       expect(memories).toHaveLength(1);
       expect(memories[0].content).toBe('Встреча с важным клиентом');
 

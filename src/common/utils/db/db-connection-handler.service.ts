@@ -3,6 +3,7 @@ import { Connection, QueryFailedError, EntitySubscriberInterface } from 'typeorm
 import { InjectConnection } from '@nestjs/typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { LogService } from '../../../logging/log.service';
+import { getErrorMessage } from '../error.utils';
 
 /**
  * Типы событий подключения к БД
@@ -118,7 +119,7 @@ export class DbConnectionHandlerService implements OnModuleInit, OnApplicationSh
       this.logService.error(
         `Ошибка подключения к БД (попытка ${this.reconnectAttempt}/${this.maxReconnectAttempts})`,
         {
-          error: this.formatError(error as Error),
+          error: getErrorMessage(error),
         },
       );
 
@@ -189,7 +190,7 @@ export class DbConnectionHandlerService implements OnModuleInit, OnApplicationSh
       });
 
       this.logService.error(`Ошибка при попытке переподключения к БД`, {
-        error: this.formatError(error as Error),
+        error: getErrorMessage(error),
         attempt: this.reconnectAttempt,
       });
 
@@ -198,17 +199,6 @@ export class DbConnectionHandlerService implements OnModuleInit, OnApplicationSh
         void this.attemptReconnect();
       }, this.reconnectTimeout);
     }
-  }
-
-  /**
-   * Форматирует объект ошибки для логирования
-   */
-  private formatError(error: Error): Record<string, unknown> {
-    return {
-      message: error.message,
-      name: error.name,
-      stack: error.stack,
-    };
   }
 
   /**

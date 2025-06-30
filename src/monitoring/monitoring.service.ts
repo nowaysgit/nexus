@@ -1,8 +1,10 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { LogService } from '../logging/log.service';
+import { BaseService } from '../common/base/base.service';
 import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { MessageQueueService } from '../message-queue/message-queue.service';
+import { getErrorMessage } from '../common/utils/error.utils';
 
 // Базовые интерфейсы для мониторинга
 export interface SystemMetric {
@@ -92,7 +94,7 @@ export interface MonitoringMetrics {
  * Включает: сбор метрик, алерты, базовое автомасштабирование
  */
 @Injectable()
-export class MonitoringService implements OnModuleInit {
+export class MonitoringService extends BaseService implements OnModuleInit {
   private readonly metrics: Map<string, SystemMetric[]> = new Map();
   private readonly alertRules: Map<string, AlertRule> = new Map();
   private readonly activeAlerts: Map<string, Alert> = new Map();
@@ -111,9 +113,9 @@ export class MonitoringService implements OnModuleInit {
   constructor(
     private readonly configService: ConfigService,
     private readonly messageQueueService: MessageQueueService,
-    private readonly logService: LogService,
+    logService: LogService,
   ) {
-    this.logService.setContext(MonitoringService.name);
+    super(logService);
     this.startTime = new Date();
     this.enabled = this.configService.get<boolean>('monitoring.enabled', true);
     this.detailedLogging = this.configService.get<boolean>('monitoring.detailedLogging', false);
@@ -122,7 +124,7 @@ export class MonitoringService implements OnModuleInit {
 
   async onModuleInit() {
     if (this.enabled) {
-      this.logService.log('Сервис мониторинга инициализирован', {
+      this.logInfo('Сервис мониторинга инициализирован', {
         enabled: this.enabled,
         detailedLogging: this.detailedLogging,
       });
@@ -164,7 +166,7 @@ export class MonitoringService implements OnModuleInit {
     // Проверяем алерты
     this.checkAlerts(metric);
 
-    this.logService.debug(`Записана метрика: ${name} = ${value} ${unit}`, { tags });
+    this.logDebug(`Записана метрика: ${name} = ${value} ${unit}`, { tags });
   }
 
   /**
@@ -229,7 +231,7 @@ export class MonitoringService implements OnModuleInit {
     const alertRule: AlertRule = { ...rule, id };
 
     this.alertRules.set(id, alertRule);
-    this.logService.info(`Добавлено правило алерта: ${rule.name}`, { ruleId: id });
+    this.logInfo(`Добавлено правило алерта: ${rule.name}`, { ruleId: id });
 
     return id;
   }
@@ -256,7 +258,7 @@ export class MonitoringService implements OnModuleInit {
     if (alert && !alert.resolved) {
       alert.resolved = true;
       alert.resolvedAt = new Date();
-      this.logService.info(`Алерт разрешен: ${alert.message}`, { alertId });
+      this.logInfo(`Алерт разрешен: ${alert.message}`, { alertId });
       return true;
     }
     return false;
@@ -272,7 +274,7 @@ export class MonitoringService implements OnModuleInit {
     const scalingRule: ScalingRule = { ...rule, id };
 
     this.scalingRules.set(id, scalingRule);
-    this.logService.info(`Добавлено правило масштабирования: ${rule.name}`, { ruleId: id });
+    this.logInfo(`Добавлено правило масштабирования: ${rule.name}`, { ruleId: id });
 
     return id;
   }
@@ -342,7 +344,7 @@ export class MonitoringService implements OnModuleInit {
     }
 
     if (cleanedCount > 0) {
-      this.logService.debug(`Очищено ${cleanedCount} старых метрик`);
+      this.logDebug(`Очищено ${cleanedCount} старых метрик`);
     }
   }
 
@@ -415,7 +417,7 @@ export class MonitoringService implements OnModuleInit {
 
     this.activeAlerts.set(alertId, alert);
 
-    this.logService.warn(`Алерт активирован: ${alert.message}`, {
+    this.logWarning(`Алерт активирован: ${alert.message}`, {
       alertId,
       ruleId: rule.id,
       severity: rule.severity,
@@ -496,8 +498,8 @@ export class MonitoringService implements OnModuleInit {
         timestamp: new Date(),
       };
     } catch (error) {
-      this.logService.error('Ошибка при получении состояния системы', {
-        error: error instanceof Error ? error.message : String(error),
+      this.logError('Ошибка при получении состояния системы', {
+        error: getErrorMessage(error),
       });
       return {
         status: 'critical',
@@ -517,8 +519,8 @@ export class MonitoringService implements OnModuleInit {
       // Простая проверка доступности
       return true;
     } catch (error) {
-      this.logService.error('Ошибка подключения к базе данных', {
-        error: error instanceof Error ? error.message : String(error),
+      this.logError('Ошибка подключения к базе данных', {
+        error: getErrorMessage(error),
       });
       return false;
     }
@@ -554,8 +556,8 @@ export class MonitoringService implements OnModuleInit {
         },
       };
     } catch (error) {
-      this.logService.error('Ошибка при получении метрик', {
-        error: error instanceof Error ? error.message : String(error),
+      this.logError('Ошибка при получении метрик', {
+        error: getErrorMessage(error),
       });
       throw error;
     }
@@ -570,8 +572,8 @@ export class MonitoringService implements OnModuleInit {
       const dbConnection = await this.checkDatabaseConnection();
       return health.status !== 'critical' && dbConnection;
     } catch (error) {
-      this.logService.error('Ошибка при проверке состояния системы', {
-        error: error instanceof Error ? error.message : String(error),
+      this.logError('Ошибка при проверке состояния системы', {
+        error: getErrorMessage(error),
       });
       return false;
     }
@@ -587,7 +589,7 @@ export class MonitoringService implements OnModuleInit {
     try {
       const metrics = await this.getMonitoringMetrics();
 
-      this.logService.log('Метрики системы', {
+      this.logInfo('Метрики системы', {
         status: metrics.system.status,
         memory: metrics.system.memory.percentage.toFixed(1) + '%',
         uptime: Math.floor(metrics.system.uptime / 1000) + 's',
@@ -596,11 +598,11 @@ export class MonitoringService implements OnModuleInit {
       });
 
       if (this.detailedLogging) {
-        this.logService.debug('Детальные метрики', metrics);
+        this.logDebug('Детальные метрики', metrics);
       }
     } catch (error) {
-      this.logService.error('Ошибка при логировании метрик', {
-        error: error instanceof Error ? error.message : String(error),
+      this.logError('Ошибка при логировании метрик', {
+        error: getErrorMessage(error),
       });
     }
   }
@@ -631,7 +633,7 @@ export class MonitoringService implements OnModuleInit {
   ) {
     if (!this.enabled || !this.detailedLogging) return;
 
-    this.logService.debug('Трассировка сообщения', {
+    this.logDebug('Трассировка сообщения', {
       queueId,
       messageId,
       status,

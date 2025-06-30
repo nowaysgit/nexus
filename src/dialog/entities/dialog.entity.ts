@@ -34,7 +34,7 @@ export class Dialog {
   character: Character;
 
   @Column()
-  userId: number;
+  userId: string;
 
   @ManyToOne(() => User, user => user.dialogs)
   @JoinColumn({ name: 'userId' })
@@ -43,16 +43,16 @@ export class Dialog {
   @Column({ nullable: true })
   title: string;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'datetime' })
   startedAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'datetime' })
   lastMessageAt: Date;
 
   @Column({ default: false })
   isActive: boolean;
 
-  @Column({ nullable: true, type: 'timestamp' })
+  @Column({ nullable: true, type: 'datetime' })
   lastInteractionDate: Date;
 
   @OneToMany(() => Message, message => message.dialog, { cascade: true })

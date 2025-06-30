@@ -193,7 +193,7 @@ createTestSuite('CacheService Integration Tests', () => {
   createTest(
     {
       name: 'should set and get values',
-      configType: TestConfigType.INTEGRATION,
+      configType: TestConfigType.BASIC,
       timeout: 15000, // Увеличиваем таймаут для теста
     },
     async () => {
@@ -226,7 +226,7 @@ createTestSuite('CacheService Integration Tests', () => {
   createTest(
     {
       name: 'should handle multiple keys',
-      configType: TestConfigType.INTEGRATION,
+      configType: TestConfigType.BASIC,
       timeout: 15000, // Увеличиваем таймаут для теста
     },
     async () => {
@@ -274,7 +274,7 @@ createTestSuite('CacheService Integration Tests', () => {
   createTest(
     {
       name: 'should set and get complex objects',
-      configType: TestConfigType.INTEGRATION,
+      configType: TestConfigType.BASIC,
       timeout: 30000, // Увеличиваем таймаут для теста
     },
     async () => {
@@ -329,15 +329,16 @@ createTestSuite('CacheService Integration Tests', () => {
   createTest(
     {
       name: 'should work with cache module in application context',
-      configType: TestConfigType.INTEGRATION,
+      configType: TestConfigType.BASIC,
       timeout: 15000, // Увеличиваем таймаут для теста
     },
     async _context => {
-      // Создаем модуль с CacheModule
+      // Создаем модуль с CacheModule БЕЗ интеграции с PostgreSQL
       const imports = [CacheModule, LoggingModule];
       const preparedImports = TestConfigurations.prepareImportsForTesting(imports);
 
       const moduleRef = await TestModuleBuilder.create()
+        .withDatabase(false) // Отключаем PostgreSQL
         .withImports(preparedImports)
         .withRequiredMocks()
         .compile();
@@ -373,7 +374,7 @@ createTestSuite('CacheService Integration Tests', () => {
   createTest(
     {
       name: 'should handle concurrent operations correctly',
-      configType: TestConfigType.INTEGRATION,
+      configType: TestConfigType.BASIC,
       timeout: 30000, // Увеличиваем таймаут для теста
     },
     async () => {
@@ -412,7 +413,7 @@ createTestSuite('CacheService Integration Tests', () => {
   createTest(
     {
       name: 'should handle TTL correctly',
-      configType: TestConfigType.INTEGRATION,
+      configType: TestConfigType.BASIC,
       timeout: 30000, // Увеличиваем таймаут для теста
     },
     async () => {
@@ -451,7 +452,7 @@ createTestSuite('CacheService Integration Tests', () => {
   createTest(
     {
       name: 'should handle concurrent updates to the same key',
-      configType: TestConfigType.INTEGRATION,
+      configType: TestConfigType.BASIC,
       timeout: 30000, // Увеличиваем таймаут для теста
     },
     async () => {

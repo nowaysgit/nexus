@@ -1,73 +1,134 @@
 // Настройка для интеграционных тестов
-import { DataSource } from 'typeorm';
-import { BASE_TEST_CONFIG, Tester } from '../lib/tester';
+import 'reflect-metadata';
 import { DbConnectionManager } from '../lib/tester/utils/db-connection-manager';
+import { DataSource } from 'typeorm';
+import { cleanupTestDataSources } from '../lib/tester/utils/data-source';
+import { isPostgresAvailable } from '../lib/tester/utils/db-connection-checker';
 
-// Устанавливаем переменные окружения
-process.env.NODE_ENV = 'test';
-process.env.INTEGRATION_TEST = 'true';
+// Глобальный счетчик для тестов
+let testCounter = 0;
 
-// Увеличиваем таймауты для Jest
-jest.setTimeout(60000);
+// Глобальный DataSource для переиспользования в интеграционных тестах
+let globalIntegrationDataSource: DataSource | null = null;
 
-// Глобальная очистка после всех тестов
-afterAll(async () => {
-  try {
-    // Закрываем все соединения через DbConnectionManager
-    await DbConnectionManager.closeAllConnections();
+/**
+ * Глобальная настройка перед запуском всех интеграционных тестов
+ */
+beforeAll(async () => {
+  // Проверяем доступность PostgreSQL
+  const pgAvailable = await isPostgresAvailable();
+  if (!pgAvailable) {
+    console.error('❌ PostgreSQL недоступен! Убедитесь, что контейнер запущен:');
+    console.error('docker compose -f docker-compose.test.yml up -d');
+    process.exit(1);
+  }
 
-    // Принудительно закрываем все соединения с БД
-    const connections = (DataSource as any).connections || [];
+  console.log('✅ PostgreSQL доступен, начинаем интеграционные тесты');
+
+  // Увеличиваем таймаут для Jest
+  jest.setTimeout(60000);
+});
+
+// Перед каждым тестом
+beforeEach(() => {
+  testCounter++;
+  // Сохраняем информацию о текущем тесте в глобальном контексте
+  const globalContext = global as {
+    __currentTest?: { index: number; startTime: number; params: Record<string, unknown> };
+  };
+  globalContext.__currentTest = {
+    index: testCounter,
+    startTime: Date.now(),
+    params: { requiresDatabase: true }, // По умолчанию для интеграционных тестов
+  };
+});
+
+// После каждого теста
+afterEach(async () => {
+  const globalContext = global as {
+    __currentTest?: { index: number; startTime: number; params: Record<string, unknown> };
+  };
+  const currentTest = globalContext.__currentTest;
+  const testDuration = Date.now() - (currentTest?.startTime || 0);
+
+  // Логируем длительные тесты (более 5 секунд)
+  if (testDuration > 5000) {
+    console.log(
+      `[SLOW TEST] Интеграционный тест #${currentTest?.index} выполнялся ${testDuration}ms`,
+    );
+  }
+
+  // Очищаем тестовые данные
+  globalContext.__currentTest = undefined;
+
+  // Проверяем и закрываем соединения с базой данных
+  const connections = DbConnectionManager.getConnections();
+  if (connections.length > 0) {
     for (const connection of connections) {
-      if (connection && connection.isInitialized) {
+      if (connection.isInitialized) {
         try {
-          // Отключаем внешние ключи перед очисткой
-          await connection.query('SET session_replication_role = REPLICA;');
-
-          // Очищаем все таблицы
-          const entities = connection.entityMetadatas;
-          for (const entity of entities.reverse()) {
-            await connection.getRepository(entity.name).clear();
-          }
-
-          // Включаем внешние ключи обратно
-          await connection.query('SET session_replication_role = DEFAULT;');
-
-          // Закрываем соединение
           await connection.destroy();
         } catch (error) {
-          console.warn('Ошибка при закрытии соединения:', error);
+          console.error('Ошибка при закрытии соединения:', error);
         }
       }
     }
+    DbConnectionManager.clearConnections();
+  }
 
-    // Принудительно закрываем все соединения Tester
-    const tester = Tester.getInstance();
-    await tester.forceCleanup();
+  // Принудительно очищаем память
+  if (global.gc) {
+    global.gc();
+  }
 
-    // Очищаем все таймеры и интервалы
-    for (let i = 1; i <= 10000; i++) {
-      clearTimeout(i);
-      clearInterval(i);
+  // Очистка моков после каждого интеграционного теста
+  jest.clearAllMocks();
+});
+
+/**
+ * Глобальная очистка после выполнения всех интеграционных тестов
+ */
+afterAll(async () => {
+  try {
+    // Очищаем все тестовые DataSource
+    await cleanupTestDataSources();
+
+    // Закрываем глобальный DataSource
+    if (globalIntegrationDataSource && globalIntegrationDataSource.isInitialized) {
+      await globalIntegrationDataSource.destroy();
+      globalIntegrationDataSource = null;
     }
 
-    // Принудительная сборка мусора если доступна
-    if (typeof global !== 'undefined' && (global as any).gc) {
-      (global as any).gc();
-    }
-
-    // Даем время на завершение асинхронных операций
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    console.log('✅ Очистка интеграционного тестового окружения завершена');
   } catch (error) {
-    console.error('Ошибка при глобальной очистке:', error);
-    throw error;
+    console.error('❌ Ошибка при очистке интеграционного тестового окружения:', error);
+  }
+
+  // Даем время на завершение всех асинхронных операций
+  await new Promise(resolve => setTimeout(resolve, 500));
+
+  // Выводим общую статистику
+  console.log('\nВсе интеграционные тесты завершены');
+
+  // Принудительно очищаем память
+  if (global.gc) {
+    global.gc();
   }
 });
-// Обработка необработанных промисов
+
+/**
+ * Настройка обработчиков ошибок для интеграционных тестов
+ */
 process.on('unhandledRejection', (reason, promise) => {
-  console.warn('Unhandled Rejection at:', promise, 'reason:', reason);
+  console.error('Unhandled Rejection in Integration Test at:', promise, 'reason:', reason);
 });
-// Обработка необработанных исключений
+
 process.on('uncaughtException', error => {
-  console.warn('Uncaught Exception:', error);
+  console.error('Uncaught Exception in Integration Test:', error);
+  process.exit(1);
 });
+
+/**
+ * Экспорт глобального DataSource для переиспользования в интеграционных тестах
+ */
+export { globalIntegrationDataSource };

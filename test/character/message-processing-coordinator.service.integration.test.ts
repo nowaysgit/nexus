@@ -11,6 +11,13 @@ import { CharacterResponseService } from '../../src/character/services/character
 import { EmotionalStateService } from '../../src/character/services/emotional-state.service';
 import { ManipulationService } from '../../src/character/services/manipulation.service';
 import { TechniqueExecutorService } from '../../src/character/services/technique-executor.service';
+import { ActionExecutorService } from '../../src/character/services/action-executor.service';
+import { TechniqueStrategyService } from '../../src/character/services/technique-strategy.service';
+import { TechniqueValidatorService } from '../../src/character/services/technique-validator.service';
+import { TechniqueAnalyzerService } from '../../src/character/services/technique-analyzer.service';
+import { TechniqueGeneratorService } from '../../src/character/services/technique-generator.service';
+import { TechniqueAdapterService } from '../../src/character/services/technique-adapter.service';
+import { TechniqueHistoryService } from '../../src/character/services/technique-history.service';
 import { SpecializationService } from '../../src/character/services/specialization.service';
 import { CharacterService } from '../../src/character/services/character.service';
 import { Character } from '../../src/character/entities/character.entity';
@@ -62,6 +69,13 @@ createTestSuite('MessageProcessingCoordinator Integration Tests', () => {
         EmotionalStateService,
         ManipulationService,
         TechniqueExecutorService,
+        ActionExecutorService,
+        TechniqueStrategyService,
+        TechniqueValidatorService,
+        TechniqueAnalyzerService,
+        TechniqueGeneratorService,
+        TechniqueAdapterService,
+        TechniqueHistoryService,
         SpecializationService,
         CharacterService,
         {

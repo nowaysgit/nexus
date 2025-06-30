@@ -40,8 +40,8 @@ export class Action {
   characterId: number;
 
   @Column({
-    type: 'enum',
-    enum: ActionType,
+    type: 'varchar',
+    length: 50,
   })
   type: ActionType;
 
@@ -52,21 +52,21 @@ export class Action {
   expectedDuration: number | null;
 
   @Column({
-    type: 'enum',
-    enum: ActionStatus,
+    type: 'varchar',
+    length: 50,
     default: ActionStatus.IN_PROGRESS,
   })
   status: ActionStatus;
 
-  @Column({ name: 'start_time', type: 'timestamp' })
+  @Column({ name: 'start_time', type: 'datetime' })
   startTime: Date;
 
-  @Column({ name: 'end_time', type: 'timestamp', nullable: true })
+  @Column({ name: 'end_time', type: 'datetime', nullable: true })
   endTime: Date | null;
 
   @Column({
-    type: 'enum',
-    enum: CharacterNeedType,
+    type: 'varchar',
+    length: 50,
     nullable: true,
   })
   relatedNeed: CharacterNeedType;
@@ -89,7 +89,7 @@ export class Action {
   successProbability: number;
 
   /** Потенциальное вознаграждение за выполнение согласно ТЗ ВОЛЯ */
-  @Column({ name: 'potential_reward', type: 'jsonb', nullable: true })
+  @Column({ name: 'potential_reward', type: 'json', nullable: true })
   potentialReward: {
     needsImpact?: Record<string, number>; // Влияние на потребности
     emotionalBenefit?: string; // Эмоциональная польза
@@ -99,7 +99,7 @@ export class Action {
   };
 
   /** Фактические результаты выполнения действия согласно ТЗ ВОЛЯ */
-  @Column({ name: 'execution_results', type: 'jsonb', nullable: true })
+  @Column({ name: 'execution_results', type: 'json', nullable: true })
   executionResults: {
     actualCost?: number; // Фактические затраты ресурсов
     actualReward?: Record<string, unknown>; // Фактическое вознаграждение
@@ -109,7 +109,7 @@ export class Action {
   };
 
   /** Адаптивные модификаторы на основе истории выполнения согласно ТЗ ВОЛЯ */
-  @Column({ name: 'adaptive_modifiers', type: 'jsonb', nullable: true })
+  @Column({ name: 'adaptive_modifiers', type: 'json', nullable: true })
   adaptiveModifiers: {
     costReduction?: number; // Снижение стоимости с опытом
     probabilityBonus?: number; // Бонус к вероятности успеха
@@ -118,10 +118,10 @@ export class Action {
     executionCount?: number; // Количество выполнений
   };
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: 'created_at', type: 'datetime' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'datetime' })
   updatedAt: Date;
 
   /**

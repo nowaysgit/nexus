@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { LogService } from '../logging/log.service';
+import { BaseService } from '../common/base/base.service';
 import {
   PromptTemplate,
   PromptCategory,
@@ -14,7 +15,7 @@ import { EmotionalState } from '../character/entities/emotional-state';
  * Поддерживает версионирование, статистику использования и оптимизацию токенов
  */
 @Injectable()
-export class PromptTemplateService {
+export class PromptTemplateService extends BaseService {
   private readonly templates = new Map<string, Map<string, PromptTemplate>>();
   private readonly activeVersions = new Map<string, string>();
   private readonly categories = new Map<string, PromptCategory>();
@@ -23,8 +24,8 @@ export class PromptTemplateService {
     { totalUses: number; successRate: number; averageTokens: number }
   >();
 
-  constructor(private readonly logService: LogService) {
-    this.logService.setContext(PromptTemplateService.name);
+  constructor(logService: LogService) {
+    super(logService);
     this.initializeDefaultTemplates();
   }
 
@@ -36,20 +37,22 @@ export class PromptTemplateService {
    * @returns сформированный промпт
    */
   createPrompt(templateType: string, params: Record<string, unknown>, version?: string): string {
-    const template = this.getTemplate(templateType, version);
-    if (!template) {
-      this.logService.warn(
-        `Шаблон промпта '${templateType}' версии '${version || 'latest'}' не найден`,
-        {
-          templateType,
-          version,
-          availableTemplates: Array.from(this.templates.keys()),
-        },
-      );
-      throw new Error(`Шаблон промпта '${templateType}' версии '${version || 'latest'}' не найден`);
-    }
+    return this.withErrorHandlingSync(`создания промпта '${templateType}'`, () => {
+      const template = this.getTemplate(templateType, version);
+      if (!template) {
+        this.logWarning(
+          `Шаблон промпта '${templateType}' версии '${version || 'latest'}' не найден`,
+          {
+            templateType,
+            version,
+            availableTemplates: Array.from(this.templates.keys()),
+          },
+        );
+        throw new Error(
+          `Шаблон промпта '${templateType}' версии '${version || 'latest'}' не найден`,
+        );
+      }
 
-    try {
       const renderedPrompt = this.renderTemplate(template.template, params);
 
       // Обновляем статистику использования
@@ -60,15 +63,7 @@ export class PromptTemplateService {
       );
 
       return renderedPrompt;
-    } catch (error) {
-      this.logService.error(`Ошибка при создании промпта '${templateType}'`, {
-        error: error instanceof Error ? error.message : String(error),
-        templateType,
-        version,
-        params,
-      });
-      throw error;
-    }
+    });
   }
 
   /**
@@ -157,7 +152,7 @@ export class PromptTemplateService {
       this.activeVersions.set(template.type, template.version);
     }
 
-    this.logService.debug(`Зарегистрирован шаблон промпта: ${template.type} v${template.version}`, {
+    this.logDebug(`Зарегистрирован шаблон промпта: ${template.type} v${template.version}`, {
       template,
     });
   }
@@ -174,7 +169,7 @@ export class PromptTemplateService {
     }
 
     this.activeVersions.set(templateType, version);
-    this.logService.debug(`Активная версия шаблона '${templateType}' изменена на '${version}'`);
+    this.logDebug(`Активная версия шаблона '${templateType}' изменена на '${version}'`);
   }
 
   /**
@@ -264,7 +259,7 @@ export class PromptTemplateService {
       optimized = optimized.substring(0, charLimit) + '...';
     }
 
-    this.logService.debug('Оптимизирован промпт для токенов', {
+    this.logDebug('Оптимизирован промпт для токенов', {
       originalTokens: estimatedTokens,
       optimizedTokens: this.estimateTokenCount(optimized),
       maxTokens,
@@ -334,7 +329,7 @@ export class PromptTemplateService {
     // Проверяем что не остались незамещенные плейсхолдеры
     const unreplacedPlaceholders = result.match(/\{\{[^}]+\}\}/g);
     if (unreplacedPlaceholders) {
-      this.logService.warn('Обнаружены незамещенные плейсхолдеры в промпте', {
+      this.logWarning('Обнаружены незамещенные плейсхолдеры в промпте', {
         unreplacedPlaceholders,
         template,
         params,
