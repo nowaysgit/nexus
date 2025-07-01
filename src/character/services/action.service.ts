@@ -203,6 +203,16 @@ export class ActionService extends BaseService implements ActionHandler, OnModul
   async executeAction(context: ActionContext): Promise<ActionResult> {
     return this.execute(context);
   }
+
+  /**
+   * @deprecated Используйте ActionGeneratorService.determineActionFromTrigger напрямую
+   */
+  async determineActionFromTrigger(
+    context: ActionTriggerContext,
+    character: Character,
+  ): Promise<CharacterAction | null> {
+    return this.generatorService.determineActionFromTrigger(context, character);
+  }
 }
 
 // Экспорты для обратной совместимости с тестами

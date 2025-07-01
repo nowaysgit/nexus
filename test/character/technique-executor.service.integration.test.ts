@@ -1,11 +1,8 @@
 import { TestModuleBuilder } from '../../lib/tester/utils/test-module-builder';
 import { MockNeedsService } from '../../lib/tester/mocks/needs-service.mock';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { DataSource } from 'typeorm';
 
 import { createTestSuite, createTest, TestConfigType } from '../../lib/tester';
-import { FixtureManager } from '../../lib/tester/fixtures/fixture-manager';
-import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { TechniqueExecutorService } from '../../src/character/services/technique-executor.service';
 import { TechniqueStrategyService } from '../../src/character/services/technique-strategy.service';
@@ -19,8 +16,6 @@ import { EmotionalStateService } from '../../src/character/services/emotional-st
 import { LLMService } from '../../src/llm/services/llm.service';
 import { PromptTemplateService } from '../../src/prompt-template/prompt-template.service';
 
-import { ALL_TEST_ENTITIES } from '../../lib/tester/entities';
-
 import { ITechniqueContext } from '../../src/character/interfaces/technique.interfaces';
 import { IEmotionalState } from '../../src/character/interfaces/emotional-state.interface';
 import {
@@ -28,11 +23,13 @@ import {
   TechniqueIntensity,
   TechniquePhase,
 } from '../../src/character/enums/technique.enums';
+import { CharacterArchetype } from '../../src/character/enums/character-archetype.enum';
+import { User } from '../../src/user/entities/user.entity';
+import { Character, CharacterGender } from '../../src/character/entities/character.entity';
 
 import { TestingModule } from '@nestjs/testing';
 
 createTestSuite('TechniqueExecutorService Integration Tests', () => {
-  let fixtureManager: FixtureManager;
   let service: TechniqueExecutorService;
   let moduleRef: TestingModule;
   let llmService: jest.Mocked<Pick<LLMService, 'generateText'>>;
@@ -44,12 +41,15 @@ createTestSuite('TechniqueExecutorService Integration Tests', () => {
     llmService = mockLLMService as jest.Mocked<Pick<LLMService, 'generateText'>>;
 
     moduleRef = await TestModuleBuilder.create()
-      .withImports([
-        // MockTypeOrmModule автоматически добавляется через TestConfigurations
-        TypeOrmModule.forFeature(ALL_TEST_ENTITIES),
-      ])
       .withProviders([
         TechniqueExecutorService,
+        // Добавляем все специализированные сервисы техник
+        TechniqueStrategyService,
+        TechniqueValidatorService,
+        TechniqueAnalyzerService,
+        TechniqueGeneratorService,
+        TechniqueAdapterService,
+        TechniqueHistoryService,
         { provide: NeedsService, useClass: MockNeedsService },
         {
           provide: EmotionalStateService,
@@ -65,8 +65,6 @@ createTestSuite('TechniqueExecutorService Integration Tests', () => {
       .withRequiredMocks()
       .compile();
 
-    const dataSource = moduleRef.get<DataSource>('DATA_SOURCE');
-    fixtureManager = new FixtureManager(dataSource);
     service = moduleRef.get<TechniqueExecutorService>(TechniqueExecutorService);
   });
 
@@ -76,22 +74,48 @@ createTestSuite('TechniqueExecutorService Integration Tests', () => {
     }
   });
 
-  beforeEach(async () => {
-    await fixtureManager.cleanDatabase();
+  createTest({ name: 'должен быть определен', configType: TestConfigType.BASIC }, async () => {
+    expect(service).toBeDefined();
   });
 
   createTest(
-    { name: 'должен быть определен', configType: TestConfigType.INTEGRATION },
+    { name: 'должен выполнять технику с контекстом', configType: TestConfigType.BASIC },
     async () => {
-      expect(service).toBeDefined();
-    },
-  );
+      // Создаем моки пользователя и персонажа
+      const user: Partial<User> = {
+        id: '1',
+        telegramId: '123456789',
+        username: 'testuser',
+        email: 'test@example.com',
+        firstName: 'Test',
+        lastName: 'User',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
 
-  createTest(
-    { name: 'должен выполнять технику с контекстом', configType: TestConfigType.INTEGRATION },
-    async () => {
-      const user = await fixtureManager.createUser({});
-      const character = await fixtureManager.createCharacter({ user: user });
+      const character: Partial<Character> = {
+        id: 1,
+        name: 'Тестовый персонаж',
+        fullName: 'Тестовый персонаж Полное имя',
+        age: 25,
+        gender: CharacterGender.FEMALE,
+        archetype: CharacterArchetype.HERO,
+        biography: 'Тестовая биография',
+        appearance: 'Тестовое описание внешности',
+        personality: {
+          traits: ['дружелюбный'],
+          hobbies: ['чтение'],
+          fears: ['темнота'],
+          values: ['честность'],
+          musicTaste: ['поп'],
+          strengths: ['эмпатия'],
+          weaknesses: ['нетерпеливость'],
+        },
+        user: user as User,
+        userId: user.id,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
 
       const emotionalState: IEmotionalState = {
         primary: 'neutral',
@@ -99,8 +123,8 @@ createTestSuite('TechniqueExecutorService Integration Tests', () => {
         current: 'neutral',
       };
       const techniqueContext: ITechniqueContext = {
-        user: user,
-        character: character,
+        user: user as User,
+        character: character as Character,
         messageContent: 'Тестовое сообщение',
         currentPhase: TechniquePhase.EXECUTION,
         previousResults: [],

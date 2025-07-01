@@ -29,18 +29,19 @@ export class ActionResourceService extends BaseService {
         this.getDefaultResourceCost(context.action.type);
 
       if (resourceCost <= 0) {
-        return true; // Нет затрат ресурсов
+        return true; // Нет затрат ресурсов или действие восстанавливает энергию
       }
 
       // Получаем текущие потребности персонажа
       const needs = await this.needsService.getActiveNeeds(context.character.id);
 
-      // Проверяем энергию (REST)
+      // Проверяем энергию (REST) - чем выше currentValue, тем больше энергии
       const restNeed = needs.find(need => need.type === CharacterNeedType.REST);
       const currentEnergy = restNeed?.currentValue || 0;
 
       // Минимальный уровень энергии для выполнения действия
-      const minEnergyRequired = Math.max(20, resourceCost);
+      // Энергия должна быть достаточно высокой для выполнения действия
+      const minEnergyRequired = Math.max(resourceCost, 10);
 
       if (currentEnergy < minEnergyRequired) {
         this.logDebug(
@@ -257,26 +258,29 @@ export class ActionResourceService extends BaseService {
    */
   private async checkSpecificResourceRequirements(
     context: ActionContext,
-    needs: any[],
+    needs: { type: CharacterNeedType; currentValue: number }[],
   ): Promise<boolean> {
     const actionType = context.action.type;
 
     switch (actionType) {
       case ActionType.SOCIALIZATION:
-      case ActionType.INITIATE_CONVERSATION:
+      case ActionType.INITIATE_CONVERSATION: {
         // Требует минимальный уровень коммуникации
         const commNeed = needs.find(need => need.type === CharacterNeedType.COMMUNICATION);
         return (commNeed?.currentValue || 0) >= 30;
+      }
 
-      case ActionType.WORK:
+      case ActionType.WORK: {
         // Требует высокий уровень энергии
         const restNeed = needs.find(need => need.type === CharacterNeedType.REST);
         return (restNeed?.currentValue || 0) >= 60;
+      }
 
-      case ActionType.CONFESS:
+      case ActionType.CONFESS: {
         // Требует эмоциональную готовность
         const emotionalReadiness = needs.find(need => need.type === CharacterNeedType.VALIDATION);
         return (emotionalReadiness?.currentValue || 0) >= 40;
+      }
 
       default:
         return true;
@@ -392,7 +396,10 @@ export class ActionResourceService extends BaseService {
     const needsMap: Record<ActionType, string[]> = {
       [ActionType.SEND_MESSAGE]: [CharacterNeedType.COMMUNICATION],
       [ActionType.SHARE_STORY]: [CharacterNeedType.COMMUNICATION, CharacterNeedType.VALIDATION],
-      [ActionType.SHARE_EMOTION]: [CharacterNeedType.COMMUNICATION, CharacterNeedType.SOCIAL_CONNECTION],
+      [ActionType.SHARE_EMOTION]: [
+        CharacterNeedType.COMMUNICATION,
+        CharacterNeedType.SOCIAL_CONNECTION,
+      ],
       [ActionType.SHARE_THOUGHTS]: [CharacterNeedType.COMMUNICATION, CharacterNeedType.VALIDATION],
       [ActionType.CONFESS]: [CharacterNeedType.SOCIAL_CONNECTION, CharacterNeedType.VALIDATION],
       [ActionType.APOLOGIZE]: [CharacterNeedType.SOCIAL_CONNECTION],
@@ -401,8 +408,14 @@ export class ActionResourceService extends BaseService {
       [ActionType.ASK_QUESTION]: [CharacterNeedType.COMMUNICATION],
       [ActionType.EXPRESS_EMOTION]: [CharacterNeedType.COMMUNICATION],
       [ActionType.EXPRESS_NEED]: [CharacterNeedType.COMMUNICATION],
-      [ActionType.EMOTIONAL_RESPONSE]: [CharacterNeedType.COMMUNICATION, CharacterNeedType.SOCIAL_CONNECTION],
-      [ActionType.INITIATE_CONVERSATION]: [CharacterNeedType.COMMUNICATION, CharacterNeedType.SOCIAL_CONNECTION],
+      [ActionType.EMOTIONAL_RESPONSE]: [
+        CharacterNeedType.COMMUNICATION,
+        CharacterNeedType.SOCIAL_CONNECTION,
+      ],
+      [ActionType.INITIATE_CONVERSATION]: [
+        CharacterNeedType.COMMUNICATION,
+        CharacterNeedType.SOCIAL_CONNECTION,
+      ],
       [ActionType.SOCIALIZATION]: [CharacterNeedType.SOCIAL_CONNECTION],
       [ActionType.REST]: [CharacterNeedType.REST],
       [ActionType.WORK]: [CharacterNeedType.REST],

@@ -27,7 +27,7 @@ createTestSuite('Needs and Motivation Workflow Integration Tests', () => {
     const mockDataSource = createEnhancedMockDataSource();
     fixtureManager = new FixtureManager(mockDataSource);
 
-    const imports = [];
+    const imports: any[] = [];
     const baseProviders = [
       { provide: getRepositoryToken(Character), useValue: { findOne: jest.fn(), save: jest.fn() } },
       { provide: getRepositoryToken(Need), useValue: { find: jest.fn(), save: jest.fn() } },
@@ -37,7 +37,7 @@ createTestSuite('Needs and Motivation Workflow Integration Tests', () => {
       ActionService,
     ];
 
-    const providers = TestConfigurations.requiredMocksAdder(imports, baseProviders);
+    const providers = TestConfigurations.requiredMocksAdder(imports, baseProviders) as any;
 
     moduleRef = await Test.createTestingModule({
       imports,
@@ -52,6 +52,9 @@ createTestSuite('Needs and Motivation Workflow Integration Tests', () => {
   });
 
   afterEach(async () => {
+    // Сбрасываем все моки перед закрытием модуля
+    jest.clearAllMocks();
+
     if (moduleRef) {
       await moduleRef.close();
       moduleRef = null;
@@ -144,9 +147,6 @@ createTestSuite('Needs and Motivation Workflow Integration Tests', () => {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       (character as any).id = numericId2;
 
-      // Мокаем CharacterRepository, чтобы ActionService мог найти персонажа
-      jest.spyOn(_characterRepository, 'findOne').mockResolvedValue(character);
-
       // Мокаем ActionRepository для сохранения действий
       jest
         .spyOn(_actionRepository, 'save')
@@ -161,7 +161,8 @@ createTestSuite('Needs and Motivation Workflow Integration Tests', () => {
 
       expect(action).toBeDefined();
       expect(action.metadata.id).toBeDefined();
-      expect(_characterRepository.findOne).toHaveBeenCalledWith({ where: { id: numericId2 } });
+      expect(action.metadata.characterId).toBe(numericId2);
+      // createActionWithResources не использует characterRepository, поэтому не проверяем его вызов
     },
   );
 
@@ -198,8 +199,7 @@ createTestSuite('Needs and Motivation Workflow Integration Tests', () => {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       (character as any).id = numericId3;
 
-      // Мокаем CharacterRepository
-      jest.spyOn(_characterRepository, 'findOne').mockResolvedValue(character);
+      // Мокаем ActionRepository для сохранения действий
       jest
         .spyOn(_actionRepository, 'save')
         .mockImplementation(jest.fn().mockResolvedValue({ id: Math.random() }));
@@ -213,7 +213,8 @@ createTestSuite('Needs and Motivation Workflow Integration Tests', () => {
 
       expect(action).toBeDefined();
       expect(action.metadata.id).toBeDefined();
-      expect(_characterRepository.findOne).toHaveBeenCalledWith({ where: { id: numericId3 } });
+      expect(action.metadata.characterId).toBe(numericId3);
+      // createActionWithResources не использует characterRepository, поэтому не проверяем его вызов
     },
   );
 });

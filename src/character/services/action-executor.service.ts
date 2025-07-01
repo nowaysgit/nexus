@@ -68,58 +68,73 @@ export class ActionExecutorService extends BaseService implements OnModuleInit {
    * Проверяет возможность выполнения действия
    */
   async canExecute(context: ActionContext): Promise<boolean> {
-    return this.withErrorHandling(
-      `проверке возможности выполнения действия ${context.action.type}`,
-      async () => {
-        const actionType = context.action.type;
+    try {
+      const result = await this.withErrorHandling(
+        `проверке возможности выполнения действия ${context.action.type}`,
+        async () => {
+          const actionType = context.action.type;
 
-        // Проверяем поддержку типа действия
-        if (!this.getSupportedActionTypes().includes(actionType)) {
-          return false;
-        }
-
-        // Проверяем, не выполняется ли уже другое действие
-        const currentActionId = this.lifecycleService.getCurrentAction(
-          context.character.id.toString(),
-        )?.metadata?.id;
-        if (currentActionId && currentActionId !== context.action.metadata?.id) {
-          const currentAction = this.lifecycleService.getAction(currentActionId as string);
-          if (currentAction && currentAction.status === 'in_progress') {
+          // Проверяем поддержку типа действия
+          if (!this.getSupportedActionTypes().includes(actionType)) {
+            this.logDebug(`Тип действия ${actionType} не поддерживается`);
             return false;
           }
-        }
 
-        // Проверяем ресурсы
-        const hasResources = await this.resourceService.checkResourceAvailability(context);
-        if (!hasResources) {
-          return false;
-        }
+          // Проверяем, не выполняется ли уже другое действие
+          const currentActionId = this.lifecycleService.getCurrentAction(
+            context.character.id.toString(),
+          )?.metadata?.id;
+          if (currentActionId && currentActionId !== context.action.metadata?.id) {
+            const currentAction = this.lifecycleService.getAction(currentActionId as string);
+            if (currentAction && currentAction.status === 'in_progress') {
+              this.logDebug(
+                `Персонаж ${context.character.id} уже выполняет действие ${currentAction.type}`,
+              );
+              return false;
+            }
+          }
 
-        // Специфичные проверки для разных типов действий
-        switch (actionType) {
-          case ActionType.SEND_MESSAGE:
-          case ActionType.SHARE_STORY:
-          case ActionType.SHARE_THOUGHTS:
-          case ActionType.CONFESS:
-          case ActionType.APOLOGIZE:
-          case ActionType.TEASE:
-          case ActionType.JOKE:
-          case ActionType.ASK_QUESTION:
-            return this.canExecuteMessage(context);
+          // Проверяем ресурсы
+          const hasResources = await this.resourceService.checkResourceAvailability(context);
+          if (!hasResources) {
+            this.logDebug(`Недостаточно ресурсов для действия ${actionType}`);
+            return false;
+          }
 
-          case ActionType.EXPRESS_EMOTION:
-          case ActionType.SHARE_EMOTION:
-          case ActionType.EMOTIONAL_RESPONSE:
-            return this.canExecuteEmotion(context);
+          // Специфичные проверки для разных типов действий
+          switch (actionType) {
+            case ActionType.SEND_MESSAGE:
+            case ActionType.SHARE_STORY:
+            case ActionType.SHARE_THOUGHTS:
+            case ActionType.CONFESS:
+            case ActionType.APOLOGIZE:
+            case ActionType.TEASE:
+            case ActionType.JOKE:
+            case ActionType.ASK_QUESTION:
+              return this.canExecuteMessage(context);
 
-          case ActionType.EXPRESS_NEED:
-            return this.canExecuteNeed(context);
+            case ActionType.EXPRESS_EMOTION:
+            case ActionType.SHARE_EMOTION:
+            case ActionType.EMOTIONAL_RESPONSE:
+              return this.canExecuteEmotion(context);
 
-          default:
-            return true;
-        }
-      },
-    );
+            case ActionType.EXPRESS_NEED:
+              return this.canExecuteNeed(context);
+
+            default:
+              return true;
+          }
+        },
+      );
+
+      // Гарантируем, что всегда возвращаем boolean
+      return Boolean(result);
+    } catch (error) {
+      this.logError(
+        `Ошибка проверки canExecute: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return false; // При ошибке возвращаем false
+    }
   }
 
   /**

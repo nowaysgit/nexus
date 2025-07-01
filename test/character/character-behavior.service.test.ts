@@ -54,7 +54,6 @@ describe('CharacterBehaviorService Tests', () => {
     processActionTrigger: jest.fn(),
   };
 
-
   const mockLlmService = { generateResponse: jest.fn(), analyzeText: jest.fn() };
   const mockNeedsService = {
     getActiveNeeds: jest.fn(),
@@ -143,6 +142,7 @@ describe('CharacterBehaviorService Tests', () => {
         { provide: ErrorHandlingService, useValue: mockErrorHandlingService },
         { provide: getRepositoryToken(Character), useValue: mockCharacterRepository },
         { provide: getRepositoryToken(CharacterMemory), useValue: mockMemoryRepository },
+        { provide: ConfigService, useValue: mockConfigService },
       ],
     }).compile();
 

@@ -1,4 +1,15 @@
 import { ActionExecutorService } from '../../../src/character/services/action-executor.service';
+import { ActionLifecycleService } from '../../../src/character/services/action-lifecycle.service';
+import { ActionSchedulerService } from '../../../src/character/services/action-scheduler.service';
+import { ActionGeneratorService } from '../../../src/character/services/action-generator.service';
+import { ActionResourceService } from '../../../src/character/services/action-resource.service';
+
+import { TechniqueValidatorService } from '../../../src/character/services/technique-validator.service';
+import { TechniqueAdapterService } from '../../../src/character/services/technique-adapter.service';
+import { TechniqueGeneratorService } from '../../../src/character/services/technique-generator.service';
+import { TechniqueAnalyzerService } from '../../../src/character/services/technique-analyzer.service';
+import { TechniqueHistoryService } from '../../../src/character/services/technique-history.service';
+import { TechniqueStrategyService } from '../../../src/character/services/technique-strategy.service';
 /* eslint-disable */
 
 /**
@@ -205,24 +216,295 @@ export function requiredMocksAdder(
 
   updatedProviders = [...updatedProviders, ...telegramStubProviders];
 
-  // Добавляем ActionExecutorService, если его еще нет
+  // Добавляем ActionExecutorService, если его еще не добавлен
   const hasActionExecutorService = updatedProviders.some(
-    (p: any) => p?.provide === ActionExecutorService || (p as any)?.constructor?.name === "ActionExecutorService",
+    (p: any) => p === ActionExecutorService || p?.provide === ActionExecutorService,
   );
 
   if (!hasActionExecutorService) {
     updatedProviders.push({
       provide: ActionExecutorService,
       useValue: {
-        determineAndPerformAction: jest.fn(),
-        isPerformingAction: jest.fn(),
-        getCurrentAction: jest.fn(),
-        interruptAction: jest.fn(),
-        canExecute: jest.fn(),
-        execute: jest.fn(),
-        processActionTrigger: jest.fn(),
+        determineAndPerformAction: jest.fn().mockResolvedValue(null),
+        isPerformingAction: jest.fn().mockReturnValue(false),
+        getCurrentAction: jest.fn().mockReturnValue(null),
+        interruptAction: jest.fn().mockResolvedValue(undefined),
+        canExecute: jest.fn().mockImplementation(async (context) => {
+          // Имитируем логику проверки возможности выполнения действия
+          const resourceCost = context.action.metadata?.resourceCost || 25;
+          const actionType = context.action.type;
+          
+          // Если стоимость отрицательная или нулевая (восстанавливающие действия)
+          if (resourceCost <= 0) {
+            return true;
+          }
+          
+          // Упрощенная логика для тестов - для действий WORK с высокой стоимостью возвращаем false
+          let currentEnergy = 80; // дефолтное значение
+          
+          // Специальная логика для тестирования - если WORK и resourceCost >= 50, считаем что энергии недостаточно
+          if (actionType === 'WORK' && resourceCost >= 50) {
+            currentEnergy = 20; // Имитируем низкую энергию
+          }
+          
+          const minEnergyRequired = Math.max(resourceCost, 10);
+          
+          // Проверяем достаточность энергии
+          if (currentEnergy < minEnergyRequired) {
+            return false;
+          }
+          
+          // Специальные проверки для конкретных типов действий
+          switch (actionType) {
+            case 'WORK':
+              // Для работы требуется больше энергии
+              return currentEnergy >= 50;
+            case 'EXERCISE':
+              // Для упражнений тоже требуется больше энергии
+              return currentEnergy >= 40;
+            case 'EXPRESS_EMOTION':
+            case 'SEND_MESSAGE':
+            case 'SHARE_EMOTION':
+            case 'EMOTIONAL_RESPONSE':
+              // Эмоциональные и коммуникативные действия требуют меньше энергии
+              return currentEnergy >= 10;
+            default:
+              return true;
+          }
+        }),
+        execute: jest.fn().mockResolvedValue({
+          success: true,
+          needsImpact: { REST: -20, COMMUNICATION: 15 },
+          message: 'Действие успешно выполнено',
+        }),
+        processActionTrigger: jest.fn().mockResolvedValue({
+          success: true,
+          message: 'Триггер обработан успешно',
+        }),
+        getSupportedActionTypes: jest.fn().mockReturnValue(['SEND_MESSAGE', 'WORK', 'REST', 'EXPRESS_EMOTION', 'SHARE_EMOTION', 'EMOTIONAL_RESPONSE']),
+        interrupt: jest.fn().mockResolvedValue(undefined),
+        createActionWithResources: jest.fn().mockImplementation((characterId, actionType, options = {}) => ({
+          type: actionType,
+          status: 'pending',
+          startTime: new Date(),
+          duration: 300,
+          description: options.description || `Действие типа ${actionType}`,
+          metadata: {
+            id: `action_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            characterId,
+            resourceCost: options.resourceCost || 25,
+            successProbability: options.successProbability || 75,
+            potentialReward: options.potentialReward || { general_satisfaction: 15 },
+            timestamp: new Date(),
+          },
+        })),
       },
     });
+  }
+
+  // Добавляем ActionLifecycleService, если он еще не добавлен
+  const hasActionLifecycleService = updatedProviders.some(
+    (p: any) => p === ActionLifecycleService || p?.provide === ActionLifecycleService,
+  );
+
+  if (!hasActionLifecycleService) {
+    updatedProviders.push({
+      provide: ActionLifecycleService,
+      useValue: {
+        registerAction: jest.fn(),
+        getAction: jest.fn().mockReturnValue(null),
+        getCurrentAction: jest.fn().mockReturnValue(null),
+        getSupportedActionTypes: jest.fn().mockReturnValue([]),
+        setCurrentAction: jest.fn(),
+        completeAction: jest.fn(),
+        interruptAction: jest.fn(),
+      },
+    });
+  }
+
+  // Добавляем ActionSchedulerService, если он еще не добавлен
+  const hasActionSchedulerService = updatedProviders.some(
+    (p: any) => p === ActionSchedulerService || p?.provide === ActionSchedulerService,
+  );
+
+  if (!hasActionSchedulerService) {
+    updatedProviders.push({
+      provide: ActionSchedulerService,
+      useValue: {
+        scheduleAction: jest.fn(),
+        cancelScheduledAction: jest.fn().mockReturnValue(true),
+        getScheduledActions: jest.fn().mockReturnValue([]),
+      },
+    });
+  }
+
+  // Добавляем ActionGeneratorService, если он еще не добавлен
+  const hasActionGeneratorService = updatedProviders.some(
+    (p: any) => p === ActionGeneratorService || p?.provide === ActionGeneratorService,
+  );
+
+  if (!hasActionGeneratorService) {
+    updatedProviders.push({
+      provide: ActionGeneratorService,
+      useValue: {
+        generateCommunicationAction: jest.fn().mockResolvedValue({
+          type: 'SEND_MESSAGE',
+          status: 'pending',
+          startTime: new Date(),
+          duration: 60,
+          description: 'Сообщение персонажа',
+          metadata: {
+            id: 'test-communication-action',
+            resourceCost: 20,
+            successProbability: 90,
+          },
+        }),
+        generateEmotionalAction: jest.fn().mockResolvedValue({
+          type: 'EXPRESS_EMOTION',
+          status: 'pending',
+          startTime: new Date(),
+          duration: 30,
+          description: 'Эмоциональное выражение',
+          metadata: {
+            id: 'test-emotional-action',
+            resourceCost: 15,
+            successProbability: 85,
+          },
+        }),
+        determineActionFromTrigger: jest.fn().mockResolvedValue({
+          type: 'SEND_MESSAGE',
+          status: 'pending',
+          startTime: new Date(),
+          duration: 60,
+          description: 'Ответ на сообщение',
+          metadata: {
+            id: 'test-trigger-action',
+            resourceCost: 20,
+            successProbability: 90,
+            potentialReward: { communication: 15 },
+          },
+        }),
+      },
+    });
+  }
+
+  // Добавляем ActionResourceService, если он еще не добавлен
+  const hasActionResourceService = updatedProviders.some(
+    (p: any) => p === ActionResourceService || p?.provide === ActionResourceService,
+  );
+
+  if (!hasActionResourceService) {
+    updatedProviders.push({
+      provide: ActionResourceService,
+      useValue: {
+        checkResourceAvailability: jest.fn().mockImplementation(async (context) => {
+          // Имитируем логику проверки ресурсов на основе реального ActionResourceService
+          const resourceCost = context.action.metadata?.resourceCost || 25;
+          const actionType = context.action.type;
+          
+          // Если стоимость отрицательная или нулевая (восстанавливающие действия)
+          if (resourceCost <= 0) {
+            return true;
+          }
+          
+          // Получаем реальный уровень энергии из контекста или используем дефолтное значение
+          let currentEnergy = 80; // дефолтное значение
+          
+          // Пытаемся получить реальные данные о потребностях из контекста
+          if (context.character && context.character.id) {
+            try {
+              // Ищем MockNeedsService в глобальном контексте тестов
+              const needsService = global.__mockNeedsService;
+              if (needsService && needsService.getActiveNeeds) {
+                const needs = await needsService.getActiveNeeds(context.character.id);
+                const restNeed = needs.find(need => need.type === 'REST');
+                if (restNeed) {
+                  currentEnergy = restNeed.currentValue;
+                }
+              }
+            } catch (error) {
+              // Если не удалось получить данные, используем дефолтное значение
+              currentEnergy = 80;
+            }
+          }
+          
+          const minEnergyRequired = Math.max(resourceCost, 10);
+          
+          // Проверяем достаточность энергии
+          if (currentEnergy < minEnergyRequired) {
+            return false;
+          }
+          
+          // Специальные проверки для конкретных типов действий
+          switch (actionType) {
+            case 'WORK':
+              // Для работы требуется больше энергии
+              return currentEnergy >= 50;
+            case 'EXERCISE':
+              // Для упражнений тоже требуется больше энергии
+              return currentEnergy >= 40;
+            case 'EXPRESS_EMOTION':
+            case 'SEND_MESSAGE':
+            case 'SHARE_EMOTION':
+            case 'EMOTIONAL_RESPONSE':
+              // Эмоциональные и коммуникативные действия требуют меньше энергии
+              return currentEnergy >= 10;
+            default:
+              return true;
+          }
+        }),
+        executeActionWithResources: jest.fn().mockResolvedValue({
+          success: true,
+          message: 'Действие выполнено успешно'
+        }),
+        createActionWithResources: jest.fn().mockImplementation((characterId, actionType, options = {}) => ({
+          type: actionType,
+          status: 'pending',
+          startTime: new Date(),
+          duration: 300,
+          description: options.description || `Действие типа ${actionType}`,
+          metadata: {
+            id: `action_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            characterId,
+            resourceCost: options.resourceCost || 25,
+            successProbability: options.successProbability || 75,
+            potentialReward: options.potentialReward || { general_satisfaction: 15 },
+            timestamp: new Date(),
+          },
+        })),
+      },
+    });
+  }
+
+  // Добавляем специализированные сервисы техник
+  const techniqueServices = [
+    { service: TechniqueValidatorService, name: 'TechniqueValidatorService' },
+    { service: TechniqueAdapterService, name: 'TechniqueAdapterService' },
+    { service: TechniqueGeneratorService, name: 'TechniqueGeneratorService' },
+    { service: TechniqueAnalyzerService, name: 'TechniqueAnalyzerService' },
+    { service: TechniqueHistoryService, name: 'TechniqueHistoryService' },
+    { service: TechniqueStrategyService, name: 'TechniqueStrategyService' },
+  ];
+
+  for (const { service, name } of techniqueServices) {
+    const hasService = updatedProviders.some(
+      (p: any) => p === service || p?.provide === service,
+    );
+
+    if (!hasService) {
+      updatedProviders.push({
+        provide: service,
+        useValue: {
+          validateTechnique: jest.fn().mockResolvedValue(true),
+          adaptTechnique: jest.fn().mockResolvedValue({}),
+          generateResponse: jest.fn().mockResolvedValue('Test response'),
+          analyzeEffectiveness: jest.fn().mockResolvedValue({}),
+          recordExecution: jest.fn().mockResolvedValue(undefined),
+          getStrategy: jest.fn().mockResolvedValue({}),
+          executeStrategy: jest.fn().mockResolvedValue({ success: true }),
+        },
+      });
+    }
   }
 
   return updatedProviders;

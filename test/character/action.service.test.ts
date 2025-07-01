@@ -5,17 +5,12 @@ import {
   ActionTriggerContext,
   ActionResult,
 } from '../../src/character/services/action.service';
-import { ActionExecutorService } from '../../src/character/services/action-executor.service';
-import { ActionLifecycleService } from '../../src/character/services/action-lifecycle.service';
-import { ActionSchedulerService } from '../../src/character/services/action-scheduler.service';
-import { ActionGeneratorService } from '../../src/character/services/action-generator.service';
-import { ActionResourceService } from '../../src/character/services/action-resource.service';
 import { Character } from '../../src/character/entities/character.entity';
 import { ActionType } from '../../src/character/enums/action-type.enum';
 import { CharacterNeedType } from '../../src/character/enums/character-need-type.enum';
 import { CharacterArchetype } from '../../src/character/enums/character-archetype.enum';
-import { IMotivation } from '../../src/character/interfaces/needs.interfaces';
 import { CharacterAction } from '../../src/character/interfaces/behavior.interfaces';
+import { IMotivation } from '../../src/character/interfaces/needs.interfaces';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 // Определяем интерфейсы для моков сервисов

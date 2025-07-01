@@ -1,7 +1,7 @@
 {
   "p": {
     "d": {
-      "p": "/nexus",
+      "p": "/",
       "t": "d",
       "c": [
         {
@@ -9,46 +9,16 @@
           "t": "d",
           "c": [
             {
-              "p": "/main.ts",
-              "t": "f",
-              "e": ["bootstrap"],
-              "d": "Точка входа приложения"
-            },
-            {
               "p": "/app.module.ts",
               "t": "f",
               "e": ["AppModule"],
-              "d": "Корневой модуль приложения"
+              "d": "Основной модуль приложения"
             },
             {
-              "p": "/auth",
-              "t": "d",
-              "c": [
-                {
-                  "p": "/services/auth.service.ts",
-                  "t": "f",
-                  "e": ["AuthService"],
-                  "d": "Сервис аутентификации и авторизации"
-                }
-              ]
-            },
-            {
-              "p": "/cache",
-              "t": "d",
-              "c": [
-                {
-                  "p": "/cache.module.ts",
-                  "t": "f",
-                  "e": ["CacheModule"],
-                  "d": "Модуль кеширования"
-                },
-                {
-                  "p": "/cache.service.ts",
-                  "t": "f",
-                  "e": ["CacheService"],
-                  "d": "Сервис для работы с кешем Redis"
-                }
-              ]
+              "p": "/main.ts",
+              "t": "f",
+              "e": ["bootstrap"],
+              "d": "Точка входа в приложение"
             },
             {
               "p": "/character",
@@ -58,251 +28,107 @@
                   "p": "/character.module.ts",
                   "t": "f",
                   "e": ["CharacterModule"],
-                  "d": "Основной модуль персонажей"
-                },
-                {
-                  "p": "/story.module.ts",
-                  "t": "f",
-                  "e": ["StoryModule"],
-                  "d": "Модуль для работы с историями"
-                },
-                {
-                  "p": "/context-compression.module.ts",
-                  "t": "f",
-                  "e": ["ContextCompressionModule"],
-                  "d": "Модуль сжатия контекста"
-                },
-                {
-                  "p": "/message-processing.module.ts",
-                  "t": "f",
-                  "e": ["MessageProcessingModule"],
-                  "d": "Модуль обработки сообщений"
+                  "d": "Модуль персонажей"
                 },
                 {
                   "p": "/services",
                   "t": "d",
                   "c": [
                     {
-                      "p": "/character.service.ts",
+                      "p": "/action-executor.service.ts",
                       "t": "f",
-                      "e": ["CharacterService"],
-                      "d": "Основной сервис управления персонажами"
+                      "e": ["ActionExecutorService"],
+                      "d": "Координирующий сервис для управления действиями персонажей - основной интерфейс"
                     },
                     {
-                      "p": "/character-management.service.ts",
+                      "p": "/action-lifecycle.service.ts",
                       "t": "f",
-                      "e": ["CharacterManagementService"],
-                      "d": "Унифицированный сервис управления персонажами"
+                      "e": ["ActionLifecycleService"],
+                      "d": "Сервис управления жизненным циклом действий"
                     },
                     {
-                      "p": "/character-behavior.service.ts",
+                      "p": "/action-scheduler.service.ts",
                       "t": "f",
-                      "e": ["CharacterBehaviorService"],
-                      "d": "Координирующий сервис поведения персонажей (рефакторинг завершен)"
+                      "e": ["ActionSchedulerService"],
+                      "d": "Сервис планирования и управления расписанием действий"
                     },
                     {
-                      "p": "/emotional-behavior.service.ts",
+                      "p": "/action-generator.service.ts",
                       "t": "f",
-                      "e": ["EmotionalBehaviorService", "FrustrationLevel"],
-                      "d": "Специализированный сервис эмоционального поведения и фрустрации"
+                      "e": ["ActionGeneratorService"],
+                      "d": "Сервис генерации действий на основе триггеров"
                     },
                     {
-                      "p": "/message-behavior.service.ts",
+                      "p": "/action-resource.service.ts",
                       "t": "f",
-                      "e": ["MessageBehaviorService"],
-                      "d": "Специализированный сервис обработки поведения в сообщениях"
-                    },
-                    {
-                      "p": "/behavior-pattern.service.ts",
-                      "t": "f",
-                      "e": ["BehaviorPatternService"],
-                      "d": "Сервис анализа поведенческих паттернов"
-                    },
-                    {
-                      "p": "/frustration-management.service.ts",
-                      "t": "f",
-                      "e": ["FrustrationManagementService"],
-                      "d": "Сервис управления фрустрацией персонажей"
-                    },
-                    {
-                      "p": "/character-scheduler.service.ts",
-                      "t": "f",
-                      "e": ["CharacterSchedulerService"],
-                      "d": "Сервис фоновых cron-задач для персонажей"
-                    },
-                    {
-                      "p": "/character-monitoring.service.ts",
-                      "t": "f",
-                      "e": ["CharacterMonitoringService"],
-                      "d": "Сервис мониторинга состояния персонажей"
-                    },
-                    {
-                      "p": "/character-response.service.ts",
-                      "t": "f",
-                      "e": ["CharacterResponseService"],
-                      "d": "Сервис генерации ответов персонажей"
+                      "e": ["ActionResourceService"],
+                      "d": "Сервис управления ресурсами действий"
                     },
                     {
                       "p": "/action.service.ts",
                       "t": "f",
                       "e": ["ActionService"],
-                      "d": "Сервис управления действиями персонажей (требует разделения)"
-                    },
-                    {
-                      "p": "/emotional-state.service.ts",
-                      "t": "f",
-                      "e": ["EmotionalStateService"],
-                      "d": "Сервис управления эмоциональным состоянием"
-                    },
-                    {
-                      "p": "/memory.service.ts",
-                      "t": "f",
-                      "e": ["MemoryService"],
-                      "d": "Сервис управления памятью персонажей"
-                    },
-                    {
-                      "p": "/needs.service.ts",
-                      "t": "f",
-                      "e": ["NeedsService"],
-                      "d": "Сервис управления потребностями персонажей"
-                    },
-                    {
-                      "p": "/motivation.service.ts",
-                      "t": "f",
-                      "e": ["MotivationService"],
-                      "d": "Сервис управления мотивацией персонажей"
-                    },
-                    {
-                      "p": "/manipulation.service.ts",
-                      "t": "f",
-                      "e": ["ManipulationService"],
-                      "d": "Сервис психологических манипуляций"
+                      "d": "Фасад для обратной совместимости - делегирует в ActionExecutorService"
                     },
                     {
                       "p": "/technique-executor.service.ts",
                       "t": "f",
                       "e": ["TechniqueExecutorService"],
-                      "d": "Сервис выполнения манипулятивных техник"
+                      "d": "Координирующий сервис для выполнения манипулятивных техник"
                     },
                     {
-                      "p": "/specialization.service.ts",
+                      "p": "/technique-strategy.service.ts",
                       "t": "f",
-                      "e": ["SpecializationService"],
-                      "d": "Сервис специализации персонажей"
+                      "e": ["TechniqueStrategyService"],
+                      "d": "Сервис управления стратегиями выполнения техник"
                     },
                     {
-                      "p": "/story.service.ts",
+                      "p": "/technique-validator.service.ts",
                       "t": "f",
-                      "e": ["StoryService"],
-                      "d": "Сервис управления историями"
+                      "e": ["TechniqueValidatorService"],
+                      "d": "Сервис валидации выполнения техник"
                     },
                     {
-                      "p": "/message-analysis.service.ts",
+                      "p": "/technique-analyzer.service.ts",
                       "t": "f",
-                      "e": ["MessageAnalysisService"],
-                      "d": "Сервис анализа сообщений"
+                      "e": ["TechniqueAnalyzerService"],
+                      "d": "Сервис анализа результатов техник"
+                    },
+                    {
+                      "p": "/technique-generator.service.ts",
+                      "t": "f",
+                      "e": ["TechniqueGeneratorService"],
+                      "d": "Сервис генерации техник"
+                    },
+                    {
+                      "p": "/technique-history.service.ts",
+                      "t": "f",
+                      "e": ["TechniqueHistoryService"],
+                      "d": "Сервис истории выполнения техник"
+                    },
+                    {
+                      "p": "/technique-adapter.service.ts",
+                      "t": "f",
+                      "e": ["TechniqueAdapterService"],
+                      "d": "Сервис адаптации техник под контекст"
+                    },
+                    {
+                      "p": "/character-behavior.service.ts",
+                      "t": "f",
+                      "e": ["CharacterBehaviorService"],
+                      "d": "Основной сервис поведения персонажей"
+                    },
+                    {
+                      "p": "/emotional-behavior.service.ts",
+                      "t": "f",
+                      "e": ["EmotionalBehaviorService"],
+                      "d": "Сервис эмоционального поведения"
                     },
                     {
                       "p": "/message-processing-coordinator.service.ts",
                       "t": "f",
-                      "e": ["MessageProcessingCoordinator"],
+                      "e": ["MessageProcessingCoordinatorService"],
                       "d": "Координатор обработки сообщений"
-                    },
-                    {
-                      "p": "/context-compression.service.ts",
-                      "t": "f",
-                      "e": ["ContextCompressionService"],
-                      "d": "Сервис сжатия контекста диалогов"
-                    }
-                  ]
-                },
-                {
-                  "p": "/entities",
-                  "t": "d",
-                  "c": [
-                    {
-                      "p": "/character.entity.ts",
-                      "t": "f",
-                      "e": ["Character"],
-                      "d": "Сущность персонажа"
-                    },
-                    {
-                      "p": "/character-memory.entity.ts",
-                      "t": "f",
-                      "e": ["CharacterMemory"],
-                      "d": "Сущность памяти персонажа"
-                    },
-                    {
-                      "p": "/need.entity.ts",
-                      "t": "f",
-                      "e": ["Need"],
-                      "d": "Сущность потребности"
-                    },
-                    {
-                      "p": "/action.entity.ts",
-                      "t": "f",
-                      "e": ["Action"],
-                      "d": "Сущность действия персонажа"
-                    },
-                    {
-                      "p": "/character-motivation.entity.ts",
-                      "t": "f",
-                      "e": ["CharacterMotivation"],
-                      "d": "Сущность мотивации персонажа"
-                    },
-                    {
-                      "p": "/manipulation-technique.entity.ts",
-                      "t": "f",
-                      "e": ["TechniqueExecution", "UserManipulationProfile"],
-                      "d": "Сущности манипулятивных техник"
-                    },
-                    {
-                      "p": "/story-plan.entity.ts",
-                      "t": "f",
-                      "e": ["StoryPlan", "StoryMilestone"],
-                      "d": "Сущности планирования историй"
-                    },
-                    {
-                      "p": "/story-event.entity.ts",
-                      "t": "f",
-                      "e": ["StoryEvent"],
-                      "d": "Сущность событий истории"
-                    }
-                  ]
-                },
-                {
-                  "p": "/controllers",
-                  "t": "d",
-                  "c": [
-                    {
-                      "p": "/character.controller.ts",
-                      "t": "f",
-                      "e": ["CharacterController"],
-                      "d": "Контроллер персонажей"
-                    },
-                    {
-                      "p": "/story.controller.ts",
-                      "t": "f",
-                      "e": ["StoryController"],
-                      "d": "Контроллер историй"
-                    }
-                  ]
-                },
-                {
-                  "p": "/repositories",
-                  "t": "d",
-                  "c": [
-                    {
-                      "p": "/technique-execution.repository.ts",
-                      "t": "f",
-                      "e": ["TechniqueExecutionRepository"],
-                      "d": "Репозиторий выполнения техник"
-                    },
-                    {
-                      "p": "/user-manipulation-profile.repository.ts",
-                      "t": "f",
-                      "e": ["UserManipulationProfileRepository"],
-                      "d": "Репозиторий профилей манипуляций"
                     }
                   ]
                 }
@@ -313,10 +139,46 @@
               "t": "d",
               "c": [
                 {
-                  "p": "/common.module.ts",
-                  "t": "f",
-                  "e": ["CommonModule"],
-                  "d": "Общий модуль"
+                  "p": "/utils",
+                  "t": "d",
+                  "c": [
+                    {
+                      "p": "/error.utils.ts",
+                      "t": "f",
+                      "e": ["getErrorMessage"],
+                      "d": "Утилиты обработки ошибок - внедрены в production код"
+                    },
+                    {
+                      "p": "/error-handling",
+                      "t": "d",
+                      "c": [
+                        {
+                          "p": "/error-handling.service.ts",
+                          "t": "f",
+                          "e": ["ErrorHandlingService"],
+                          "d": "Унифицированный сервис обработки ошибок"
+                        },
+                        {
+                          "p": "/error-handling.utils.ts",
+                          "t": "f",
+                          "e": ["withErrorHandling"],
+                          "d": "Утилиты обработки ошибок без DI"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "p": "/abstractions",
+                  "t": "d",
+                  "c": [
+                    {
+                      "p": "/pattern-utils.ts",
+                      "t": "f",
+                      "e": ["getErrorMessage", "createNotFoundError", "ErrorPatternHandler"],
+                      "d": "Утилиты паттернов и обработки ошибок - внедрены в production"
+                    }
+                  ]
                 },
                 {
                   "p": "/base",
@@ -326,171 +188,63 @@
                       "p": "/base.service.ts",
                       "t": "f",
                       "e": ["BaseService"],
-                      "d": "Базовый абстрактный класс для всех сервисов с обработкой ошибок"
+                      "d": "Базовый класс для всех сервисов"
                     }
                   ]
-                },
+                }
+              ]
+            },
+            {
+              "p": "/telegram",
+              "t": "d",
+              "c": [
                 {
-                  "p": "/utils/error-handling",
+                  "p": "/handlers",
                   "t": "d",
                   "c": [
                     {
-                      "p": "/error-handling.module.ts",
+                      "p": "/callback.handler.ts",
                       "t": "f",
-                      "e": ["ErrorHandlingModule"],
-                      "d": "Модуль обработки ошибок"
+                      "e": ["CallbackHandler"],
+                      "d": "Обработчик callback запросов - использует getErrorMessage"
                     },
                     {
-                      "p": "/error-handling.service.ts",
+                      "p": "/message.handler.ts",
                       "t": "f",
-                      "e": ["ErrorHandlingService"],
-                      "d": "Сервис обработки ошибок"
+                      "e": ["MessageHandler"],
+                      "d": "Обработчик сообщений - использует getErrorMessage"
+                    },
+                    {
+                      "p": "/command.handler.ts",
+                      "t": "f",
+                      "e": ["CommandHandler"],
+                      "d": "Обработчик команд - использует getErrorMessage"
                     }
                   ]
-                }
-              ]
-            },
-            {
-              "p": "/dialog",
-              "t": "d",
-              "c": [
-                {
-                  "p": "/dialog.module.ts",
-                  "t": "f",
-                  "e": ["DialogModule"],
-                  "d": "Модуль диалогов"
                 },
                 {
-                  "p": "/services/dialog.service.ts",
-                  "t": "f",
-                  "e": ["DialogService"],
-                  "d": "Сервис управления диалогами"
-                },
-                {
-                  "p": "/entities/dialog.entity.ts",
-                  "t": "f",
-                  "e": ["Dialog"],
-                  "d": "Сущность диалога"
-                },
-                {
-                  "p": "/entities/message.entity.ts",
-                  "t": "f",
-                  "e": ["Message"],
-                  "d": "Сущность сообщения"
-                },
-                {
-                  "p": "/controllers/dialog.controller.ts",
-                  "t": "f",
-                  "e": ["DialogController"],
-                  "d": "Контроллер диалогов"
-                }
-              ]
-            },
-            {
-              "p": "/infrastructure",
-              "t": "d",
-              "c": [
-                {
-                  "p": "/infrastructure.module.ts",
-                  "t": "f",
-                  "e": ["InfrastructureModule"],
-                  "d": "Модуль инфраструктуры"
-                },
-                {
-                  "p": "/api-key.service.ts",
-                  "t": "f",
-                  "e": ["ApiKeyService"],
-                  "d": "Сервис управления API ключами"
-                },
-                {
-                  "p": "/encryption.service.ts",
-                  "t": "f",
-                  "e": ["EncryptionService"],
-                  "d": "Сервис шифрования"
-                }
-              ]
-            },
-            {
-              "p": "/llm",
-              "t": "d",
-              "c": [
-                {
-                  "p": "/llm.module.ts",
-                  "t": "f",
-                  "e": ["LLMModule"],
-                  "d": "Модуль языковых моделей"
-                },
-                {
-                  "p": "/services/llm.service.ts",
-                  "t": "f",
-                  "e": ["LLMService"],
-                  "d": "Основной сервис языковых моделей"
-                },
-                {
-                  "p": "/services/llm-provider-manager.service.ts",
-                  "t": "f",
-                  "e": ["LLMProviderManagerService"],
-                  "d": "Менеджер провайдеров LLM"
-                },
-                {
-                  "p": "/providers/llama-provider.service.ts",
-                  "t": "f",
-                  "e": ["LlamaProviderService"],
-                  "d": "Провайдер Llama"
-                },
-                {
-                  "p": "/providers/openai.provider.service.ts",
-                  "t": "f",
-                  "e": ["OpenAIProviderService"],
-                  "d": "Провайдер OpenAI"
-                },
-                {
-                  "p": "/providers/openai-core.service.ts",
-                  "t": "f",
-                  "e": ["OpenAICoreService"],
-                  "d": "Базовый сервис OpenAI"
-                }
-              ]
-            },
-            {
-              "p": "/logging",
-              "t": "d",
-              "c": [
-                {
-                  "p": "/logging.module.ts",
-                  "t": "f",
-                  "e": ["LoggingModule"],
-                  "d": "Модуль логирования"
-                },
-                {
-                  "p": "/log.service.ts",
-                  "t": "f",
-                  "e": ["LogService"],
-                  "d": "Сервис логирования"
-                },
-                {
-                  "p": "/rollbar.service.ts",
-                  "t": "f",
-                  "e": ["RollbarService"],
-                  "d": "Сервис интеграции с Rollbar"
-                }
-              ]
-            },
-            {
-              "p": "/message-queue",
-              "t": "d",
-              "c": [
-                {
-                  "p": "/message-queue.module.ts",
-                  "t": "f",
-                  "e": ["MessageQueueModule"],
-                  "d": "Модуль очереди сообщений"
-                },
-                {
-                  "p": "/message-queue.service.ts",
-                  "t": "f",
-                  "e": ["MessageQueueService"],
-                  "d": "Сервис очереди сообщений"
+                  "p": "/services",
+                  "t": "d",
+                  "c": [
+                    {
+                      "p": "/message.service.ts",
+                      "t": "f",
+                      "e": ["MessageService"],
+                      "d": "Сервис сообщений - использует getErrorMessage"
+                    },
+                    {
+                      "p": "/telegram.service.ts",
+                      "t": "f",
+                      "e": ["TelegramService"],
+                      "d": "Основной сервис Telegram - использует getErrorMessage"
+                    },
+                    {
+                      "p": "/telegram-core.service.ts",
+                      "t": "f",
+                      "e": ["TelegramCoreService"],
+                      "d": "Ядро Telegram сервиса - использует getErrorMessage"
+                    }
+                  ]
                 }
               ]
             },
@@ -502,181 +256,7 @@
                   "p": "/monitoring.service.ts",
                   "t": "f",
                   "e": ["MonitoringService"],
-                  "d": "Сервис мониторинга"
-                }
-              ]
-            },
-            {
-              "p": "/prompt-template",
-              "t": "d",
-              "c": [
-                {
-                  "p": "/prompt-template.module.ts",
-                  "t": "f",
-                  "e": ["PromptTemplateModule"],
-                  "d": "Модуль шаблонов промптов"
-                },
-                {
-                  "p": "/prompt-template.service.ts",
-                  "t": "f",
-                  "e": ["PromptTemplateService"],
-                  "d": "Сервис управления шаблонами промптов"
-                }
-              ]
-            },
-            {
-              "p": "/telegram",
-              "t": "d",
-              "c": [
-                {
-                  "p": "/telegram.module.ts",
-                  "t": "f",
-                  "e": ["TelegramModule"],
-                  "d": "Модуль Telegram интеграции"
-                },
-                {
-                  "p": "/telegram.service.ts",
-                  "t": "f",
-                  "e": ["TelegramService"],
-                  "d": "Основной сервис Telegram"
-                },
-                {
-                  "p": "/telegram.update.ts",
-                  "t": "f",
-                  "e": ["TelegramUpdate"],
-                  "d": "Обработчик обновлений Telegram"
-                },
-                {
-                  "p": "/services",
-                  "t": "d",
-                  "c": [
-                    {
-                      "p": "/telegram-core.service.ts",
-                      "t": "f",
-                      "e": ["TelegramCoreService"],
-                      "d": "Базовый сервис Telegram"
-                    },
-                    {
-                      "p": "/access-control.service.ts",
-                      "t": "f",
-                      "e": ["AccessControlService"],
-                      "d": "Сервис контроля доступа"
-                    },
-                    {
-                      "p": "/character-creation.service.ts",
-                      "t": "f",
-                      "e": ["CharacterCreationService"],
-                      "d": "Сервис создания персонажей в Telegram"
-                    },
-                    {
-                      "p": "/message.service.ts",
-                      "t": "f",
-                      "e": ["MessageService"],
-                      "d": "Сервис обработки сообщений Telegram"
-                    },
-                    {
-                      "p": "/message-formatter.service.ts",
-                      "t": "f",
-                      "e": ["MessageFormatterService"],
-                      "d": "Сервис форматирования сообщений"
-                    },
-                    {
-                      "p": "/keyboard-formatter.service.ts",
-                      "t": "f",
-                      "e": ["KeyboardFormatterService"],
-                      "d": "Сервис форматирования клавиатур"
-                    },
-                    {
-                      "p": "/telegram-initialization.service.ts",
-                      "t": "f",
-                      "e": ["TelegramInitializationService"],
-                      "d": "Сервис инициализации Telegram"
-                    }
-                  ]
-                },
-                {
-                  "p": "/handlers",
-                  "t": "d",
-                  "c": [
-                    {
-                      "p": "/message.handler.ts",
-                      "t": "f",
-                      "e": ["MessageHandler"],
-                      "d": "Обработчик сообщений"
-                    },
-                    {
-                      "p": "/command.handler.ts",
-                      "t": "f",
-                      "e": ["CommandHandler"],
-                      "d": "Обработчик команд"
-                    },
-                    {
-                      "p": "/callback.handler.ts",
-                      "t": "f",
-                      "e": ["CallbackHandler"],
-                      "d": "Обработчик callback запросов"
-                    }
-                  ]
-                },
-                {
-                  "p": "/entities",
-                  "t": "d",
-                  "c": [
-                    {
-                      "p": "/character-settings.entity.ts",
-                      "t": "f",
-                      "e": ["TelegramCharacterSettings"],
-                      "d": "Настройки персонажей Telegram"
-                    }
-                  ]
-                }
-              ]
-            },
-            {
-              "p": "/user",
-              "t": "d",
-              "c": [
-                {
-                  "p": "/user.module.ts",
-                  "t": "f",
-                  "e": ["UserModule"],
-                  "d": "Модуль пользователей"
-                },
-                {
-                  "p": "/user.controller.ts",
-                  "t": "f",
-                  "e": ["UserController"],
-                  "d": "Контроллер пользователей"
-                },
-                {
-                  "p": "/services/user.service.ts",
-                  "t": "f",
-                  "e": ["UserService"],
-                  "d": "Сервис управления пользователями"
-                },
-                {
-                  "p": "/entities",
-                  "t": "d",
-                  "c": [
-                    {
-                      "p": "/user.entity.ts",
-                      "t": "f",
-                      "e": ["User"],
-                      "d": "Сущность пользователя"
-                    },
-                    {
-                      "p": "/access-key.entity.ts",
-                      "t": "f",
-                      "e": ["AccessKey"],
-                      "d": "Сущность ключа доступа"
-                    },
-                    {
-                      "p": "/psychological-test.entity.ts",
-                      "t": "f",
-                      "e": ["PsychologicalTest"],
-                      "d": "Сущность психологического теста"
-                    }
-                  ]
+                  "d": "Сервис мониторинга - использует getErrorMessage"
                 }
               ]
             },
@@ -685,168 +265,54 @@
               "t": "d",
               "c": [
                 {
-                  "p": "/validation.module.ts",
-                  "t": "f",
-                  "e": ["ValidationModule"],
-                  "d": "Модуль валидации"
-                },
-                {
-                  "p": "/services/validation.service.ts",
-                  "t": "f",
-                  "e": ["ValidationService"],
-                  "d": "Сервис валидации"
-                },
-                {
-                  "p": "/services/validation-error-handler.service.ts",
-                  "t": "f",
-                  "e": ["ValidationErrorHandlerService"],
-                  "d": "Сервис обработки ошибок валидации"
+                  "p": "/services",
+                  "t": "d",
+                  "c": [
+                    {
+                      "p": "/validation.service.ts",
+                      "t": "f",
+                      "e": ["ValidationService"],
+                      "d": "Сервис валидации - использует getErrorMessage"
+                    },
+                    {
+                      "p": "/validation-error-handler.service.ts",
+                      "t": "f",
+                      "e": ["ValidationErrorHandlerService"],
+                      "d": "Обработчик ошибок валидации - использует getErrorMessage"
+                    }
+                  ]
                 }
               ]
-            }
-          ]
-        },
-        {
-          "p": "/lib",
-          "t": "d",
-          "c": [
+            },
             {
-              "p": "/tester",
+              "p": "/message-queue",
               "t": "d",
               "c": [
                 {
-                  "p": "/index.ts",
+                  "p": "/message-queue.service.ts",
                   "t": "f",
-                  "e": ["Tester", "TestConfigType", "createTest", "createTestSuite", "createBasicTest"],
-                  "d": "Основной экспорт библиотеки тестирования"
-                },
-                {
-                  "p": "/test-suite.ts",
-                  "t": "f",
-                  "e": ["TestSuite"],
-                  "d": "Класс тестового набора"
-                },
-                {
-                  "p": "/entities.ts",
-                  "t": "f",
-                  "e": ["ALL_TEST_ENTITIES"],
-                  "d": "Все тестовые сущности"
-                },
-                {
-                  "p": "/utils",
-                  "t": "d",
-                  "c": [
-                    {
-                      "p": "/test-module-builder.ts",
-                      "t": "f",
-                      "e": ["TestModuleBuilder"],
-                      "d": "Построитель тестовых модулей"
-                    },
-                    {
-                      "p": "/test-functions.ts",
-                      "t": "f",
-                      "e": ["createTest", "createTestSuite", "createBasicTest"],
-                      "d": "Функции создания тестов"
-                    },
-                    {
-                      "p": "/data-source.ts",
-                      "t": "f",
-                      "e": ["createTestDataSource", "createEnhancedMockDataSource"],
-                      "d": "Создание источников данных для тестов"
-                    },
-                    {
-                      "p": "/db-connection-checker.ts",
-                      "t": "f",
-                      "e": ["checkDatabaseConnection", "waitForDatabaseConnection"],
-                      "d": "Проверка подключения к БД"
-                    },
-                    {
-                      "p": "/db-connection-handler.ts",
-                      "t": "f",
-                      "e": ["DbConnectionHandler"],
-                      "d": "Обработчик подключений к БД"
-                    }
-                  ]
-                },
-                {
-                  "p": "/fixtures",
-                  "t": "d",
-                  "c": [
-                    {
-                      "p": "/fixture-manager.ts",
-                      "t": "f",
-                      "e": ["FixtureManager"],
-                      "d": "Менеджер тестовых фикстур"
-                    }
-                  ]
-                },
-                {
-                  "p": "/mocks",
-                  "t": "d",
-                  "c": [
-                    {
-                      "p": "/mock-typeorm.module.ts",
-                      "t": "f",
-                      "e": ["MockTypeOrmModule"],
-                      "d": "Мок модуль TypeORM"
-                    },
-                    {
-                      "p": "/mock-logging.module.ts",
-                      "t": "f",
-                      "e": ["MockLoggingModule"],
-                      "d": "Мок модуль логирования"
-                    },
-                    {
-                      "p": "/mock-telegram.module.ts",
-                      "t": "f",
-                      "e": ["MockTelegramModule"],
-                      "d": "Мок модуль Telegram"
-                    },
-                    {
-                      "p": "/mock-monitoring.module.ts",
-                      "t": "f",
-                      "e": ["MockMonitoringModule"],
-                      "d": "Мок модуль мониторинга"
-                    },
-                    {
-                      "p": "/log.service.mock.ts",
-                      "t": "f",
-                      "e": ["MockLogService"],
-                      "d": "Мок сервис логирования"
-                    }
-                  ]
-                },
-                {
-                  "p": "/test-configurations",
-                  "t": "d",
-                  "c": [
-                    {
-                      "p": "/index.ts",
-                      "t": "f",
-                      "e": ["TestConfigurations"],
-                      "d": "Основные конфигурации тестов"
-                    }
-                  ]
+                  "e": ["MessageQueueService"],
+                  "d": "Сервис очереди сообщений - использует getErrorMessage"
                 }
               ]
             }
           ]
         },
         {
-          "p": "/test",
+          "p": "/lib/tester",
           "t": "d",
           "c": [
             {
-              "p": "/setup-integration.ts",
+              "p": "/index.ts",
               "t": "f",
-              "e": [],
-              "d": "Настройка интеграционных тестов"
+              "e": ["createTestSuite", "createTest", "TestConfigType"],
+              "d": "Основной интерфейс тестовой библиотеки"
             },
             {
-              "p": "/setup-unit.ts",
+              "p": "/fixtures/fixture-manager.ts",
               "t": "f",
-              "e": [],
-              "d": "Настройка unit тестов"
+              "e": ["FixtureManager"],
+              "d": "Менеджер фикстур для тестов"
             }
           ]
         }
@@ -855,208 +321,179 @@
   },
   "ks": [
     {
-      "n": "LogService",
-      "p": "/src/logging/log.service.ts",
-      "d": "Центральный сервис логирования",
-      "u": ["CharacterService", "DialogService", "TelegramService", "LLMService"]
+      "n": "ActionExecutorService",
+      "p": "/src/character/services/action-executor.service.ts",
+      "d": "Координирующий сервис для управления действиями персонажей - основной интерфейс после рефакторинга",
+      "u": ["CharacterBehaviorService", "EmotionalBehaviorService", "MessageProcessingCoordinatorService"]
     },
     {
-      "n": "CacheService",
-      "p": "/src/cache/cache.service.ts",
-      "d": "Сервис кеширования с Redis",
-      "u": ["CharacterService", "LLMService", "MemoryService"]
+      "n": "ActionLifecycleService",
+      "p": "/src/character/services/action-lifecycle.service.ts",
+      "d": "Специализированный сервис управления жизненным циклом действий",
+      "u": ["ActionExecutorService", "ActionService"]
+    },
+    {
+      "n": "ActionSchedulerService",
+      "p": "/src/character/services/action-scheduler.service.ts",
+      "d": "Специализированный сервис планирования действий",
+      "u": ["ActionExecutorService", "ActionService"]
+    },
+    {
+      "n": "ActionGeneratorService",
+      "p": "/src/character/services/action-generator.service.ts",
+      "d": "Специализированный сервис генерации действий",
+      "u": ["ActionExecutorService", "ActionService"]
+    },
+    {
+      "n": "ActionResourceService",
+      "p": "/src/character/services/action-resource.service.ts",
+      "d": "Специализированный сервис управления ресурсами действий",
+      "u": ["ActionExecutorService", "ActionService"]
+    },
+    {
+      "n": "TechniqueExecutorService",
+      "p": "/src/character/services/technique-executor.service.ts",
+      "d": "Координирующий сервис для выполнения манипулятивных техник",
+      "u": ["ManipulationService"]
+    },
+    {
+      "n": "TechniqueStrategyService",
+      "p": "/src/character/services/technique-strategy.service.ts",
+      "d": "Сервис управления стратегиями выполнения техник",
+      "u": ["TechniqueExecutorService"]
+    },
+    {
+      "n": "TechniqueValidatorService",
+      "p": "/src/character/services/technique-validator.service.ts",
+      "d": "Сервис валидации выполнения техник",
+      "u": ["TechniqueExecutorService"]
+    },
+    {
+      "n": "TechniqueAnalyzerService",
+      "p": "/src/character/services/technique-analyzer.service.ts",
+      "d": "Сервис анализа результатов техник",
+      "u": ["TechniqueExecutorService"]
+    },
+    {
+      "n": "TechniqueGeneratorService",
+      "p": "/src/character/services/technique-generator.service.ts",
+      "d": "Сервис генерации техник",
+      "u": ["TechniqueExecutorService"]
+    },
+    {
+      "n": "TechniqueHistoryService",
+      "p": "/src/character/services/technique-history.service.ts",
+      "d": "Сервис истории выполнения техник",
+      "u": ["TechniqueExecutorService"]
+    },
+    {
+      "n": "TechniqueAdapterService",
+      "p": "/src/character/services/technique-adapter.service.ts",
+      "d": "Сервис адаптации техник под контекст",
+      "u": ["TechniqueExecutorService"]
+    },
+    {
+      "n": "getErrorMessage",
+      "p": "/src/common/utils/error.utils.ts",
+      "d": "Утилита безопасного извлечения сообщений ошибок - внедрена в 15+ файлов production кода",
+      "u": ["CallbackHandler", "MessageHandler", "CommandHandler", "MessageService", "TelegramService", "TelegramCoreService", "MonitoringService", "ValidationService", "ValidationErrorHandlerService", "MessageQueueService"]
     },
     {
       "n": "ErrorHandlingService",
       "p": "/src/common/utils/error-handling/error-handling.service.ts",
-      "d": "Центральный сервис обработки ошибок",
-      "u": ["CharacterService", "DialogService", "TelegramService"]
-    },
-    {
-      "n": "MessageQueueService",
-      "p": "/src/message-queue/message-queue.service.ts",
-      "d": "Сервис очереди сообщений",
-      "u": ["TelegramService", "CharacterService"]
-    },
-    {
-      "n": "LLMService",
-      "p": "/src/llm/services/llm.service.ts",
-      "d": "Основной сервис языковых моделей",
-      "u": ["CharacterService", "CharacterResponseService", "MessageAnalysisService"]
-    },
-    {
-      "n": "PromptTemplateService",
-      "p": "/src/prompt-template/prompt-template.service.ts",
-      "d": "Сервис управления шаблонами промптов",
-      "u": ["LLMService", "CharacterResponseService"]
-    },
-    {
-      "n": "CharacterManagementService",
-      "p": "/src/character/services/character-management.service.ts",
-      "d": "Унифицированный сервис управления персонажами",
-      "u": ["TelegramService", "DialogService"]
+      "d": "Унифицированный сервис обработки ошибок",
+      "u": ["BaseService"]
     },
     {
       "n": "BaseService",
       "p": "/src/common/base/base.service.ts",
-      "d": "Базовый абстрактный класс для всех сервисов с обработкой ошибок",
-      "u": ["EmotionalBehaviorService", "MessageBehaviorService", "BehaviorPatternService", "FrustrationManagementService"]
-    },
-    {
-      "n": "TestModuleBuilder",
-      "p": "/lib/tester/utils/test-module-builder.ts",
-      "d": "Построитель тестовых модулей с автоматическими моками",
-      "u": ["AllTests"]
-    },
-    {
-      "n": "FixtureManager",
-      "p": "/lib/tester/fixtures/fixture-manager.ts",
-      "d": "Менеджер тестовых фикстур и данных",
-      "u": ["IntegrationTests"]
+      "d": "Базовый класс для всех сервисов с унифицированной обработкой ошибок",
+      "u": ["ActionExecutorService", "ActionLifecycleService", "ActionSchedulerService", "ActionGeneratorService", "ActionResourceService", "TechniqueExecutorService", "TechniqueStrategyService"]
     }
   ],
   "al": [
     {
-      "s": "CharacterModule",
-      "t": "DialogModule",
-      "d": "Циклическая зависимость через forwardRef"
+      "s": "ActionExecutorService",
+      "t": "ActionLifecycleService",
+      "d": "Управление жизненным циклом"
     },
     {
-      "s": "CharacterModule",
-      "t": "UserModule",
-      "d": "Прямая зависимость"
+      "s": "ActionExecutorService",
+      "t": "ActionSchedulerService", 
+      "d": "Планирование действий"
     },
     {
-      "s": "TelegramModule",
-      "t": "CharacterModule",
-      "d": "Прямая зависимость"
+      "s": "ActionExecutorService",
+      "t": "ActionGeneratorService",
+      "d": "Генерация действий"
     },
     {
-      "s": "DialogModule",
-      "t": "CharacterModule",
-      "d": "Обратная зависимость через forwardRef"
+      "s": "ActionExecutorService",
+      "t": "ActionResourceService",
+      "d": "Управление ресурсами"
     },
     {
-      "s": "LLMModule",
-      "t": "PromptTemplateModule",
-      "d": "Прямая зависимость"
+      "s": "TechniqueExecutorService",
+      "t": "TechniqueStrategyService",
+      "d": "Получение стратегий техник"
     },
     {
-      "s": "AllModules",
-      "t": "LoggingModule",
-      "d": "Глобальная зависимость"
+      "s": "TechniqueExecutorService",
+      "t": "TechniqueValidatorService",
+      "d": "Валидация техник"
     },
     {
-      "s": "AllModules",
-      "t": "ErrorHandlingModule",
-      "d": "Глобальная зависимость"
+      "s": "TechniqueExecutorService",
+      "t": "TechniqueAnalyzerService",
+      "d": "Анализ результатов"
     },
     {
-      "s": "CharacterBehaviorService",
-      "t": "EmotionalBehaviorService",
-      "d": "Делегирование логики фрустрации"
-    },
-    {
-      "s": "CharacterBehaviorService",
-      "t": "MessageBehaviorService",
-      "d": "Делегирование обработки сообщений"
-    },
-    {
-      "s": "EmotionalBehaviorService",
+      "s": "AllServices",
       "t": "BaseService",
       "d": "Наследование базового функционала"
     },
     {
-      "s": "MessageBehaviorService",
-      "t": "BaseService",
-      "d": "Наследование базового функционала"
-    },
-    {
-      "s": "BehaviorPatternService",
-      "t": "BaseService",
-      "d": "Наследование базового функционала"
-    },
-    {
-      "s": "FrustrationManagementService",
-      "t": "BaseService",
-      "d": "Наследование базового функционала"
+      "s": "ProductionCode",
+      "t": "getErrorMessage",
+      "d": "Унифицированная обработка ошибок"
     }
   ],
   "mh": {
     "CharacterModule": {
       "p": "/src/character",
       "c": ["CharacterController", "StoryController"],
-      "s": ["CharacterService", "CharacterManagementService", "CharacterBehaviorService", "EmotionalBehaviorService", "MessageBehaviorService", "BehaviorPatternService", "FrustrationManagementService", "CharacterSchedulerService", "CharacterMonitoringService", "CharacterResponseService", "ActionService", "EmotionalStateService", "MemoryService", "NeedsService", "MotivationService", "ManipulationService", "TechniqueExecutorService", "SpecializationService", "StoryService", "MessageAnalysisService", "MessageProcessingCoordinator", "ContextCompressionService"],
-      "i": ["UserModule", "CommonModule", "ErrorHandlingModule", "LoggingModule", "LLMModule", "PromptTemplateModule", "StoryModule"],
-      "st": [],
+      "s": [
+        "ActionExecutorService",
+        "ActionLifecycleService", 
+        "ActionSchedulerService",
+        "ActionGeneratorService",
+        "ActionResourceService",
+        "ActionService",
+        "TechniqueExecutorService",
+        "TechniqueStrategyService",
+        "TechniqueValidatorService",
+        "TechniqueAnalyzerService",
+        "TechniqueGeneratorService",
+        "TechniqueHistoryService",
+        "TechniqueAdapterService",
+        "CharacterBehaviorService",
+        "EmotionalBehaviorService",
+        "MessageProcessingCoordinatorService",
+        "CharacterService",
+        "NeedsService",
+        "MemoryService",
+        "ManipulationService"
+      ],
+      "i": ["ActionType", "CharacterNeedType", "ManipulativeTechniqueType"],
+      "st": ["ITechniqueExecutionStrategy"],
       "dto": ["CreateCharacterDto", "UpdateNeedsDto"],
-      "if": ["ICharacterModule"],
+      "if": ["ActionHandler", "ITechniqueContext", "ITechniqueResult", "ActionContext", "ActionResult"],
       "g": [],
       "dec": [],
       "mw": [],
       "u": [],
-      "ent": ["Character", "CharacterMemory", "Need", "Action", "StoryEvent", "StoryPlan", "StoryMilestone", "CharacterMotivation", "TechniqueExecution", "UserManipulationProfile"],
-      "en": ["CharacterArchetype", "CharacterNeedType", "ActionType", "TechniqueType"]
-    },
-    "TelegramModule": {
-      "p": "/src/telegram",
-      "c": [],
-      "s": ["TelegramService", "TelegramCoreService", "AccessControlService", "CharacterCreationService", "MessageService", "MessageFormatterService", "KeyboardFormatterService", "TelegramInitializationService"],
-      "i": ["CharacterModule", "DialogModule", "UserModule", "LoggingModule"],
-      "st": [],
-      "dto": [],
-      "if": [],
-      "g": [],
-      "dec": ["InjectBot"],
-      "mw": [],
-      "u": ["TelegramUpdate", "MessageHandler", "CommandHandler", "CallbackHandler"],
-      "ent": ["TelegramCharacterSettings"],
-      "en": []
-    },
-    "DialogModule": {
-      "p": "/src/dialog",
-      "c": ["DialogController"],
-      "s": ["DialogService"],
-      "i": ["CharacterModule", "UserModule", "LoggingModule"],
-      "st": [],
-      "dto": ["CreateMessageDto", "CreateProactiveMessageDto"],
-      "if": [],
-      "g": [],
-      "dec": [],
-      "mw": [],
-      "u": [],
-      "ent": ["Dialog", "Message"],
-      "en": []
-    },
-    "UserModule": {
-      "p": "/src/user",
-      "c": ["UserController"],
-      "s": ["UserService"],
-      "i": ["LoggingModule"],
-      "st": [],
-      "dto": [],
-      "if": [],
-      "g": [],
-      "dec": [],
-      "mw": [],
-      "u": [],
-      "ent": ["User", "AccessKey", "PsychologicalTest"],
-      "en": []
-    },
-    "LLMModule": {
-      "p": "/src/llm",
-      "c": [],
-      "s": ["LLMService", "LLMProviderManagerService"],
-      "i": ["PromptTemplateModule", "LoggingModule"],
-      "st": [],
-      "dto": [],
-      "if": ["ILLMProvider"],
-      "g": [],
-      "dec": [],
-      "mw": [],
-      "u": ["LlamaProviderService", "OpenAIProviderService", "OpenAICoreService"],
-      "ent": [],
-      "en": []
+      "ent": ["Character", "Action", "Need", "TechniqueExecution"],
+      "en": ["ActionType", "CharacterNeedType", "ManipulativeTechniqueType", "TechniqueIntensity"]
     },
     "CommonModule": {
       "p": "/src/common",
@@ -1065,6 +502,36 @@
       "i": [],
       "st": [],
       "dto": [],
+      "if": ["IErrorHandler"],
+      "g": [],
+      "dec": ["Retry", "Sanitize"],
+      "mw": [],
+      "u": ["getErrorMessage", "createNotFoundError", "withErrorHandling", "ErrorPatternHandler"],
+      "ent": [],
+      "en": []
+    },
+    "TelegramModule": {
+      "p": "/src/telegram",
+      "c": [],
+      "s": ["TelegramService", "TelegramCoreService", "MessageService"],
+      "i": [],
+      "st": [],
+      "dto": [],
+      "if": [],
+      "g": [],
+      "dec": ["InjectBot"],
+      "mw": [],
+      "u": [],
+      "ent": ["CharacterSettings"],
+      "en": []
+    },
+    "ValidationModule": {
+      "p": "/src/validation",
+      "c": [],
+      "s": ["ValidationService", "ValidationErrorHandlerService"],
+      "i": [],
+      "st": [],
+      "dto": [],
       "if": [],
       "g": [],
       "dec": [],
@@ -1073,20 +540,35 @@
       "ent": [],
       "en": []
     },
-    "TesterModule": {
-      "p": "/lib/tester",
+    "MonitoringModule": {
+      "p": "/src/monitoring",
       "c": [],
-      "s": ["TestModuleBuilder", "FixtureManager"],
+      "s": ["MonitoringService"],
       "i": [],
       "st": [],
       "dto": [],
-      "if": ["ITestParams", "ITestContext", "ITestFixtures"],
+      "if": [],
       "g": [],
       "dec": [],
       "mw": [],
-      "u": ["createTest", "createTestSuite", "createBasicTest"],
-      "ent": ["ALL_TEST_ENTITIES"],
-      "en": ["TestConfigType"]
+      "u": [],
+      "ent": [],
+      "en": []
+    },
+    "MessageQueueModule": {
+      "p": "/src/message-queue",
+      "c": [],
+      "s": ["MessageQueueService"],
+      "i": [],
+      "st": [],
+      "dto": [],
+      "if": [],
+      "g": [],
+      "dec": [],
+      "mw": [],
+      "u": [],
+      "ent": [],
+      "en": []
     }
   }
 }

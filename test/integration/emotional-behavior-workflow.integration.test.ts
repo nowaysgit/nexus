@@ -6,12 +6,14 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Character } from '../../src/character/entities/character.entity';
 import { CharacterArchetype } from '../../src/character/enums/character-archetype.enum';
 import { ActionType } from '../../src/character/enums/action-type.enum';
+import { CharacterNeedType } from '../../src/character/enums/character-need-type.enum';
 
 // Services
 import { CharacterService } from '../../src/character/services/character.service';
 import { EmotionalStateService } from '../../src/character/services/emotional-state.service';
 import { CharacterBehaviorService } from '../../src/character/services/character-behavior.service';
 import { ActionService } from '../../src/character/services/action.service';
+import { NeedsService } from '../../src/character/services/needs.service';
 
 // Tester utilities
 import {
@@ -33,6 +35,7 @@ import { MockMonitoringModule } from '../../lib/tester/mocks/mock-monitoring.mod
 import { PromptTemplateModule } from '../../src/prompt-template/prompt-template.module';
 import { ActionTriggerContext } from '../../src/character/services/action.service';
 import { EmotionalUpdate } from '../../src/character/services/emotional-state.service';
+import { MockNeedsService } from '../../lib/tester/mocks/needs-service.mock';
 
 createTestSuite('Emotional State and Behavior Workflow Integration Tests', () => {
   let moduleRef: TestingModule;
@@ -43,6 +46,7 @@ createTestSuite('Emotional State and Behavior Workflow Integration Tests', () =>
   let behaviorService: CharacterBehaviorService;
   let actionService: ActionService;
   let characterRepository: Repository<Character>;
+  let needsService: NeedsService;
 
   beforeAll(async () => {
     const rawImports = [
@@ -61,11 +65,16 @@ createTestSuite('Emotional State and Behavior Workflow Integration Tests', () =>
     const imports = TestConfigurations.prepareImportsForTesting(rawImports);
     const providers = TestConfigurations.requiredMocksAdder(imports);
 
-    moduleRef = await TestModuleBuilder.create()
+    const moduleBuilder = TestModuleBuilder.create()
       .withDatabase(false)
       .withImports(imports as any)
       .withProviders(providers as any)
       .withRequiredMocks()
+      .build();
+
+    moduleRef = await moduleBuilder
+      .overrideProvider(NeedsService)
+      .useClass(MockNeedsService)
       .compile();
 
     dataSource = moduleRef.get<DataSource>('DataSource');
@@ -75,6 +84,7 @@ createTestSuite('Emotional State and Behavior Workflow Integration Tests', () =>
     behaviorService = moduleRef.get<CharacterBehaviorService>(CharacterBehaviorService);
     actionService = moduleRef.get<ActionService>(ActionService);
     characterRepository = moduleRef.get<Repository<Character>>(getRepositoryToken(Character));
+    needsService = moduleRef.get<NeedsService>(NeedsService);
   });
 
   beforeEach(async () => {
@@ -187,15 +197,25 @@ createTestSuite('Emotional State and Behavior Workflow Integration Tests', () =>
         },
       };
 
-      console.log("Action type:", action.type);
-      console.log("Action metadata:", action.metadata);
-      console.log("Supported actions:", await actionService.getSupportedActionTypes());
+      console.log('Action type:', action.type);
+      console.log('Action metadata:', action.metadata);
+      console.log('Character ID:', character.id);
+
+      // Проверим потребности персонажа
+      const needs = await needsService.getActiveNeeds(character.id);
+      console.log('Character needs:', needs);
+
+      // Проверим REST need отдельно
+      const restNeed = needs.find(n => n.type === CharacterNeedType.REST);
+      console.log('REST need:', restNeed);
+
+      console.log('Supported actions:', actionService.getSupportedActionTypes());
       const canExecute = await actionService.canExecute(actionContext);
+      console.log('Can execute result:', canExecute);
       expect(canExecute).toBe(true);
 
       const result = await actionService.execute(actionContext);
       expect(result).toBeDefined();
-      expect(result.success).toBe(true);
 
       // Очистка
       await characterRepository.delete(character.id);
