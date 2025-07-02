@@ -49,8 +49,10 @@ export interface INeed {
   decayRate: number;
   priority: number;
   threshold: number;
+  frustrationLevel?: number;
   lastUpdated?: Date;
   isActive?: boolean;
+  dynamicPriority: number;
 }
 
 /**

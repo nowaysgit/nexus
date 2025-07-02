@@ -3,7 +3,6 @@ import { FixtureManager } from '../../lib/tester/fixtures/fixture-manager';
 import { TestModuleBuilder } from '../../lib/tester/utils/test-module-builder';
 import { CharacterModule } from '../../src/character/character.module';
 import { CharacterBehaviorService } from '../../src/character/services/character-behavior.service';
-import { ActionService } from '../../src/character/services/action.service';
 import { ActionExecutorService } from '../../src/character/services/action-executor.service';
 import { EmotionalStateService } from '../../src/character/services/emotional-state.service';
 import { NeedsService } from '../../src/character/services/needs.service';
@@ -21,7 +20,7 @@ createTestSuite('CharacterBehaviorService.processActionTrigger tests', () => {
   let behaviorService: CharacterBehaviorService;
   let emotionalStateService: EmotionalStateService;
   let _needsService: NeedsService;
-  let actionService: ActionService;
+  let actionExecutorService: ActionExecutorService;
   let characterService: CharacterService;
 
   beforeEach(async () => {
@@ -38,7 +37,7 @@ createTestSuite('CharacterBehaviorService.processActionTrigger tests', () => {
     behaviorService = moduleRef.get<CharacterBehaviorService>(CharacterBehaviorService);
     emotionalStateService = moduleRef.get<EmotionalStateService>(EmotionalStateService);
     _needsService = moduleRef.get<NeedsService>(NeedsService);
-    actionService = moduleRef.get<ActionService>(ActionService);
+    actionExecutorService = moduleRef.get<ActionExecutorService>(ActionExecutorService);
     characterService = moduleRef.get<CharacterService>(CharacterService);
 
     await fixtureManager.cleanDatabase();
@@ -85,7 +84,7 @@ createTestSuite('CharacterBehaviorService.processActionTrigger tests', () => {
 
       // Мокаем processActionTrigger в ActionService для возврата успешного результата
       const processActionTriggerSpy = jest
-        .spyOn(actionService, 'processActionTrigger')
+        .spyOn(actionExecutorService, 'processActionTrigger')
         .mockResolvedValue({
           success: true,
           message: 'Действие выполнено успешно',
@@ -161,7 +160,7 @@ createTestSuite('CharacterBehaviorService.processActionTrigger tests', () => {
 
       // Мокаем processActionTrigger в ActionService для возврата успешного результата
       const processActionTriggerSpy = jest
-        .spyOn(actionService, 'processActionTrigger')
+        .spyOn(actionExecutorService, 'processActionTrigger')
         .mockResolvedValue({
           success: true,
           message: 'Эмоциональное действие выполнено',
@@ -234,7 +233,7 @@ createTestSuite('CharacterBehaviorService.processActionTrigger tests', () => {
 
       // Мокаем processActionTrigger в ActionService для возврата успешного результата
       const processActionTriggerSpy = jest
-        .spyOn(actionService, 'processActionTrigger')
+        .spyOn(actionExecutorService, 'processActionTrigger')
         .mockResolvedValue({
           success: true,
           message: 'Развлекательное действие выполнено',
@@ -313,7 +312,7 @@ createTestSuite('CharacterBehaviorService.processActionTrigger tests', () => {
 
       // Мокаем processActionTrigger в ActionService
       const processActionTriggerSpy = jest
-        .spyOn(actionService, 'processActionTrigger')
+        .spyOn(actionExecutorService, 'processActionTrigger')
         .mockResolvedValue({
           success: true,
           message: 'Действие выполнено успешно',

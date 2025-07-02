@@ -22,6 +22,7 @@ import {
   IdealPartnerProfile,
 } from '../interfaces/character-persona.interface';
 import { CharacterArchetype } from '../enums/character-archetype.enum';
+import { CharacterStoryProgress } from '../../story/entities/character-story-progress.entity';
 
 export enum CharacterGender {
   FEMALE = 'female',
@@ -165,6 +166,9 @@ export class Character {
     cascade: true,
   })
   motivations: CharacterMotivation[];
+
+  @OneToMany(() => CharacterStoryProgress, progress => progress.character)
+  storyProgress: CharacterStoryProgress[];
 
   @CreateDateColumn({ type: 'datetime' })
   createdAt: Date;

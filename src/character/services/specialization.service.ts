@@ -5,6 +5,9 @@ import { Character } from '../entities/character.entity';
 // LLM импорты удалены - требуется доработка интеграции с LLM согласно ТЗ
 import { BaseService } from '../../common/base/base.service';
 import { LogService } from '../../logging/log.service';
+import { LLMService } from '../../llm/services/llm.service';
+import { PromptTemplateService } from '../../prompt-template/prompt-template.service';
+import { ILLMMessage, LLMMessageRole } from '../../common/interfaces/llm-provider.interface';
 
 /**
  * Тематические области компетенции согласно ТЗ ОГРАНИЧЕНИЯ
@@ -109,6 +112,8 @@ export class SpecializationService extends BaseService {
   constructor(
     @InjectRepository(Character)
     private characterRepository: Repository<Character>,
+    private readonly llmService: LLMService,
+    private readonly promptTemplateService: PromptTemplateService,
     logService: LogService,
   ) {
     super(logService);
@@ -159,7 +164,7 @@ export class SpecializationService extends BaseService {
       const profile = await this.getSpecializationProfile(characterId);
 
       // Определяем область знаний запроса
-      const domain = this.classifyQueryDomain(userQuery);
+      const domain = await this.classifyQueryDomain(userQuery);
 
       // Получаем уровень компетенции персонажа в этой области
       const characterCompetence = profile.competenceLevels[domain] || CompetenceLevel.BASIC;
@@ -176,7 +181,12 @@ export class SpecializationService extends BaseService {
       );
 
       // Генерируем предлагаемый ответ
-      const suggestedResponse = `Ответ должен генерироваться через LLM согласно ТЗ. Стратегия: ${responseStrategy}, Домен: ${domain}`;
+      const suggestedResponse = await this.generateSuggestedResponse(
+        responseStrategy,
+        domain,
+        profile,
+        userQuery,
+      );
 
       const result: CompetenceCheck = {
         domain,
@@ -194,6 +204,50 @@ export class SpecializationService extends BaseService {
 
       return result;
     });
+  }
+
+  /**
+   * Генерирует предлагаемый ответ на основе стратегии и профиля персонажа.
+   * @private
+   */
+  private async generateSuggestedResponse(
+    strategy: CompetenceCheck['responseStrategy'],
+    domain: KnowledgeDomain,
+    profile: SpecializationProfile,
+    userQuery: string,
+  ): Promise<string> {
+    const ignorancePattern = profile.naturalIgnorancePatterns.find(p => p.domain === domain);
+
+    switch (strategy) {
+      case 'admit_ignorance':
+        return (
+          ignorancePattern?.admissionPhrases?.[0] || 'Честно говоря, я не очень в этом разбираюсь.'
+        );
+      case 'redirect':
+        return ignorancePattern?.redirectionStrategies?.[0] || 'Может, сменим тему?';
+      case 'express_curiosity':
+        return (
+          ignorancePattern?.curiosityExpressions?.[0] || 'О, это интересно! Расскажи подробнее.'
+        );
+      case 'partial_answer':
+      case 'answer': {
+        const prompt = this.promptTemplateService.createPrompt('generate-competent-response', {
+          strongAreas: profile.strongAreas.join(', '),
+          weakAreas: profile.weakAreas.join(', '),
+          personalInterests: profile.personalInterests.join(', '),
+          professionalBackground: profile.professionalBackground.join(', '),
+          userQuery,
+          domain,
+          competenceLevel: strategy,
+        });
+        const messages: ILLMMessage[] = [{ role: LLMMessageRole.SYSTEM, content: prompt }];
+        const result = await this.llmService.generateText(messages, { maxTokens: 400 });
+        return result.text;
+      }
+      default:
+        this.logService.warn(`Обнаружена неизвестная стратегия ответа в generateSuggestedResponse`);
+        return 'Я не знаю, что сказать.';
+    }
   }
 
   /**
@@ -321,11 +375,6 @@ export class SpecializationService extends BaseService {
   }
 
   /**
-   * УДАЛЕНО: hardcoded ответы заменены на LLM генерацию согласно ТЗ
-   * Все ответы теперь генерируются динамически через LLM в generateSuggestedResponse
-   */
-
-  /**
    * Получает стратегии перенаправления разговора
    */
   private getRedirectionStrategies(_domain: KnowledgeDomain): string[] {
@@ -355,95 +404,50 @@ export class SpecializationService extends BaseService {
    * Получает фразы признания незнания
    */
   private getAdmissionPhrases(_domain: KnowledgeDomain): string[] {
-    return [
-      'Честно говоря, я в этом не разбираюсь',
-      'Признаюсь, это не моя область',
-      'Боюсь, что ничем не смогу помочь в этом вопросе',
-      'К сожалению, я не компетентна в этом',
-      'Извини, но это выше моего понимания',
-    ];
+    return ['Признаюсь, я в этом не разбираюсь.'];
   }
 
   /**
-   * Классифицирует запрос пользователя по области знаний
+   * Классифицирует текстовый запрос по одной из областей знаний.
+   * @param query - Текст запроса.
+   * @returns Область знаний.
    */
-  private classifyQueryDomain(query: string): KnowledgeDomain {
-    const queryLower = query.toLowerCase();
+  private async classifyQueryDomain(query: string): Promise<KnowledgeDomain> {
+    try {
+      return await this.withErrorHandling(
+        `классификации области знаний для запроса: "${query}"`,
+        async () => {
+          const domains = Object.values(KnowledgeDomain).join(', ');
+          const prompt = this.promptTemplateService.createPrompt('classify-knowledge-domain', {
+            query,
+            domains,
+          });
 
-    // Технические запросы
-    if (
-      queryLower.includes('программирование') ||
-      queryLower.includes('компьютер') ||
-      queryLower.includes('технология') ||
-      queryLower.includes('код') ||
-      queryLower.includes('алгоритм') ||
-      queryLower.includes('данные')
-    ) {
-      return KnowledgeDomain.TECHNICAL;
+          const messages: ILLMMessage[] = [{ role: LLMMessageRole.SYSTEM, content: prompt }];
+          const llmResponse = await this.llmService.generateText(messages, {
+            maxTokens: 50,
+            temperature: 0.1,
+          });
+
+          const cleanedResponse = llmResponse.text.trim().toLowerCase();
+
+          if (Object.values(KnowledgeDomain).includes(cleanedResponse as KnowledgeDomain)) {
+            return cleanedResponse as KnowledgeDomain;
+          }
+
+          this.logService.warn(
+            `LLM вернула невалидную область знаний: "${llmResponse.text}". Используется ${KnowledgeDomain.GENERAL_CONVERSATION}.`,
+            { query, llmResponse: llmResponse.text },
+          );
+          return KnowledgeDomain.GENERAL_CONVERSATION;
+        },
+      );
+    } catch (error) {
+      this.logService.error(`Критическая ошибка в classifyQueryDomain, возврат к fallback.`, {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return KnowledgeDomain.GENERAL_CONVERSATION;
     }
-
-    // Медицинские запросы
-    if (
-      queryLower.includes('болезнь') ||
-      queryLower.includes('лечение') ||
-      queryLower.includes('медицина') ||
-      queryLower.includes('врач') ||
-      queryLower.includes('симптом') ||
-      queryLower.includes('диагноз')
-    ) {
-      return KnowledgeDomain.MEDICINE;
-    }
-
-    // Правовые запросы
-    if (
-      queryLower.includes('закон') ||
-      queryLower.includes('право') ||
-      queryLower.includes('суд') ||
-      queryLower.includes('юрист') ||
-      queryLower.includes('договор') ||
-      queryLower.includes('штраф')
-    ) {
-      return KnowledgeDomain.LAW;
-    }
-
-    // Научные запросы
-    if (
-      queryLower.includes('физика') ||
-      queryLower.includes('химия') ||
-      queryLower.includes('биология') ||
-      queryLower.includes('математика') ||
-      queryLower.includes('формула') ||
-      queryLower.includes('эксперимент')
-    ) {
-      return KnowledgeDomain.SCIENCE;
-    }
-
-    // Отношения
-    if (
-      queryLower.includes('отношения') ||
-      queryLower.includes('любовь') ||
-      queryLower.includes('парень') ||
-      queryLower.includes('девушка') ||
-      queryLower.includes('свидание') ||
-      queryLower.includes('семья')
-    ) {
-      return KnowledgeDomain.RELATIONSHIPS;
-    }
-
-    // Эмоции
-    if (
-      queryLower.includes('чувствую') ||
-      queryLower.includes('грустно') ||
-      queryLower.includes('радостно') ||
-      queryLower.includes('злюсь') ||
-      queryLower.includes('настроение') ||
-      queryLower.includes('эмоции')
-    ) {
-      return KnowledgeDomain.EMOTIONS;
-    }
-
-    // По умолчанию - общая беседа
-    return KnowledgeDomain.GENERAL_CONVERSATION;
   }
 
   /**

@@ -270,8 +270,8 @@ describe('CharacterBehaviorService Tests', () => {
     // Настраиваем моки
     mockCharacterService.findOneById.mockResolvedValue(character);
 
-    // Мокируем processActionTrigger в ActionService
-    mockActionService.processActionTrigger.mockResolvedValue({
+    // Мокируем processActionTrigger в ActionExecutorService
+    mockActionExecutorService.processActionTrigger.mockResolvedValue({
       success: true,
       data: {
         action: {
@@ -286,8 +286,10 @@ describe('CharacterBehaviorService Tests', () => {
     // Вызываем тестируемый метод с правильным объектом контекста
     const result = await service.processActionTrigger(actionTriggerContext);
 
-    // Проверяем, что processActionTrigger был вызван в ActionService
-    expect(mockActionService.processActionTrigger).toHaveBeenCalledWith(actionTriggerContext);
+    // Проверяем, что processActionTrigger был вызван в ActionExecutorService
+    expect(mockActionExecutorService.processActionTrigger).toHaveBeenCalledWith(
+      actionTriggerContext,
+    );
 
     // Проверяем результат
     expect(result).toBeDefined();

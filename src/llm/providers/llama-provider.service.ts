@@ -226,6 +226,56 @@ export class LlamaProviderService implements ILLMProvider {
   }
 
   /**
+   * Генерация векторного представления (эмбеддинга) для текста через Llama.
+   * Предполагается OpenAI-совместимый API.
+   */
+  async generateEmbedding(text: string): Promise<number[]> {
+    const startTime = Date.now();
+    const requestId = this.generateRequestId();
+
+    try {
+      this.logService.debug('Отправляем запрос на генерацию эмбеддинга к Llama API', {
+        requestId,
+        endpoint: this.endpoint,
+        textLength: text.length,
+      });
+
+      const request = {
+        input: text,
+        model: 'nomic-embed-text', // Это стандартная модель для эмбеддингов в llama.cpp, может потребоваться настройка
+      };
+
+      // Выполняем запрос к Llama API
+      const response = await this.httpClient.post<{
+        data: Array<{ embedding: number[] }>;
+      }>('/v1/embeddings', request);
+
+      const executionTime = Date.now() - startTime;
+      const embedding = response.data.data[0]?.embedding;
+
+      if (!embedding) {
+        throw new Error('API не вернул эмбеддинг в ожидаемом формате.');
+      }
+
+      this.logService.debug('Получен эмбеддинг от Llama API', {
+        requestId,
+        executionTime,
+        embeddingLength: embedding.length,
+      });
+
+      return embedding;
+    } catch (error) {
+      const executionTime = Date.now() - startTime;
+      this.logService.error('Ошибка генерации эмбеддинга через Llama', {
+        requestId,
+        executionTime,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
+  }
+
+  /**
    * Генерация JSON через Llama
    */
   async generateJSON<T = Record<string, unknown>>(

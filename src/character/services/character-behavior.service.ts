@@ -6,7 +6,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Character } from '../entities/character.entity';
 import { CharacterMemory } from '../entities/character-memory.entity';
 import { NeedsService } from './needs.service';
-import { ActionService } from './action.service';
+import { ActionExecutorService } from './action-executor.service';
 import { EmotionalState } from '../entities/emotional-state';
 import { IMotivation } from '../interfaces/needs.interfaces';
 import { LLMService } from '../../llm/services/llm.service';
@@ -51,7 +51,7 @@ export class CharacterBehaviorService extends BaseService {
     @InjectRepository(CharacterMemory)
     private readonly memoryRepository: Repository<CharacterMemory>,
     private readonly needsService: NeedsService,
-    private readonly actionService: ActionService,
+    private readonly actionExecutorService: ActionExecutorService,
     private readonly memoryService: MemoryService,
     private readonly characterService: CharacterService,
     private readonly messageAnalysisService: MessageAnalysisService,
@@ -182,7 +182,9 @@ export class CharacterBehaviorService extends BaseService {
       }));
 
     // 3. Проверяем, выполняет ли персонаж действие в данный момент
-    const isPerformingAction = this.actionService.isPerformingAction(characterId.toString());
+    const isPerformingAction = this.actionExecutorService.isPerformingAction(
+      characterId.toString(),
+    );
 
     // 4. Если персонаж не занят и у него есть мотивации, определяем новое действие
     if (!isPerformingAction && motivations.length > 0) {
@@ -195,8 +197,8 @@ export class CharacterBehaviorService extends BaseService {
           });
 
           if (character) {
-            // Используем ActionService для определения и выполнения действия
-            const action = await this.actionService.determineAndPerformAction(character, {
+            // Используем ActionExecutorService для определения и выполнения действия
+            const action = await this.actionExecutorService.determineAndPerformAction(character, {
               characterId: character.id,
               userId: character.userId,
               triggerType: 'motivation_based',
@@ -224,7 +226,7 @@ export class CharacterBehaviorService extends BaseService {
       }
     } else if (isPerformingAction) {
       // Если персонаж занят, логируем его текущее действие для отладки
-      const currentAction = this.actionService.getCurrentAction(characterId.toString());
+      const currentAction = this.actionExecutorService.getCurrentAction(characterId.toString());
       if (currentAction) {
         this.logDebug(
           `Персонаж ${characterId} занят действием: ${currentAction.type} - ${currentAction.description}`,
@@ -283,7 +285,7 @@ export class CharacterBehaviorService extends BaseService {
         }));
 
       // Получаем текущее действие
-      const currentAction: CharacterAction | null = this.actionService.getCurrentAction(
+      const currentAction: CharacterAction | null = this.actionExecutorService.getCurrentAction(
         characterId.toString(),
       );
 
@@ -436,7 +438,7 @@ export class CharacterBehaviorService extends BaseService {
    */
   async processActionTrigger(context: ActionTriggerContext): Promise<ActionResult> {
     return this.withErrorHandling('обработка триггера действия', async () => {
-      return this.actionService.processActionTrigger(context);
+      return this.actionExecutorService.processActionTrigger(context);
     });
   }
 }

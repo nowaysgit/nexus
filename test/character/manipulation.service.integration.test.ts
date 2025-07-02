@@ -144,10 +144,8 @@ createTestSuite('ManipulationService Integration Tests', () => {
       mockPromptTemplateService,
       mockLogService,
       mockEventEmitter,
+      mockTechniqueExecutorService,
     );
-
-    // Добавляем TechniqueExecutorService в сервис
-    (service as any).techniqueExecutorService = mockTechniqueExecutorService;
   });
 
   beforeEach(() => {

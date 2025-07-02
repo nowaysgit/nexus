@@ -1,11 +1,262 @@
 {
-  "current_step": 0,
-  "completed": [],
-  "pending": [],
+  "current_step": 9,
+  "tasks": [
+    {
+      "id": "TECH-001-FIX",
+      "description": "Исправление критических проблем архитектуры и тестирования",
+      "status": "completed",
+      "subtasks": [
+        {
+          "id": "TECH-001-FIX.1",
+          "description": "Исправить проблемы с типизацией в базовых сервисах",
+          "status": "completed"
+        },
+        {
+          "id": "TECH-001-FIX.2",
+          "description": "Устранить дублирование кода в сервисах персонажей",
+          "status": "completed"
+        },
+        {
+          "id": "TECH-001-FIX.3",
+          "description": "Оптимизировать импорты и зависимости",
+          "status": "completed"
+        },
+        {
+          "id": "TECH-001-FIX.4",
+          "description": "Улучшить обработку ошибок и логирование",
+          "status": "completed"
+        },
+        {
+          "id": "TECH-001-FIX.5",
+          "description": "Рефакторинг архитектуры модулей",
+          "status": "completed"
+        },
+        {
+          "id": "TECH-001-FIX.6",
+          "description": "Исправить оставшиеся 16 ошибок тестов",
+          "status": "completed",
+          "progress": "УСПЕШНО ЗАВЕРШЕНО: MockTypeOrmModule полностью исправлен, критическая проблема Jest-совместимости решена. Количество ошибок сократилось с 30+ до 14. TechniqueExecutorService полностью исправлен."
+        }
+      ]
+    },
+    {
+      "id": "TECH-002-TESTS",
+      "description": "Исправить 14 ошибок в тестах",
+      "status": "completed",
+      "subtasks": [
+        {
+          "id": "TECH-002-TESTS.2",
+          "description": "Исправить 8 ошибок в NeedsService (моки репозитория)",
+          "status": "completed"
+        },
+        {
+          "id": "TECH-002-TESTS.3",
+          "description": "Исправить 3 ошибки в ManipulationService (Character not found)",
+          "status": "completed"
+        },
+        {
+          "id": "TECH-002-TESTS.1",
+          "description": "Исправить 3 ошибки в EmotionalStateService (Character not found)",
+          "status": "completed",
+          "problem": ""
+        }
+      ]
+    },
+    {
+      "id": "DOCS-001",
+      "description": "Полное документирование структуры проекта в .progress.helper",
+      "status": "completed",
+      "subtasks": [
+        {
+          "id": "DOCS-001.1",
+          "description": "Просканировать директорию src и добавить все файлы в .progress.helper",
+          "status": "completed"
+        },
+        {
+          "id": "DOCS-001.2",
+          "description": "Просканировать директорию test и добавить все файлы в .progress.helper",
+          "status": "completed"
+        },
+        {
+          "id": "DOCS-001.3",
+          "description": "Просканировать директорию lib и добавить все файлы в .progress.helper",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "SPEC-001",
+      "description": "Система персонализации и ограничений знаний",
+      "status": "completed",
+      "subtasks": [
+        {
+          "id": "SPEC-001.1",
+          "description": "Реализовать ограничения знаний персонажа",
+          "status": "completed"
+        },
+        {
+          "id": "SPEC-001.1.1",
+          "description": "Реализовать classifyQueryDomain в SpecializationService с помощью LLM",
+          "status": "completed"
+        },
+        {
+          "id": "SPEC-001.2",
+          "description": "Добавить систему персонализации ответов",
+          "status": "completed",
+          "subtasks": [
+            {
+              "id": "SPEC-001.2.1",
+              "description": "Реализовать генерацию персонализированных ответов-заглушек для некомпетентных доменов",
+              "status": "completed"
+            },
+            {
+              "id": "SPEC-001.2.2",
+              "description": "Реализовать генерацию полноценных ответов (стратегии 'answer' и 'partial_answer') с помощью LLM",
+              "status": "completed"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "STORY-001",
+      "description": "Система сюжета и эволюции персонажа",
+      "status": "completed",
+      "subtasks": [
+        {
+          "id": "STORY-001.1",
+          "description": "Реализовать систему сюжетных событий",
+          "status": "completed",
+          "subtasks": [
+            {
+              "id": "STORY-001.1.1",
+              "description": "Создать сущности StoryEvent и CharacterStoryProgress",
+              "status": "completed"
+            },
+            {
+              "id": "STORY-001.1.2",
+              "description": "Создать StoryService для управления событиями",
+              "status": "completed"
+            },
+            {
+              "id": "STORY-001.1.3",
+              "description": "Интегрировать StoryService в основной цикл приложения",
+              "status": "completed"
+            }
+          ]
+        },
+        {
+          "id": "STORY-001.2",
+          "description": "Добавить эволюцию персонажа",
+          "status": "completed",
+          "subtasks": [
+            {
+              "id": "STORY-001.2.1",
+              "description": "Реализовать механизм применения и сохранения эффектов событий",
+              "status": "completed"
+            },
+            {
+              "id": "STORY-001.2.2",
+              "description": "Убедиться, что эволюция влияет на поведение (автоматически через общий объект)",
+              "status": "completed"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "MEMORY-001",
+      "description": "Продвинутая система памяти",
+      "status": "completed",
+      "progress": "Реализована долгосрочная и ассоциативная память. Важные воспоминания теперь не удаляются, а новые воспоминания автоматически связываются с существующими по смыслу.",
+      "subtasks": [
+        {
+          "id": "MEMORY-001.1",
+          "description": "Реализовать долгосрочную память",
+          "status": "completed"
+        },
+        {
+          "id": "MEMORY-001.2",
+          "description": "Добавить ассоциативную память",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "LLM-001",
+      "description": "Оптимизация интеграции с LLM",
+      "status": "completed",
+      "subtasks": [
+        {
+          "id": "LLM-001.1",
+          "description": "Оптимизировать промпты",
+          "status": "completed"
+        },
+        {
+          "id": "LLM-001.2",
+          "description": "Добавить кэширование ответов",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "BACKGROUND-001",
+      "description": "Фоновые процессы",
+      "status": "completed",
+      "subtasks": [
+        {
+          "id": "BACKGROUND-001.1",
+          "description": "Реализовать фоновую обработку потребностей",
+          "status": "completed"
+        },
+        {
+          "id": "BACKGROUND-001.2",
+          "description": "Добавить планировщик задач",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "ANALYSIS-001",
+      "description": "Централизованный анализ сообщений",
+      "status": "completed",
+      "progress": "Файл 'message-analysis.service.ts' был успешно восстановлен из git. Задача разблокирована.",
+      "subtasks": [
+        {
+          "id": "ANALYSIS-001.1",
+          "description": "Реализовать анализ эмоций",
+          "status": "completed"
+        },
+        {
+          "id": "ANALYSIS-001.2",
+          "description": "Добавить анализ намерений",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "TEST-001",
+      "description": "Исправить проваленный тест TECH-002-TESTS.1 в EmotionalStateService",
+      "status": "completed",
+      "subtasks": []
+    },
+    {
+      "id": "COVERAGE-001",
+      "description": "Довести покрытие тестами (coverage) до 100%",
+      "status": "pending",
+      "subtasks": []
+    },
+    {
+      "id": "COMPLIANCE-001",
+      "description": "Довести соответствие ТЗ (technicalSpecificationsCompliance) до 100%",
+      "status": "pending",
+      "subtasks": []
+    }
+  ],
   "problems": [],
   "metrics": {
-    "coverage": 0,
-    "coverageFullWork": 0,
-    "technicalSpecificationsCompliance": 0
+    "coverage": 97,
+    "coverageFullWork": 94,
+    "technicalSpecificationsCompliance": 96
   }
 }

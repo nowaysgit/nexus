@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { LogService } from '../../logging/log.service';
 import { BaseService } from '../../common/base/base.service';
+import * as crypto from 'crypto';
 import {
   ILLMMessage,
   ILLMRequestOptions,
@@ -11,6 +12,7 @@ import {
   ILLMProvider,
 } from '../../common/interfaces/llm-provider.interface';
 import { LLMProviderManagerService } from './llm-provider-manager.service';
+import { CacheService } from '../../cache/cache.service';
 
 // Реэкспортируем интерфейсы для использования в других модулях
 export { ILLMMessage, LLMProviderType } from '../../common/interfaces/llm-provider.interface';
@@ -23,6 +25,7 @@ export { ILLMMessage, LLMProviderType } from '../../common/interfaces/llm-provid
 export class LLMService extends BaseService {
   constructor(
     private readonly providerManager: LLMProviderManagerService,
+    private readonly cacheService: CacheService,
     logService: LogService,
   ) {
     super(logService);
@@ -36,10 +39,29 @@ export class LLMService extends BaseService {
     options?: ILLMRequestOptions,
   ): Promise<ILLMTextResult> {
     return this.withErrorHandling('генерации текста', async () => {
+      const cacheKey = this._createCacheKey(messages, options);
+      const cachedResult = await this.cacheService.get<ILLMTextResult>(cacheKey);
+
+      if (cachedResult) {
+        this.logDebug('Возвращен результат из кэша', { key: cacheKey });
+        return {
+          ...cachedResult,
+          requestInfo: {
+            ...cachedResult.requestInfo,
+            fromCache: true,
+            requestId: cachedResult.requestInfo?.requestId || 'cached',
+            executionTime: 0,
+            model: cachedResult.requestInfo?.model || 'cached',
+          },
+        };
+      }
+
       const provider = this.providerManager.getActiveProvider();
       this.logDebug(`Генерация текста через провайдер: ${provider.providerName}`);
+      const result = await provider.generateText(messages, options);
 
-      return await provider.generateText(messages, options);
+      await this.cacheService.set(cacheKey, result);
+      return result;
     });
   }
 
@@ -51,10 +73,29 @@ export class LLMService extends BaseService {
     options?: ILLMRequestOptions,
   ): Promise<ILLMJsonResult<T>> {
     return this.withErrorHandling('генерации JSON', async () => {
+      const cacheKey = this._createCacheKey(messages, options);
+      const cachedResult = await this.cacheService.get<ILLMJsonResult<T>>(cacheKey);
+
+      if (cachedResult) {
+        this.logDebug('Возвращен результат из кэша', { key: cacheKey });
+        return {
+          ...cachedResult,
+          requestInfo: {
+            ...cachedResult.requestInfo,
+            fromCache: true,
+            requestId: cachedResult.requestInfo?.requestId || 'cached',
+            executionTime: 0,
+            model: cachedResult.requestInfo?.model || 'cached',
+          },
+        };
+      }
+
       const provider = this.providerManager.getActiveProvider();
       this.logDebug(`Генерация JSON через провайдер: ${provider.providerName}`);
+      const result = await provider.generateJSON<T>(messages, options);
 
-      return await provider.generateJSON<T>(messages, options);
+      await this.cacheService.set(cacheKey, result);
+      return result;
     });
   }
 
@@ -71,6 +112,18 @@ export class LLMService extends BaseService {
       this.logDebug(`Потоковая генерация через провайдер: ${provider.providerName}`);
 
       return await provider.generateTextStream(messages, callbacks, options);
+    });
+  }
+
+  /**
+   * Генерация векторного представления (эмбеддинга) для текста
+   */
+  async generateEmbedding(text: string): Promise<number[]> {
+    return this.withErrorHandling('генерации эмбеддинга', async () => {
+      const provider = this.providerManager.getActiveProvider();
+      this.logDebug(`Генерация эмбеддинга через провайдер: ${provider.providerName}`);
+
+      return await provider.generateEmbedding(text);
     });
   }
 
@@ -194,5 +247,17 @@ export class LLMService extends BaseService {
     const providerType = await this.selectBestProvider();
     const providerInfo = this.getActiveProviderInfo();
     return { name: providerInfo.name, type: providerType };
+  }
+
+  private _createCacheKey(messages: ILLMMessage[], options?: ILLMRequestOptions): string {
+    const provider = this.providerManager.getActiveProvider();
+    const payload = {
+      provider: provider.providerName,
+      model: options?.model || provider.getProviderInfo().models[0],
+      messages,
+      options,
+    };
+    const payloadString = JSON.stringify(payload);
+    return crypto.createHash('sha256').update(payloadString).digest('hex');
   }
 }

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
@@ -20,8 +20,9 @@ import { LLMService } from '../../llm/services/llm.service';
 import { PromptTemplateService } from '../../prompt-template/prompt-template.service';
 import { LogService } from '../../logging/log.service';
 import { LLMMessageRole } from '../../common/interfaces/llm-provider.interface';
-import { IManipulationContext } from '../interfaces/technique.interfaces';
+import { IManipulationContext, ITechniqueContext } from '../interfaces/technique.interfaces';
 import { BaseService } from '../../common/base/base.service';
+import { TechniqueExecutorService } from './technique-executor.service';
 
 export interface ITechniqueExecution {
   id: string;
@@ -61,6 +62,7 @@ export class ManipulationService extends BaseService {
     private readonly promptTemplateService: PromptTemplateService,
     logService: LogService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly techniqueExecutorService: TechniqueExecutorService,
   ) {
     super(logService);
   }
@@ -351,6 +353,42 @@ export class ManipulationService extends BaseService {
         // Определяем фазу техники
         const phase = context.phase || TechniquePhase.EXECUTION;
 
+        // Получаем данные для контекста
+        const emotionalState = await this.emotionalStateService.getEmotionalState(
+          context.characterId,
+        );
+        const activeNeeds = await this.needsService.getActiveNeeds(context.characterId);
+
+        // Преобразуем массив потребностей в объект Record<string, number>
+        const needsState: Record<string, number> = {};
+        activeNeeds.forEach(need => {
+          needsState[need.type] = need.currentValue;
+        });
+
+        // Создаем контекст для TechniqueExecutorService
+        const techniqueContext: ITechniqueContext = {
+          characterId: Number(context.characterId),
+          userId: Number(context.userId),
+          messageContent: context.messageContent || context.userMessage || '',
+          emotionalState,
+          needsState,
+          relationshipLevel: 50, // Значение по умолчанию, можно получить из профиля
+          previousInteractions: 1,
+          conversationHistory: [],
+        };
+
+        // Используем TechniqueExecutorService для выполнения техники
+        const executionResult = await this.techniqueExecutorService.executeTechnique(
+          selectedTechnique.techniqueType,
+          intensity,
+          techniqueContext,
+          phase,
+        );
+
+        if (!executionResult.success) {
+          return { success: false, message: executionResult.message };
+        }
+
         // Создаем Entity для сохранения в БД
         const techniqueExecution = this.techniqueExecutionRepository.create({
           techniqueType: selectedTechnique.techniqueType,
@@ -359,21 +397,15 @@ export class ManipulationService extends BaseService {
           characterId: context.characterId,
           userId: Number(context.userId),
           startTime: new Date(),
-          effectiveness: Math.round(selectedTechnique.intensity * 100),
-          ethicalScore: 50,
-          generatedResponse: '', // Заполним после генерации
+          effectiveness: executionResult.effectiveness,
+          ethicalScore: executionResult.ethicalScore,
+          generatedResponse: executionResult.message,
         });
-
-        // Генерируем ответ с применением техники
-        const manipulativeResponse = await this.generateManipulativeResponse(techniqueExecution);
-
-        // Обновляем ответ в Entity
-        techniqueExecution.generatedResponse = manipulativeResponse;
 
         // Сохраняем в базу данных
         await this.techniqueExecutionRepository.save(techniqueExecution);
 
-        return { success: true, message: manipulativeResponse };
+        return { success: true, message: executionResult.message };
       } catch (error) {
         this.logError(`Error executing technique ${selectedTechnique.techniqueType} for context`, {
           error: error.message,

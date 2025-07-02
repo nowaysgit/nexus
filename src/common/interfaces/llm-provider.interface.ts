@@ -184,6 +184,9 @@ export interface ILLMProvider {
     models: string[];
     features: string[];
   };
+
+  /** Генерация векторного представления текста */
+  generateEmbedding(text: string): Promise<number[]>;
 }
 
 /**

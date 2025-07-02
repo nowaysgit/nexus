@@ -5,7 +5,7 @@ import {
 } from '../enums/technique.enums';
 import { Character } from '../entities/character.entity';
 import { User } from '../../user/entities/user.entity';
-import { EmotionalState } from '../interfaces/emotional-state.interface';
+import { EmotionalState } from '../entities/emotional-state';
 
 /**
  * Интерфейс для результата выполнения манипулятивной техники

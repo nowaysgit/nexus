@@ -54,9 +54,8 @@ export class ActionSchedulerService extends BaseService {
   scheduleAction(action: CharacterAction, delayOrDate: number | Date): ScheduledAction {
     return this.withErrorHandlingSync('планировании действия', () => {
       const id = `scheduled_${++this.idCounter}`;
-      const executeAt = delayOrDate instanceof Date 
-        ? delayOrDate 
-        : new Date(Date.now() + delayOrDate);
+      const executeAt =
+        delayOrDate instanceof Date ? delayOrDate : new Date(Date.now() + delayOrDate);
 
       const scheduledAction: ScheduledAction = {
         id,
@@ -75,7 +74,7 @@ export class ActionSchedulerService extends BaseService {
         }, delay);
         this.timeouts.set(id, timeout);
       }
-      // Если время в прошлом, действие остается в статусе 'scheduled' 
+      // Если время в прошлом, действие остается в статусе 'scheduled'
       // и будет возвращено методом getReadyActions()
 
       this.logInfo(`Действие ${action.type} запланировано на ${executeAt.toISOString()}`);
@@ -91,14 +90,14 @@ export class ActionSchedulerService extends BaseService {
       const scheduledAction = this.scheduledActions.get(actionId);
       if (scheduledAction && scheduledAction.status === 'scheduled') {
         scheduledAction.status = 'cancelled';
-        
+
         // Отменяем setTimeout если есть
         const timeout = this.timeouts.get(actionId);
         if (timeout) {
           clearTimeout(timeout);
           this.timeouts.delete(actionId);
         }
-        
+
         this.logInfo(`Запланированное действие ${actionId} отменено`);
         return true;
       }
@@ -121,8 +120,8 @@ export class ActionSchedulerService extends BaseService {
    */
   getReadyActions(): ScheduledAction[] {
     const now = new Date();
-    return Array.from(this.scheduledActions.values()).filter(scheduled => 
-      scheduled.status === 'scheduled' && scheduled.executeAt <= now
+    return Array.from(this.scheduledActions.values()).filter(
+      scheduled => scheduled.status === 'scheduled' && scheduled.executeAt <= now,
     );
   }
 
@@ -144,13 +143,13 @@ export class ActionSchedulerService extends BaseService {
    * Создает cron-задачу
    */
   createCronJob(
-    action: CharacterAction, 
-    cronExpression: string, 
-    options: { maxExecutions?: number } = {}
+    action: CharacterAction,
+    cronExpression: string,
+    options: { maxExecutions?: number } = {},
   ): CronJob {
     return this.withErrorHandlingSync('создании cron-задачи', () => {
       const id = `cron_${++this.idCounter}`;
-      
+
       const cronJob: CronJob = {
         id,
         action,
@@ -262,7 +261,7 @@ export class ActionSchedulerService extends BaseService {
     for (const timeout of this.timeouts.values()) {
       clearTimeout(timeout);
     }
-    
+
     this.scheduledActions.clear();
     this.cronJobs.clear();
     this.actionTimers.clear();
@@ -409,10 +408,10 @@ export class ActionSchedulerService extends BaseService {
       this.logInfo(`Выполнение запланированного действия ${scheduledAction.action.type}`);
       scheduledAction.action.status = 'in_progress';
       scheduledAction.action.startTime = new Date();
-      
+
       // Здесь должна быть логика выполнения действия
       // В реальной реализации это будет делегировано в ActionExecutorService
-      
+
       this.markAsExecuted(actionId);
     } catch (error) {
       this.logError(

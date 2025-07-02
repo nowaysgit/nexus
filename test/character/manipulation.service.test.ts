@@ -1,65 +1,46 @@
 import { createTestSuite, createTest } from '../../lib/tester';
-import { FixtureManager } from '../../lib/tester/fixtures/fixture-manager';
 import { TestModuleBuilder } from '../../lib/tester/utils/test-module-builder';
-import { DataSource } from 'typeorm';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { ManipulationService } from '../../src/character/services/manipulation.service';
-import { LogService } from '../../src/logging/log.service';
-import { LLMService } from '../../src/llm/services/llm.service';
-import { PromptTemplateService } from '../../src/prompt-template/prompt-template.service';
 import { NeedsService } from '../../src/character/services/needs.service';
 import { EmotionalStateService } from '../../src/character/services/emotional-state.service';
+import { LLMService } from '../../src/llm/services/llm.service';
+import { PromptTemplateService } from '../../src/prompt-template/prompt-template.service';
+import { LogService } from '../../src/logging/log.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { TestingModule } from '@nestjs/testing';
+import {
+  ManipulativeTechniqueType,
+  TechniqueIntensity,
+} from '../../src/character/enums/technique.enums';
+import { IManipulationContext } from '../../src/character/interfaces/technique.interfaces';
+import { TechniqueExecutorService } from '../../src/character/services/technique-executor.service';
+import { getRepositoryToken } from '@nestjs/typeorm';
 import { Character } from '../../src/character/entities/character.entity';
 import {
   TechniqueExecution,
   UserManipulationProfile,
 } from '../../src/character/entities/manipulation-technique.entity';
-import { IManipulationContext } from '../../src/character/interfaces/technique.interfaces';
-import {
-  ManipulativeTechniqueType,
-  TechniqueIntensity,
-} from '../../src/character/enums/technique.enums';
-import { MockNeedsService, MockEmotionalStateService } from '../../lib/tester/mocks/jest.mocks';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { CharacterRepository } from '../../src/character/repositories/character.repository';
-import { TechniqueExecutionRepository } from '../../src/character/repositories/technique-execution.repository';
-import { UserManipulationProfileRepository } from '../../src/character/repositories/user-manipulation-profile.repository';
 
 createTestSuite('ManipulationService Tests', () => {
-  let fixtureManager: FixtureManager;
-  let moduleRef: import('@nestjs/testing').TestingModule | null = null;
-  let dataSource: DataSource;
   let manipulationService: ManipulationService;
+  let moduleRef: TestingModule;
 
-  // Моки для всех зависимостей
+  // Моки для зависимостей
   const mockLogService = {
     log: jest.fn(),
     error: jest.fn(),
     warn: jest.fn(),
     debug: jest.fn(),
-    verbose: jest.fn(),
-    setContext: jest.fn().mockReturnThis(),
   };
 
   const mockLLMService = {
-    generateResponse: jest.fn().mockResolvedValue('Манипулятивный ответ'),
-    generateText: jest.fn().mockResolvedValue({ text: 'Манипулятивный ответ' }),
-    generateJSON: jest.fn().mockResolvedValue({ analysis: {} }),
-    analyzeMessage: jest.fn(),
-    setContext: jest.fn().mockReturnThis(),
+    generateText: jest.fn(),
+    generateJSON: jest.fn(),
   };
 
   const mockPromptTemplateService = {
-    createPrompt: jest.fn().mockReturnValue('Системный промпт для манипуляции'),
-    createCharacterSystemPrompt: jest.fn(),
-    createAnalysisPrompt: jest.fn(),
-    setContext: jest.fn().mockReturnThis(),
+    createPrompt: jest.fn(),
   };
-
-  const mockNeedsService = MockNeedsService;
-
-  const mockEmotionalStateService = MockEmotionalStateService;
 
   const mockEventEmitter = {
     emit: jest.fn(),
@@ -67,114 +48,111 @@ createTestSuite('ManipulationService Tests', () => {
     off: jest.fn(),
   };
 
+  const mockNeedsService = {
+    getActiveNeeds: jest.fn(),
+  };
+
+  const mockEmotionalStateService = {
+    getEmotionalState: jest.fn(),
+  };
+
+  const mockTechniqueExecutorService = {
+    executeTechnique: jest.fn(),
+  };
+
+  const mockCharacterRepository = {
+    findOne: jest.fn().mockResolvedValue({
+      id: 1,
+      name: 'Test Character',
+      personality: {},
+    } as Character),
+  };
+
+  const mockTechniqueExecutionRepository = {
+    create: jest.fn(
+      (dto: Partial<TechniqueExecution>): TechniqueExecution => dto as TechniqueExecution,
+    ),
+    save: jest.fn(
+      (entity: TechniqueExecution): Promise<TechniqueExecution> => Promise.resolve(entity),
+    ),
+  };
+
+  const mockUserProfileRepository = {
+    findOne: jest.fn().mockResolvedValue(null),
+    create: jest.fn(
+      (dto: Partial<UserManipulationProfile>): UserManipulationProfile =>
+        dto as UserManipulationProfile,
+    ),
+    save: jest.fn(
+      (entity: UserManipulationProfile): Promise<UserManipulationProfile> =>
+        Promise.resolve(entity),
+    ),
+  };
+
+  const mockExistingProfile = {
+    id: 1,
+    characterId: 1,
+    userId: 1,
+    vulnerabilities: ['need-for-approval'],
+    successfulTechniques: [],
+    resistedTechniques: [],
+    emotionalTriggers: [],
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    getRecommendedIntensity: jest.fn().mockReturnValue(0.5),
+    updateEffectiveness: jest.fn(),
+    shouldBlockTechnique: jest.fn().mockReturnValue(false),
+  };
+
   beforeEach(async () => {
+    // Сбрасываем моки перед каждым тестом
+    jest.clearAllMocks();
+
+    // Настраиваем мок для findOne, чтобы он возвращал существующий профиль в тесте обновления
+    mockUserProfileRepository.findOne.mockResolvedValue(mockExistingProfile);
+    // Настраиваем мок для save, чтобы он возвращал полный объект
+    mockUserProfileRepository.save.mockImplementation((profile: Partial<UserManipulationProfile>) =>
+      Promise.resolve({
+        ...mockExistingProfile,
+        ...profile,
+      } as UserManipulationProfile),
+    );
+
+    // Настройка моков
+    mockLLMService.generateJSON.mockResolvedValue({
+      techniqueType: ManipulativeTechniqueType.LOVE_BOMBING,
+      intensity: 0.7,
+      priority: 0.8,
+      target: 'self-esteem',
+    });
+
+    mockNeedsService.getActiveNeeds.mockResolvedValue([
+      { type: 'acceptance', currentValue: 30 },
+      { type: 'recognition', currentValue: 25 },
+    ]);
+
+    mockEmotionalStateService.getEmotionalState.mockResolvedValue({
+      currentEmotion: 'neutral',
+      intensity: 50,
+      valence: 0,
+      arousal: 0,
+    });
+
+    mockTechniqueExecutorService.executeTechnique.mockResolvedValue({
+      success: true,
+      message: 'Мокированный ответ манипулятивной техники',
+      effectiveness: 85,
+      ethicalScore: 70,
+    });
+
+    mockPromptTemplateService.createPrompt.mockReturnValue('Мокированный промпт');
+
     moduleRef = await TestModuleBuilder.create()
-      .withImports([
-        TypeOrmModule.forFeature([Character, TechniqueExecution, UserManipulationProfile]),
-      ])
       .withProviders([
+        ManipulationService,
         {
-          provide: getRepositoryToken(Character),
-          useValue: {
-            findOne: jest.fn().mockImplementation(async () => {
-              const character = await fixtureManager.createCharacter({});
-              return character;
-            }),
-            find: jest.fn().mockResolvedValue([]),
-            save: jest.fn().mockImplementation(async entity => entity),
-            update: jest.fn().mockResolvedValue({ affected: 1 }),
-            delete: jest.fn().mockResolvedValue({ affected: 1 }),
-            create: jest.fn().mockImplementation(entity => entity),
-          },
-        },
-        {
-          provide: getRepositoryToken(TechniqueExecution),
-          useValue: {
-            findOne: jest.fn().mockResolvedValue(null),
-            find: jest.fn().mockResolvedValue([]),
-            save: jest.fn().mockImplementation(async entity => ({
-              id: 1,
-              ...entity,
-            })),
-            update: jest.fn().mockResolvedValue({ affected: 1 }),
-            delete: jest.fn().mockResolvedValue({ affected: 1 }),
-            create: jest.fn().mockImplementation(entity => entity),
-          },
-        },
-        {
-          provide: getRepositoryToken(UserManipulationProfile),
-          useValue: {
-            findOne: jest.fn().mockResolvedValue(null),
-            find: jest.fn().mockResolvedValue([]),
-            save: jest.fn().mockImplementation(async entity => ({
-              id: 1,
-              userId: entity.userId,
-              characterId: entity.characterId,
-              vulnerabilities: entity.vulnerabilities || [],
-              successfulTechniques: entity.successfulTechniques || [],
-              resistedTechniques: entity.resistedTechniques || [],
-              emotionalTriggers: entity.emotionalTriggers || [],
-            })),
-            update: jest.fn().mockResolvedValue({ affected: 1 }),
-            delete: jest.fn().mockResolvedValue({ affected: 1 }),
-            create: jest.fn().mockImplementation(entity => entity),
-          },
-        },
-        {
-          provide: CharacterRepository,
-          useValue: {
-            findById: jest.fn().mockImplementation(async () => {
-              const character = await fixtureManager.createCharacter({});
-              return character;
-            }),
-            findByUserId: jest.fn().mockResolvedValue([]),
-            save: jest.fn().mockImplementation(async entity => entity),
-            update: jest.fn().mockResolvedValue({ affected: 1 }),
-            delete: jest.fn().mockResolvedValue({ affected: 1 }),
-          },
-        },
-        {
-          provide: TechniqueExecutionRepository,
-          useValue: {
-            findById: jest.fn().mockResolvedValue(null),
-            findByCharacterId: jest.fn().mockResolvedValue([]),
-            findByUserId: jest.fn().mockResolvedValue([]),
-            save: jest.fn().mockImplementation(async entity => ({
-              id: 1,
-              ...entity,
-            })),
-            update: jest.fn().mockResolvedValue({ affected: 1 }),
-            delete: jest.fn().mockResolvedValue({ affected: 1 }),
-          },
-        },
-        {
-          provide: UserManipulationProfileRepository,
-          useValue: {
-            findById: jest.fn().mockResolvedValue(null),
-            findByUserAndCharacter: jest.fn().mockResolvedValue(null),
-            findByCharacterId: jest.fn().mockResolvedValue([]),
-            findByUserId: jest.fn().mockResolvedValue([]),
-            save: jest.fn().mockImplementation(async entity => ({
-              id: 1,
-              userId: entity.userId,
-              characterId: entity.characterId,
-              vulnerabilities: entity.vulnerabilities || [],
-              successfulTechniques: entity.successfulTechniques || [],
-              resistedTechniques: entity.resistedTechniques || [],
-              emotionalTriggers: entity.emotionalTriggers || [],
-            })),
-            update: jest.fn().mockResolvedValue({ affected: 1 }),
-            delete: jest.fn().mockResolvedValue({ affected: 1 }),
-            create: jest.fn().mockImplementation(entity => entity),
-          },
-        },
-        {
-          provide: NeedsService,
-          useValue: mockNeedsService,
-        },
-        {
-          provide: EmotionalStateService,
-          useValue: mockEmotionalStateService,
+          provide: LogService,
+          useValue: mockLogService,
         },
         {
           provide: LLMService,
@@ -185,32 +163,44 @@ createTestSuite('ManipulationService Tests', () => {
           useValue: mockPromptTemplateService,
         },
         {
-          provide: LogService,
-          useValue: mockLogService,
-        },
-        {
           provide: EventEmitter2,
           useValue: mockEventEmitter,
         },
-        ManipulationService,
+        {
+          provide: NeedsService,
+          useValue: mockNeedsService,
+        },
+        {
+          provide: EmotionalStateService,
+          useValue: mockEmotionalStateService,
+        },
+        {
+          provide: TechniqueExecutorService,
+          useValue: mockTechniqueExecutorService,
+        },
+        {
+          provide: getRepositoryToken(Character),
+          useValue: mockCharacterRepository,
+        },
+        {
+          provide: getRepositoryToken(TechniqueExecution),
+          useValue: mockTechniqueExecutionRepository,
+        },
+        {
+          provide: getRepositoryToken(UserManipulationProfile),
+          useValue: mockUserProfileRepository,
+        },
       ])
+      .withRequiredMocks()
       .compile();
 
-    dataSource = moduleRef.get<DataSource>(DataSource);
-    fixtureManager = new FixtureManager(dataSource);
     manipulationService = moduleRef.get<ManipulationService>(ManipulationService);
-
-    await fixtureManager.cleanDatabase();
-
-    jest.clearAllMocks();
   });
 
   afterEach(async () => {
-    if (dataSource?.isInitialized) {
-      await dataSource.destroy();
-    }
     if (moduleRef) {
       await moduleRef.close();
+      moduleRef = null;
     }
   });
 
@@ -231,11 +221,11 @@ createTestSuite('ManipulationService Tests', () => {
       timeout: 5000,
     },
     async () => {
-      const character = await fixtureManager.createCharacter({});
-      const strategy = await manipulationService.initializeStrategy(character.id);
+      const characterId = 1;
+      const strategy = await manipulationService.initializeStrategy(characterId);
 
       expect(strategy).toBeDefined();
-      expect(strategy.characterId).toBe(character.id);
+      expect(strategy.characterId).toBe(characterId);
       expect(strategy.primaryTechniques).toBeDefined();
       expect(Array.isArray(strategy.primaryTechniques)).toBe(true);
       expect(strategy.ethicalLimits).toBeDefined();
@@ -249,16 +239,15 @@ createTestSuite('ManipulationService Tests', () => {
       timeout: 5000,
     },
     async () => {
-      // Инициализируем стратегию
-      const character = await fixtureManager.createCharacter({});
-      const user = await fixtureManager.createUser({});
+      const characterId = 1;
+      const userId = 1;
 
-      await manipulationService.initializeStrategy(character.id);
+      await manipulationService.initializeStrategy(characterId);
 
       // Создаем контекст для анализа
       const manipulationContext: IManipulationContext = {
-        characterId: character.id,
-        userId: user.id,
+        characterId: characterId,
+        userId: userId,
         messageContent: 'Мне кажется, что никто меня не понимает и не ценит...',
         intensityLevel: TechniqueIntensity.MODERATE,
         techniqueType: ManipulativeTechniqueType.VALIDATION,
@@ -289,12 +278,12 @@ createTestSuite('ManipulationService Tests', () => {
     },
     async () => {
       // Создаем контекст
-      const character = await fixtureManager.createCharacter({});
-      const user = await fixtureManager.createUser({});
+      const characterId = 1;
+      const userId = 1;
 
       const manipulationContext: IManipulationContext = {
-        characterId: character.id,
-        userId: user.id,
+        characterId: characterId,
+        userId: userId,
         messageContent: 'Мне кажется, что никто меня не понимает и не ценит...',
         intensityLevel: TechniqueIntensity.MODERATE,
         techniqueType: ManipulativeTechniqueType.VALIDATION,
@@ -332,7 +321,7 @@ createTestSuite('ManipulationService Tests', () => {
         expect(typeof result).toBe('string');
       }
 
-      expect(mockLLMService.generateText).toHaveBeenCalled();
+      expect(mockTechniqueExecutorService.executeTechnique).toHaveBeenCalled();
     },
   );
 
@@ -342,10 +331,10 @@ createTestSuite('ManipulationService Tests', () => {
       timeout: 5000,
     },
     async () => {
-      const character = await fixtureManager.createCharacter({});
-      const user = await fixtureManager.createUser({});
+      const characterId = 1;
+      const userId = 1;
 
-      const result = await manipulationService.updateUserProfile(user.id, character.id, {
+      const result = await manipulationService.updateUserProfile(characterId, userId, {
         vulnerabilities: ['rejection', 'insecurity'],
         successfulTechniques: [ManipulativeTechniqueType.LOVE_BOMBING],
         resistedTechniques: [ManipulativeTechniqueType.GASLIGHTING],
@@ -366,12 +355,12 @@ createTestSuite('ManipulationService Tests', () => {
       timeout: 5000,
     },
     async () => {
-      const character = await fixtureManager.createCharacter({});
-      const user = await fixtureManager.createUser({});
+      const characterId = 1;
+      const userId = 1;
 
       const contextData: IManipulationContext = {
-        characterId: character.id,
-        userId: user.id,
+        characterId: characterId,
+        userId: userId,
         messageContent: 'Мне кажется, я никому не нравлюсь',
         additionalParameters: {
           conversationHistory: [],

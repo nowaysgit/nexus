@@ -35,7 +35,7 @@ const createMockRepository = (entityName: string) => {
   return {
     metadata: { type: 'postgres', name: entityName },
     
-    create: (data: any) => {
+    create: jest.fn().mockImplementation((data: any) => {
       // Добавляем ID, если его нет
       if (!data.id) {
         data.id = getMockId();
@@ -50,9 +50,9 @@ const createMockRepository = (entityName: string) => {
       }
       
       return { ...data };
-    },
+    }),
     
-    save: async (entity: any) => {
+    save: jest.fn().mockImplementation(async (entity: any) => {
       // Если это массив, обрабатываем каждый элемент
       if (Array.isArray(entity)) {
         const repo = createMockRepository(entityName);
@@ -84,9 +84,9 @@ const createMockRepository = (entityName: string) => {
         storage.push(entity);
         return entity;
       }
-    },
+    }),
     
-    findOne: async (options: any) => {
+    findOne: jest.fn().mockImplementation(async (options: any) => {
       // Обрабатываем разные форматы опций
       let where = options;
       
@@ -124,9 +124,9 @@ const createMockRepository = (entityName: string) => {
       }
       
       return null;
-    },
+    }),
     
-    find: async (options: any = {}) => {
+    find: jest.fn().mockImplementation(async (options: any = {}) => {
       // Обрабатываем разные форматы опций
       let where = options.where || {};
       
@@ -160,9 +160,9 @@ const createMockRepository = (entityName: string) => {
       }
       
       return results;
-    },
+    }),
     
-    findAndCount: async (options: any = {}) => {
+    findAndCount: jest.fn().mockImplementation(async (options: any = {}) => {
       const repo = createMockRepository(entityName);
       const results = await repo.find(options);
       
@@ -177,9 +177,9 @@ const createMockRepository = (entityName: string) => {
       }
       
       return [results, totalCount];
-    },
+    }),
     
-    update: async (criteria: any, partialEntity: any) => {
+    update: jest.fn().mockImplementation(async (criteria: any, partialEntity: any) => {
       let affected = 0;
       
       // Обновляем все записи, соответствующие критериям
@@ -201,9 +201,9 @@ const createMockRepository = (entityName: string) => {
       });
       
       return { affected };
-    },
+    }),
     
-    delete: async (criteria: any) => {
+    delete: jest.fn().mockImplementation(async (criteria: any) => {
       const initialLength = storage.length;
       
       // Удаляем все записи, соответствующие критериям
@@ -246,9 +246,9 @@ const createMockRepository = (entityName: string) => {
       }
       
       return { affected: initialLength - storage.length };
-    },
+    }),
     
-    remove: async (entity: any) => {
+    remove: jest.fn().mockImplementation(async (entity: any) => {
       // Если это массив, обрабатываем каждый элемент
       if (Array.isArray(entity)) {
         const repo = createMockRepository(entityName);
@@ -265,9 +265,9 @@ const createMockRepository = (entityName: string) => {
       }
       
       return entity;
-    },
+    }),
     
-    count: async (options: any = {}) => {
+    count: jest.fn().mockImplementation(async (options: any = {}) => {
       console.log(`[MOCK DEBUG] ${entityName} Repository count called with options:`, options);
       
       // Обрабатываем разные форматы опций
@@ -297,9 +297,9 @@ const createMockRepository = (entityName: string) => {
       
       console.log(`[MOCK DEBUG] ${entityName} Repository count with where ${JSON.stringify(where)} returning:`, count);
       return count;
-    },
+    }),
     
-    createQueryBuilder: () => {
+    createQueryBuilder: jest.fn().mockImplementation(() => {
       let whereConditions: any = {};
       let orderByField: string | null = null;
       let orderByDirection: 'ASC' | 'DESC' = 'ASC';
@@ -307,7 +307,7 @@ const createMockRepository = (entityName: string) => {
       let skipOffset: number | null = null;
       
       const self = {
-        where: (condition: string, params?: any) => {
+        where: jest.fn().mockImplementation((condition: string, params?: any) => {
           // Парсим простые условия вида "memory.characterId = :characterId"
           if (condition && params) {
             const match = condition.match(/(\w+)\.(\w+)\s*=\s*:(\w+)/);
@@ -320,8 +320,8 @@ const createMockRepository = (entityName: string) => {
             }
           }
           return self;
-        },
-        andWhere: (condition: string, params?: any) => {
+        }),
+        andWhere: jest.fn().mockImplementation((condition: string, params?: any) => {
           // Аналогично where, но добавляем условие
           if (condition && params) {
             const match = condition.match(/(\w+)\.(\w+)\s*=\s*:(\w+)/);
@@ -334,32 +334,32 @@ const createMockRepository = (entityName: string) => {
             }
           }
           return self;
-        },
-        orderBy: (field: string, direction: 'ASC' | 'DESC' = 'ASC') => {
+        }),
+        orderBy: jest.fn().mockImplementation((field: string, direction: 'ASC' | 'DESC' = 'ASC') => {
           // Убираем префикс таблицы из поля
           orderByField = field.includes('.') ? field.split('.')[1] : field;
           orderByDirection = direction;
           return self;
-        },
-        addOrderBy: (field: string, direction: 'ASC' | 'DESC' = 'ASC') => {
+        }),
+        addOrderBy: jest.fn().mockImplementation((field: string, direction: 'ASC' | 'DESC' = 'ASC') => {
           // Для простоты, дополнительная сортировка игнорируется в моке
           // В реальном QueryBuilder это добавляет дополнительное поле сортировки
           return self;
-        },
-        limit: (limit: number) => {
+        }),
+        limit: jest.fn().mockImplementation((limit: number) => {
           takeLimit = limit;
           return self;
-        },
-        take: (limit: number) => {
+        }),
+        take: jest.fn().mockImplementation((limit: number) => {
           takeLimit = limit;
           return self;
-        },
-        skip: (offset: number) => {
+        }),
+        skip: jest.fn().mockImplementation((offset: number) => {
           skipOffset = offset;
           return self;
-        },
-        leftJoinAndSelect: () => self,
-        getOne: async () => {
+        }),
+        leftJoinAndSelect: jest.fn().mockImplementation(() => self),
+        getOne: jest.fn().mockImplementation(async () => {
           let results = [...storage];
           
           // Применяем фильтрацию
@@ -389,8 +389,8 @@ const createMockRepository = (entityName: string) => {
           }
           
           return results[0] || null;
-        },
-        getMany: async () => {
+        }),
+        getMany: jest.fn().mockImplementation(async () => {
           let results = [...storage];
           
           // Применяем фильтрацию
@@ -428,19 +428,19 @@ const createMockRepository = (entityName: string) => {
           }
           
           return results;
-        },
-        getManyAndCount: async () => {
+        }),
+        getManyAndCount: jest.fn().mockImplementation(async () => {
           const results = await self.getMany();
           return [results, results.length];
-        },
+        }),
       };
       return self;
-    },
+    }),
     
     // Очистить хранилище для этого репозитория
-    clear: () => {
+    clear: jest.fn().mockImplementation(() => {
       mockRepositoryStorage.set(entityName, []);
-    }
+    })
   };
 };
 

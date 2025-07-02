@@ -23,7 +23,8 @@ export class MockNeedsService {
         growthRate: 1.0,
         decayRate: 0.5,
         lastUpdated: new Date(),
-        isActive: true
+        isActive: true,
+        dynamicPriority: 1.0,
       },
       {
         id: 2,
@@ -36,7 +37,8 @@ export class MockNeedsService {
         growthRate: 0.8,
         decayRate: 0.3,
         lastUpdated: new Date(),
-        isActive: true
+        isActive: true,
+        dynamicPriority: 1.0,
       },
       {
         id: 3,
@@ -49,7 +51,8 @@ export class MockNeedsService {
         growthRate: 0.6,
         decayRate: 0.2,
         lastUpdated: new Date(),
-        isActive: true
+        isActive: true,
+        dynamicPriority: 1.0,
       },
       {
         id: 4,
@@ -62,8 +65,9 @@ export class MockNeedsService {
         growthRate: 0.5,
         decayRate: 0.1,
         lastUpdated: new Date(),
-        isActive: true
-      }
+        isActive: true,
+        dynamicPriority: 1.0,
+      },
     ];
   }
 
@@ -89,7 +93,8 @@ export class MockNeedsService {
       growthRate: 1.0,
       decayRate: 0.5,
       lastUpdated: new Date(),
-      isActive: true
+      isActive: true,
+      dynamicPriority: 1.0,
     };
   }
 
@@ -160,7 +165,8 @@ export class MockNeedsService {
       growthRate: 0.8,
       decayRate: 0.3,
       lastUpdated: new Date(),
-      isActive: true
+      isActive: true,
+      dynamicPriority: 1.0,
     }));
   }
 
@@ -184,5 +190,5 @@ export class MockNeedsService {
  */
 export const mockNeedsService = {
   provide: 'NeedsService',
-  useClass: MockNeedsService
-}; 
+  useClass: MockNeedsService,
+};

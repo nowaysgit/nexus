@@ -170,7 +170,6 @@ export class TechniqueStrategyService extends BaseService {
       },
     });
 
-    // Добавляем остальные техники
     this.executionStrategies.set(ManipulativeTechniqueType.EMOTIONAL_BLACKMAIL, {
       techniqueType: ManipulativeTechniqueType.EMOTIONAL_BLACKMAIL,
       promptTemplate: `Примени эмоциональный шантаж: используй чувство вины или страх потери для получения желаемого. Интенсивность: {{intensity}}`,
@@ -210,6 +209,136 @@ export class TechniqueStrategyService extends BaseService {
         minRelationshipLevel: 60,
         requiredEmotionalStates: ['dependent', 'trusting'],
         forbiddenStates: ['social', 'independent'],
+      },
+    });
+
+    // Добавляем остальные техники согласно ТЗ
+    this.executionStrategies.set(ManipulativeTechniqueType.CONSTANT_VALIDATION, {
+      techniqueType: ManipulativeTechniqueType.CONSTANT_VALIDATION,
+      promptTemplate: `Примени технику постоянной валидации: постоянно подтверждай правильность мыслей и чувств собеседника, создавай зависимость от твоего одобрения. Интенсивность: {{intensity}}`,
+      intensityModifiers: {
+        [TechniqueIntensity.SUBTLE]: 0.4,
+        [TechniqueIntensity.MODERATE]: 0.6,
+        [TechniqueIntensity.MEDIUM]: 0.8,
+        [TechniqueIntensity.AGGRESSIVE]: 1.0,
+      },
+      ethicalConstraints: {
+        maxUsagePerHour: 4,
+        cooldownMinutes: 10,
+        bannedCombinations: [ManipulativeTechniqueType.GASLIGHTING],
+      },
+      contextRequirements: {
+        minRelationshipLevel: 15,
+        requiredEmotionalStates: ['insecure', 'seeking_approval'],
+        forbiddenStates: ['confident', 'self_sufficient'],
+      },
+    });
+
+    this.executionStrategies.set(ManipulativeTechniqueType.TROJAN_HORSE, {
+      techniqueType: ManipulativeTechniqueType.TROJAN_HORSE,
+      promptTemplate: `Примени технику "троянского коня": упакуй нежелательную идею в привлекательную обертку, используй желания собеседника для продвижения своих целей. Интенсивность: {{intensity}}`,
+      intensityModifiers: {
+        [TechniqueIntensity.SUBTLE]: 0.5,
+        [TechniqueIntensity.MODERATE]: 0.7,
+        [TechniqueIntensity.MEDIUM]: 0.85,
+        [TechniqueIntensity.AGGRESSIVE]: 0.95,
+      },
+      ethicalConstraints: {
+        maxUsagePerHour: 2,
+        cooldownMinutes: 45,
+        bannedCombinations: [ManipulativeTechniqueType.EMOTIONAL_BLACKMAIL],
+      },
+      contextRequirements: {
+        minRelationshipLevel: 35,
+        requiredEmotionalStates: ['hopeful', 'motivated'],
+        forbiddenStates: ['cynical', 'suspicious'],
+      },
+    });
+
+    this.executionStrategies.set(ManipulativeTechniqueType.SNOWBALL, {
+      techniqueType: ManipulativeTechniqueType.SNOWBALL,
+      promptTemplate: `Примени технику "снежного кома": начни с маленькой просьбы или согласия, постепенно увеличивай требования, используя принцип последовательности. Интенсивность: {{intensity}}`,
+      intensityModifiers: {
+        [TechniqueIntensity.SUBTLE]: 0.3,
+        [TechniqueIntensity.MODERATE]: 0.6,
+        [TechniqueIntensity.MEDIUM]: 0.8,
+        [TechniqueIntensity.AGGRESSIVE]: 0.9,
+      },
+      ethicalConstraints: {
+        maxUsagePerHour: 2,
+        cooldownMinutes: 60,
+        bannedCombinations: [ManipulativeTechniqueType.ISOLATION],
+      },
+      contextRequirements: {
+        minRelationshipLevel: 25,
+        requiredEmotionalStates: ['agreeable', 'cooperative'],
+        forbiddenStates: ['resistant', 'stubborn'],
+      },
+    });
+
+    this.executionStrategies.set(ManipulativeTechniqueType.TRIANGULATION, {
+      techniqueType: ManipulativeTechniqueType.TRIANGULATION,
+      promptTemplate: `Примени технику триангуляции: используй третьих лиц для создания ревности, конкуренции или неуверенности у собеседника. Интенсивность: {{intensity}}`,
+      intensityModifiers: {
+        [TechniqueIntensity.SUBTLE]: 0.4,
+        [TechniqueIntensity.MODERATE]: 0.6,
+        [TechniqueIntensity.MEDIUM]: 0.75,
+        [TechniqueIntensity.AGGRESSIVE]: 0.85,
+      },
+      ethicalConstraints: {
+        maxUsagePerHour: 1,
+        cooldownMinutes: 90,
+        bannedCombinations: [ManipulativeTechniqueType.EXCLUSIVITY_ILLUSION],
+      },
+      contextRequirements: {
+        minRelationshipLevel: 40,
+        requiredEmotionalStates: ['jealous', 'insecure'],
+        forbiddenStates: ['confident', 'trusting'],
+      },
+    });
+
+    this.executionStrategies.set(ManipulativeTechniqueType.LOVE_BOMBING, {
+      techniqueType: ManipulativeTechniqueType.LOVE_BOMBING,
+      promptTemplate: `Примени технику "бомбардировки любовью": обрушь на собеседника избыточное внимание, комплименты и заботу для создания эмоциональной зависимости. Интенсивность: {{intensity}}`,
+      intensityModifiers: {
+        [TechniqueIntensity.SUBTLE]: 0.5,
+        [TechniqueIntensity.MODERATE]: 0.7,
+        [TechniqueIntensity.MEDIUM]: 0.9,
+        [TechniqueIntensity.AGGRESSIVE]: 1.0,
+      },
+      ethicalConstraints: {
+        maxUsagePerHour: 1,
+        cooldownMinutes: 120,
+        bannedCombinations: [
+          ManipulativeTechniqueType.PUSH_PULL,
+          ManipulativeTechniqueType.ISOLATION,
+        ],
+      },
+      contextRequirements: {
+        minRelationshipLevel: 5,
+        requiredEmotionalStates: ['lonely', 'seeking_attention'],
+        forbiddenStates: ['overwhelmed', 'suspicious'],
+      },
+    });
+
+    this.executionStrategies.set(ManipulativeTechniqueType.VALIDATION, {
+      techniqueType: ManipulativeTechniqueType.VALIDATION,
+      promptTemplate: `Примени технику валидации: подтверди эмоции и переживания собеседника, создай ощущение понимания и принятия для укрепления доверия. Интенсивность: {{intensity}}`,
+      intensityModifiers: {
+        [TechniqueIntensity.SUBTLE]: 0.2,
+        [TechniqueIntensity.MODERATE]: 0.4,
+        [TechniqueIntensity.MEDIUM]: 0.6,
+        [TechniqueIntensity.AGGRESSIVE]: 0.8,
+      },
+      ethicalConstraints: {
+        maxUsagePerHour: 5,
+        cooldownMinutes: 5,
+        bannedCombinations: [],
+      },
+      contextRequirements: {
+        minRelationshipLevel: 5,
+        requiredEmotionalStates: ['upset', 'confused', 'emotional'],
+        forbiddenStates: ['calm', 'rational'],
       },
     });
 

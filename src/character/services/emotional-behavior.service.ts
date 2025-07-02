@@ -11,7 +11,7 @@ import { EmotionalStateService } from './emotional-state.service';
 import { NeedsService } from './needs.service';
 import { MemoryService } from './memory.service';
 import { LogService } from '../../logging/log.service';
-import { ActionService } from './action.service';
+import { ActionExecutorService } from './action-executor.service';
 import { CharacterAction as _CharacterAction } from '../interfaces/behavior.interfaces';
 
 /**
@@ -95,7 +95,7 @@ export class EmotionalBehaviorService extends BaseService {
     private readonly emotionalStateService: EmotionalStateService,
     private readonly needsService: NeedsService,
     private readonly memoryService: MemoryService,
-    private readonly actionService: ActionService,
+    private readonly actionExecutorService: ActionExecutorService,
     private readonly eventEmitter: EventEmitter2,
     @Inject(LogService) logService: LogService,
   ) {

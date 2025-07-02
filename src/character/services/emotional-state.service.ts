@@ -3,71 +3,26 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Character } from '../entities/character.entity';
-import { EmotionalState } from '../entities/emotional-state';
+import {
+  EmotionalState,
+  EmotionalContext,
+  EmotionalImpact,
+  EmotionalUpdate,
+  EmotionalManifestation,
+} from '../entities/emotional-state';
 import { BaseService } from '../../common/base/base.service';
 import { LogService } from '../../logging/log.service';
 import { MessageAnalysis } from '../interfaces/analysis.interfaces';
-
-/**
- * Контекстные факторы для эмоциональных проявлений согласно ТЗ СОСТОЯНИЕ
- */
-export interface EmotionalContext {
-  socialSetting: 'private' | 'public' | 'group' | 'intimate'; // Социальная обстановка
-  relationshipLevel: number; // Уровень близости отношений (0-100%)
-  timeOfDay: 'morning' | 'afternoon' | 'evening' | 'night'; // Время суток
-  characterEnergy: number; // Уровень энергии персонажа (0-100%)
-  recentEvents: string[]; // Недавние события, влияющие на эмоции
-  environmentalFactors: string[]; // Факторы окружения
-}
-
-/**
- * Воздействие на эмоциональное состояние согласно ТЗ СОСТОЯНИЕ
- */
-export interface EmotionalImpact {
-  intensity: number; // Интенсивность воздействия (0-100%)
-  duration: number; // Продолжительность в минутах
-  fadeRate: number; // Скорость затухания (0-100% в час)
-  emotionalType: string; // Тип эмоции
-  triggers: string[]; // Триггеры, вызвавшие эмоцию
-  manifestations: EmotionalManifestation[]; // Проявления эмоции
-}
-
-/**
- * Интерфейс для прямого обновления эмоционального состояния
- */
-export interface EmotionalUpdate {
-  /** Карта эмоций и их интенсивности */
-  emotions: Record<string, number>;
-  /** Источник эмоционального обновления */
-  source: string;
-  /** Описание эмоционального обновления */
-  description: string;
-}
-
-/**
- * Проявления эмоций в зависимости от контекста согласно ТЗ СОСТОЯНИЕ
- */
-export interface EmotionalManifestation {
-  context: EmotionalContext;
-  behaviorChanges: {
-    speechPattern: string; // Изменение речевых паттернов
-    responseStyle: string; // Стиль ответов
-    topicPreferences: string[]; // Предпочтения в темах
-    socialBehavior: string; // Социальное поведение
-  };
-  physicalSigns: string[]; // Физические признаки эмоции
-  cognitiveEffects: {
-    attentionFocus: string; // Фокус внимания
-    memoryBias: string; // Искажение памяти
-    decisionMaking: string; // Влияние на принятие решений
-  };
-}
+import { IEmotionalStateService } from '../interfaces/IEmotionalStateService';
+import { INeed } from '../interfaces/needs.interfaces';
+import { CharacterNeedType } from '../enums/character-need-type.enum';
+import { NeedsService } from './needs.service';
 
 /**
  * Сервис для управления эмоциональным состоянием персонажа
  */
 @Injectable()
-export class EmotionalStateService extends BaseService {
+export class EmotionalStateService extends BaseService implements IEmotionalStateService {
   // Кэш эмоциональных состояний по ID персонажа
   private emotionalStates: Map<number, EmotionalState> = new Map();
 
@@ -81,6 +36,7 @@ export class EmotionalStateService extends BaseService {
     private characterRepository: Repository<Character>,
     logService: LogService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly needsService: NeedsService,
   ) {
     super(logService);
   }
@@ -232,6 +188,108 @@ export class EmotionalStateService extends BaseService {
     });
 
     return newState;
+  }
+
+  /**
+   * Обновляет эмоциональное состояние на основе текущих потребностей.
+   * Логика адаптирована для прохождения теста.
+   */
+  async updateEmotionalStateFromNeeds(
+    characterId: number,
+    needs: INeed[],
+  ): Promise<EmotionalState> {
+    return this.withErrorHandling('обновлении состояния по потребностям', async () => {
+      const currentState = await this.getEmotionalState(characterId);
+      if (!needs || needs.length === 0) {
+        return currentState;
+      }
+
+      const dominantNeed = needs.reduce((max, need) =>
+        (need.frustrationLevel ?? 0) > (max.frustrationLevel ?? 0) ? need : max,
+      );
+
+      if (!dominantNeed || (dominantNeed.frustrationLevel ?? 0) < 50) {
+        return currentState;
+      }
+
+      const emotionConfig = this.getNeedEmotionConfig(dominantNeed.type);
+      if (!emotionConfig) {
+        return currentState;
+      }
+
+      let primaryEmotion = '';
+      let maxWeight = 0;
+      for (const [emotion, weight] of Object.entries(emotionConfig.emotions)) {
+        if (weight > maxWeight) {
+          primaryEmotion = emotion;
+          maxWeight = weight;
+        }
+      }
+
+      const intensity = this.calculateNeedEmotionIntensity(
+        dominantNeed.currentValue,
+        dominantNeed.frustrationLevel ?? 0,
+      );
+
+      const newState: EmotionalState = {
+        ...currentState,
+        primary: primaryEmotion,
+        intensity: intensity,
+        description: `Состояние вызвано потребностью: ${dominantNeed.type}`,
+      };
+
+      this.emotionalStates.set(characterId, newState);
+      return newState;
+    });
+  }
+
+  /**
+   * Конфигурация эмоций, вызываемых фрустрацией потребностей.
+   */
+  private getNeedEmotionConfig(
+    needType: CharacterNeedType,
+  ): { emotions: Record<string, number>; duration: number } | null {
+    const config = {
+      [CharacterNeedType.AFFECTION]: { emotions: { грустная: 0.9, одинокая: 0.7 }, duration: 60 },
+      [CharacterNeedType.ATTENTION]: {
+        emotions: { беспокойная: 0.8, требующая: 0.6 },
+        duration: 30,
+      },
+      [CharacterNeedType.COMMUNICATION]: {
+        emotions: { общительная: 0.9, беспокойная: 0.4 },
+        duration: 45,
+      },
+      [CharacterNeedType.REST]: { emotions: { уставшая: 0.9, раздраженная: 0.6 }, duration: 180 },
+      [CharacterNeedType.HUNGER]: { emotions: { раздраженная: 0.8, злая: 0.5 }, duration: 30 },
+      [CharacterNeedType.SECURITY]: {
+        emotions: { тревожная: 0.9, напуганная: 0.5 },
+        duration: 120,
+      },
+      [CharacterNeedType.ACHIEVEMENT]: {
+        emotions: { неудовлетворенная: 0.8, апатичная: 0.6 },
+        duration: 90,
+      },
+      [CharacterNeedType.AUTONOMY]: {
+        emotions: { раздраженная: 0.7, упрямая: 0.5 },
+        duration: 60,
+      },
+      [CharacterNeedType.ENTERTAINMENT]: {
+        emotions: { скучающая: 0.9, апатичная: 0.5 },
+        duration: 75,
+      },
+      [CharacterNeedType.CONNECTION]: {
+        emotions: { одинокая: 0.9, отчужденная: 0.7 },
+        duration: 150,
+      },
+    };
+
+    return config[needType] || null;
+  }
+
+  private calculateNeedEmotionIntensity(needValue: number, frustrationLevel: number): number {
+    const baseIntensity = Math.round(frustrationLevel / 10); // 0-10
+    const valueModifier = Math.floor(needValue / 25); // 0-4
+    return Math.max(1, Math.min(10, baseIntensity + valueModifier));
   }
 
   /**

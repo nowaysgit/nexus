@@ -1,146 +1,84 @@
 import { Injectable } from '@nestjs/common';
 import { Character } from '../entities/character.entity';
 import { LLMService } from '../../llm/services/llm.service';
-import { NeedsService } from './needs.service';
 import { LogService } from '../../logging/log.service';
-import { UserService } from '../../user/services/user.service';
 import { PromptTemplateService } from '../../prompt-template/prompt-template.service';
 import { LLMMessageRole, ILLMMessage } from '../../common/interfaces/llm-provider.interface';
-import { MessageAnalysis, MessageAnalysisContext } from '../interfaces/analysis.interfaces';
+import {
+  MessageAnalysis,
+  EmotionalAnalysis,
+  ManipulationAnalysis,
+  SpecializationAnalysis,
+  BehaviorAnalysis,
+} from '../interfaces/analysis.interfaces';
 import { BaseService } from '../../common/base/base.service';
+import { ManipulativeTechniqueType } from '../enums/technique.enums';
 
 @Injectable()
 export class MessageAnalysisService extends BaseService {
-  private readonly ANALYSIS_VERSION = '2.0.0';
+  private readonly ANALYSIS_VERSION = '2.2.0';
 
   constructor(
     private readonly llmService: LLMService,
-    private readonly needsService: NeedsService,
-    private readonly userService: UserService,
     private readonly promptTemplateService: PromptTemplateService,
     logService: LogService,
   ) {
     super(logService);
   }
 
-  /**
-   * Основной метод анализа сообщения пользователя
-   */
   async analyzeUserMessage(
     character: Character,
-    userId: number,
     message: string,
     recentMessages: string[] = [],
   ): Promise<MessageAnalysis> {
     try {
       this.logInfo('Начинаем анализ сообщения', {
         characterId: character.id,
-        userId,
         messageLength: message.length,
         version: this.ANALYSIS_VERSION,
       });
 
-      const context = await this.buildAnalysisContext(character, userId, message, recentMessages);
-      const analysis = await this.performAnalysis(context, message);
-
+      const analysis = await this.performAnalysis(character, message, recentMessages);
       return analysis;
     } catch (error) {
       this.logError('Ошибка при анализе сообщения', {
         error: error instanceof Error ? error.message : 'Unknown error',
         characterId: character.id,
-        userId,
       });
-
       return this.getDefaultAnalysis(message);
     }
   }
 
-  private async buildAnalysisContext(
-    character: Character,
-    userId: number,
-    _message: string,
-    recentMessages: string[] = [],
-  ): Promise<MessageAnalysisContext> {
-    try {
-      // Получаем актуальные потребности персонажа
-      const currentNeeds = await this.needsService.getNeedsByCharacter(character.id);
-      const needsMap = currentNeeds.reduce(
-        (acc, need) => {
-          acc[need.type] = need.currentValue;
-          return acc;
-        },
-        {} as Record<string, number>,
-      );
-
-      return {
-        character: {
-          id: character.id,
-          name: character.name,
-          personality: JSON.stringify(character.personality),
-          currentNeeds: needsMap,
-          currentEmotionalState: 'neutral',
-          specialization: [],
-        },
-        user: {
-          id: userId,
-          recentInteractionHistory: [],
-        },
-        conversation: {
-          recentMessages: recentMessages,
-          conversationTone: 'neutral',
-          topicHistory: [],
-        },
-      };
-    } catch (error) {
-      this.logError('Ошибка построения контекста анализа', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        characterId: character.id,
-        userId,
-      });
-
-      // Fallback на минимальный контекст
-      return {
-        character: {
-          id: character.id,
-          name: character.name,
-          personality: JSON.stringify(character.personality),
-          currentNeeds: {},
-          currentEmotionalState: 'neutral',
-          specialization: [],
-        },
-        user: {
-          id: userId,
-          recentInteractionHistory: [],
-        },
-        conversation: {
-          recentMessages: [],
-          conversationTone: 'neutral',
-          topicHistory: [],
-        },
-      };
-    }
-  }
-
   private async performAnalysis(
-    context: MessageAnalysisContext,
+    character: Character,
     message: string,
+    recentMessages: string[],
   ): Promise<MessageAnalysis> {
     try {
-      const analysisPrompt = this.buildAnalysisPrompt(context, message);
+      const availableTechniques = Object.values(ManipulativeTechniqueType).join(', ');
+
+      const systemPrompt = this.promptTemplateService.createPrompt(
+        'message-analysis',
+        {
+          characterName: character.name,
+          characterPersonality: JSON.stringify(character.personality),
+          userMessage: message,
+          recentMessages: recentMessages.slice(-3).join('\n'),
+          availableTechniques,
+        },
+        '2.2.0',
+      );
+
       const llmMessages: ILLMMessage[] = [
         {
           role: LLMMessageRole.SYSTEM,
-          content: analysisPrompt.systemPrompt,
-        },
-        {
-          role: LLMMessageRole.USER,
-          content: analysisPrompt.userPrompt,
+          content: systemPrompt,
         },
       ];
 
       const llmResponse = await this.llmService.generateJSON(llmMessages, {
         temperature: 0.1,
-        maxTokens: 2000,
+        maxTokens: 500,
       });
 
       const parsedAnalysis = this.parseAnalysisFromLLM(llmResponse);
@@ -148,7 +86,7 @@ export class MessageAnalysisService extends BaseService {
       return {
         ...parsedAnalysis,
         analysisMetadata: {
-          confidence: 0.8,
+          confidence: 0.9,
           processingTime: Date.now(),
           llmProvider: 'llm',
           analysisVersion: this.ANALYSIS_VERSION,
@@ -160,195 +98,102 @@ export class MessageAnalysisService extends BaseService {
         error: error instanceof Error ? error.message : 'Unknown error',
         message: message.substring(0, 100),
       });
-
       return this.getDefaultAnalysis(message);
     }
   }
 
-  private buildAnalysisPrompt(
-    context: MessageAnalysisContext,
-    message: string,
-  ): { systemPrompt: string; userPrompt: string } {
-    // Используем PromptTemplateService для создания системного промпта анализа
-    const systemPrompt = this.promptTemplateService.createPrompt('message-analysis', {
-      characterName: context.character.name,
-      characterPersonality: context.character.personality,
-      currentNeeds: JSON.stringify(context.character.currentNeeds),
-      emotionalState: context.character.currentEmotionalState,
-      specialization: context.character.specialization.join(', '),
-      recentMessages: context.conversation.recentMessages.slice(-3).join('; '),
-      conversationTone: context.conversation.conversationTone,
-      analysisVersion: this.ANALYSIS_VERSION,
-    });
-
-    const userPrompt = `Проанализируй это сообщение пользователя: "${message}"`;
-
-    return { systemPrompt, userPrompt };
-  }
-
-  private parseAnalysisFromLLM(llmResponse: unknown): MessageAnalysis {
+  private parseAnalysisFromLLM(llmResponse: unknown): Omit<MessageAnalysis, 'analysisMetadata'> {
     try {
-      const parsed: unknown =
-        typeof llmResponse === 'string' ? JSON.parse(llmResponse) : llmResponse;
-
+      const parsed = typeof llmResponse === 'string' ? JSON.parse(llmResponse) : llmResponse;
       if (!parsed || typeof parsed !== 'object') {
-        throw new Error('Invalid LLM response format');
+        throw new Error('Некорректный формат ответа от LLM');
       }
 
-      const response = parsed as Record<string, unknown>;
+      const response = parsed as Record<string, any>;
 
-      const needsImpact = this.parseObject(response.needsImpact, {
-        communication: 1,
-        attention: 1,
-      }) as Record<string, number>;
-
-      const emotionalAnalysisData = response.emotionalAnalysis as
-        | Record<string, unknown>
-        | undefined;
-      const manipulationAnalysisData = response.manipulationAnalysis as
-        | Record<string, unknown>
-        | undefined;
-      const specializationAnalysisData = response.specializationAnalysis as
-        | Record<string, unknown>
-        | undefined;
-      const behaviorAnalysisData = response.behaviorAnalysis as Record<string, unknown> | undefined;
-
-      const userMood = this.parseString(emotionalAnalysisData?.userMood, 'neutral');
-      const riskLevel = this.parseString(manipulationAnalysisData?.riskLevel, 'low');
-      const responseComplexityLevel = this.parseString(
-        specializationAnalysisData?.responseComplexityLevel,
-        'simple',
-      );
-      const interactionType = this.parseString(behaviorAnalysisData?.interactionType, 'casual');
-      const conversationDirection = this.parseString(
-        behaviorAnalysisData?.conversationDirection,
-        'continue',
-      );
+      const needsImpact = this.parseObject(response.needs, {}) as Record<string, number>;
+      const emotionalAnalysis = this.parseObject(response.emotion, {});
+      const manipulationAnalysis = this.parseObject(response.manipulation, {});
+      const behaviorAnalysis = this.parseObject(response.behavior, {});
+      const specializationAnalysis = this.parseObject(response.specialization, {});
 
       return {
         needsImpact,
         emotionalAnalysis: {
-          userMood: this.validateUserMood(userMood),
-          emotionalIntensity: this.parseNumber(emotionalAnalysisData?.emotionalIntensity, 0.5),
-          triggerEmotions: this.parseStringArray(emotionalAnalysisData?.triggerEmotions, []),
+          userMood: this.parseString(
+            emotionalAnalysis?.mood,
+            'neutral',
+          ) as EmotionalAnalysis['userMood'],
+          emotionalIntensity: this.parseNumber(emotionalAnalysis?.intensity, 0.5),
+          triggerEmotions: this.parseStringArray(emotionalAnalysis?.triggers, []),
           expectedEmotionalResponse: this.parseString(
-            emotionalAnalysisData?.expectedEmotionalResponse,
+            emotionalAnalysis?.expectedResponse,
             'neutral',
           ),
         },
         manipulationAnalysis: {
-          userVulnerability: this.parseNumber(manipulationAnalysisData?.userVulnerability, 0.1),
-          applicableTechniques: this.parseStringArray(
-            manipulationAnalysisData?.applicableTechniques,
-            [],
-          ),
-          riskLevel: this.validateRiskLevel(riskLevel),
-          recommendedIntensity: this.parseNumber(
-            manipulationAnalysisData?.recommendedIntensity,
-            0.1,
-          ),
+          userVulnerability: this.parseNumber(manipulationAnalysis?.vulnerability, 0.1),
+          applicableTechniques: this.parseStringArray(manipulationAnalysis?.technique, []),
+          riskLevel: this.parseString(
+            manipulationAnalysis?.risk,
+            'low',
+          ) as ManipulationAnalysis['riskLevel'],
+          recommendedIntensity: this.parseNumber(manipulationAnalysis?.intensity, 0.1),
         },
         specializationAnalysis: {
-          topicsRelevantToCharacter: this.parseStringArray(
-            specializationAnalysisData?.topicsRelevantToCharacter,
-            [],
-          ),
-          knowledgeGapDetected: Boolean(specializationAnalysisData?.knowledgeGapDetected),
-          responseComplexityLevel: this.validateResponseComplexityLevel(responseComplexityLevel),
-          suggestedTopicRedirection:
-            typeof specializationAnalysisData?.suggestedTopicRedirection === 'string'
-              ? specializationAnalysisData.suggestedTopicRedirection
-              : undefined,
+          responseComplexityLevel: this.parseString(
+            specializationAnalysis?.complexity,
+            'simple',
+          ) as SpecializationAnalysis['responseComplexityLevel'],
+          requiredKnowledge: this.parseStringArray(specializationAnalysis?.knowledge, []),
+          domain: this.parseString(specializationAnalysis?.domain, 'general'),
         },
         behaviorAnalysis: {
-          interactionType: this.validateInteractionType(interactionType),
-          responseTone: this.parseString(behaviorAnalysisData?.responseTone, 'friendly'),
-          initiativeLevel: this.parseNumber(behaviorAnalysisData?.initiativeLevel, 0.5),
-          conversationDirection: this.validateConversationDirection(conversationDirection),
-        },
-        urgency: this.parseNumber(response.urgency, 0.5),
-        sentiment: this.parseString(response.sentiment, 'neutral'),
-        keywords: this.parseStringArray(response.keywords, []),
-        topics: this.parseStringArray(response.topics, []),
-        analysisMetadata: {
-          confidence: 0.8,
-          processingTime: 0,
-          llmProvider: 'llm',
-          analysisVersion: this.ANALYSIS_VERSION,
-          timestamp: new Date(),
+          interactionType: this.parseString(
+            behaviorAnalysis?.interaction,
+            'casual',
+          ) as BehaviorAnalysis['interactionType'],
+          conversationDirection: this.parseString(
+            behaviorAnalysis?.direction,
+            'continue',
+          ) as BehaviorAnalysis['conversationDirection'],
+          userIntent: this.parseString(behaviorAnalysis?.intent, 'unknown'),
+          keyTopics: this.parseStringArray(behaviorAnalysis?.topics, []),
         },
       };
     } catch (error) {
-      this.logError('Ошибка парсинга ответа LLM', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        response: JSON.stringify(llmResponse).substring(0, 200),
+      this.logError('Ошибка парсинга ответа от LLM', {
+        error: error instanceof Error ? error.message : String(error),
+        llmResponse,
       });
-
-      throw error;
+      return this.getDefaultAnalysis('') as Omit<MessageAnalysis, 'analysisMetadata'>;
     }
   }
 
   private parseString(value: unknown, fallback: string): string {
-    return typeof value === 'string' ? value : fallback;
+    return typeof value === 'string' && value ? value : fallback;
   }
 
   private parseNumber(value: unknown, fallback: number): number {
     const num = Number(value);
-    return isNaN(num) ? fallback : num;
+    return !isNaN(num) ? num : fallback;
   }
 
   private parseStringArray(value: unknown, fallback: string[]): string[] {
-    if (!Array.isArray(value)) {
-      return fallback;
+    if (Array.isArray(value) && value.every(item => typeof item === 'string')) {
+      return value;
     }
-    const filtered = value.filter((item): item is string => typeof item === 'string');
-    return filtered;
+    if (typeof value === 'string' && value.length > 0) {
+      return [value];
+    }
+    return fallback;
   }
 
   private parseObject<T>(value: unknown, fallback: T): T {
-    return value && typeof value === 'object' ? (value as T) : fallback;
+    return value && typeof value === 'object' && !Array.isArray(value) ? (value as T) : fallback;
   }
 
-  private validateUserMood(value: string): 'positive' | 'negative' | 'neutral' | 'mixed' {
-    const validMoods = ['positive', 'negative', 'neutral', 'mixed'] as const;
-    return (validMoods as readonly string[]).includes(value)
-      ? (value as (typeof validMoods)[number])
-      : 'neutral';
-  }
-
-  private validateRiskLevel(value: string): 'low' | 'medium' | 'high' {
-    const validLevels = ['low', 'medium', 'high'] as const;
-    return (validLevels as readonly string[]).includes(value)
-      ? (value as (typeof validLevels)[number])
-      : 'low';
-  }
-
-  private validateResponseComplexityLevel(value: string): 'simple' | 'intermediate' | 'advanced' {
-    const validLevels = ['simple', 'intermediate', 'advanced'] as const;
-    return (validLevels as readonly string[]).includes(value)
-      ? (value as (typeof validLevels)[number])
-      : 'simple';
-  }
-
-  private validateInteractionType(
-    value: string,
-  ): 'casual' | 'intimate' | 'conflict' | 'support' | 'playful' {
-    const validTypes = ['casual', 'intimate', 'conflict', 'support', 'playful'] as const;
-    return (validTypes as readonly string[]).includes(value)
-      ? (value as (typeof validTypes)[number])
-      : 'casual';
-  }
-
-  private validateConversationDirection(
-    value: string,
-  ): 'continue' | 'redirect' | 'deepen' | 'lighten' {
-    const validDirections = ['continue', 'redirect', 'deepen', 'lighten'] as const;
-    return (validDirections as readonly string[]).includes(value)
-      ? (value as (typeof validDirections)[number])
-      : 'continue';
-  }
-
-  private getDefaultAnalysis(_message: string): MessageAnalysis {
+  private getDefaultAnalysis(message: string): MessageAnalysis {
     return {
       needsImpact: { communication: 1, attention: 1 },
       emotionalAnalysis: {
@@ -364,23 +209,19 @@ export class MessageAnalysisService extends BaseService {
         recommendedIntensity: 0.1,
       },
       specializationAnalysis: {
-        topicsRelevantToCharacter: [],
-        knowledgeGapDetected: false,
         responseComplexityLevel: 'simple',
+        requiredKnowledge: [],
+        domain: 'general',
       },
       behaviorAnalysis: {
         interactionType: 'casual',
-        responseTone: 'friendly',
-        initiativeLevel: 0.5,
         conversationDirection: 'continue',
+        userIntent: 'unknown',
+        keyTopics: [message.substring(0, 50)],
       },
-      urgency: 0.5,
-      sentiment: 'neutral',
-      keywords: [],
-      topics: [],
       analysisMetadata: {
-        confidence: 0.5,
-        processingTime: 0,
+        confidence: 0.1,
+        processingTime: Date.now(),
         llmProvider: 'fallback',
         analysisVersion: this.ANALYSIS_VERSION,
         timestamp: new Date(),

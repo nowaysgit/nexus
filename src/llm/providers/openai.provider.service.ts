@@ -148,6 +148,21 @@ export class OpenAIProviderService implements ILLMProvider {
   }
 
   /**
+   * Генерация векторного представления (эмбеддинга) для текста через OpenAI.
+   */
+  async generateEmbedding(text: string): Promise<number[]> {
+    try {
+      const embedding = await this.openaiCoreService.generateEmbedding(text);
+      return embedding;
+    } catch (error) {
+      this.logService.error('Ошибка генерации эмбеддинга через OpenAI', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
+  }
+
+  /**
    * Оценка количества токенов (приблизительная)
    */
   estimateTokens(text: string): number {

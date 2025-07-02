@@ -10,6 +10,7 @@ import { TechniqueGeneratorService } from '../../../src/character/services/techn
 import { TechniqueAnalyzerService } from '../../../src/character/services/technique-analyzer.service';
 import { TechniqueHistoryService } from '../../../src/character/services/technique-history.service';
 import { TechniqueStrategyService } from '../../../src/character/services/technique-strategy.service';
+import { TechniqueExecutorService } from '../../../src/character/services/technique-executor.service';
 /* eslint-disable */
 
 /**
@@ -484,6 +485,7 @@ export function requiredMocksAdder(
     { service: TechniqueAnalyzerService, name: 'TechniqueAnalyzerService' },
     { service: TechniqueHistoryService, name: 'TechniqueHistoryService' },
     { service: TechniqueStrategyService, name: 'TechniqueStrategyService' },
+    { service: TechniqueExecutorService, name: 'TechniqueExecutorService' },
   ];
 
   for (const { service, name } of techniqueServices) {

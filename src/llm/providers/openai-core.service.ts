@@ -23,6 +23,7 @@ export interface MonitoringEvent {
   model?: string;
   promptTokens?: number;
   completionTokens?: number;
+  totalTokens?: number;
   error?: string;
   costUSD?: number;
   timestamp: Date;
@@ -239,6 +240,7 @@ export class OpenAICoreService implements OnModuleDestroy {
             model: useModel,
             promptTokens: completion.usage?.prompt_tokens,
             completionTokens: completion.usage?.completion_tokens,
+            totalTokens: completion.usage?.total_tokens,
             timestamp: new Date(),
           });
 
@@ -347,6 +349,59 @@ export class OpenAICoreService implements OnModuleDestroy {
       data,
       requestInfo: this.createRequestInfo(options, false),
     };
+  }
+
+  /**
+   * Генерация векторного представления (эмбеддинга) для текста
+   */
+  async generateEmbedding(
+    text: string,
+    model: string = 'text-embedding-ada-002',
+  ): Promise<number[]> {
+    const requestId = this.generateRequestId();
+    this.emitMonitoringEvent({ type: 'request_start', requestId, model, timestamp: new Date() });
+
+    try {
+      this.logService.debug('Отправляем запрос на эмбеддинг к OpenAI API', {
+        requestId,
+        model,
+        textLength: text.length,
+      });
+
+      const response = await this.openai.embeddings.create({
+        input: text,
+        model,
+      });
+
+      const embedding = response.data[0]?.embedding;
+      if (!embedding) {
+        throw new Error('API не вернул эмбеддинг в ожидаемом формате.');
+      }
+
+      this.emitMonitoringEvent({
+        type: 'request_complete',
+        requestId,
+        model,
+        promptTokens: response.usage.prompt_tokens,
+        totalTokens: response.usage.total_tokens,
+        timestamp: new Date(),
+      });
+
+      return embedding;
+    } catch (error) {
+      this.logService.error('Ошибка генерации эмбеддинга через OpenAI', {
+        requestId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      this.emitMonitoringEvent({
+        type: 'request_error',
+        requestId,
+        model,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date(),
+      });
+      throw error;
+    }
   }
 
   // ======= ПРИВАТНЫЕ МЕТОДЫ =======

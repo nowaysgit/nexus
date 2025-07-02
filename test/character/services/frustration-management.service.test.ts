@@ -9,7 +9,7 @@ import {
   CharacterGender,
   RelationshipStage,
 } from '../../../src/character/entities/character.entity';
-import { Need } from '../../../src/character/entities/need.entity';
+import { Need, NeedState } from '../../../src/character/entities/need.entity';
 import { Action, ActionStatus } from '../../../src/character/entities/action.entity';
 import { CharacterNeedType } from '../../../src/character/enums/character-need-type.enum';
 import { ActionType } from '../../../src/character/enums/action-type.enum';
@@ -118,7 +118,7 @@ export default createTestSuite('FrustrationManagementService', () => {
       requiresDatabase: false,
     },
     async () => {
-      const unmetNeed: Need = {
+      const unmetNeed = {
         id: 1,
         characterId: 1,
         character: mockCharacter,
@@ -132,11 +132,34 @@ export default createTestSuite('FrustrationManagementService', () => {
         lastUpdated: new Date(),
         isActive: true,
         createdAt: new Date(),
+        updatedAt: new Date(),
+        // Новые поля для многофакторной модели
+        individualAccumulationRate: 1.0,
+        dynamicPriority: 1.0,
+        frustrationLevel: 0,
+        blockedUntil: null,
+        blockReason: null,
+        relatedNeeds: null,
+        influenceCoefficients: null,
+        state: NeedState.SATISFIED,
+        lastFrustrationTime: null,
+        consecutiveBlocksCount: 0,
         hasReachedThreshold: () => false,
         grow: () => {},
         reset: () => {},
         updateLevel: () => {},
-      };
+        isBlocked: () => false,
+        isCritical: () => false,
+        blockFor: () => {},
+        unblock: () => {},
+        increaseFrustration: () => {},
+        decreaseFrustration: () => {},
+        getRelatedNeeds: () => [],
+        setRelatedNeeds: () => {},
+        getInfluenceCoefficients: () => ({}),
+        setInfluenceCoefficients: () => {},
+        calculateInfluenceOnRelated: () => ({}),
+      } as unknown as Need;
 
       const character = {
         ...mockCharacter,

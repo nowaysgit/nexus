@@ -1,4 +1,6 @@
 import { Injectable } from '@nestjs/common';
+import * as fs from 'fs';
+import * as path from 'path';
 import { LogService } from '../logging/log.service';
 import { BaseService } from '../common/base/base.service';
 import {
@@ -8,6 +10,19 @@ import {
 } from '../common/interfaces/prompt-template.interface';
 import { Character } from '../character/entities/character.entity';
 import { EmotionalState } from '../character/entities/emotional-state';
+
+interface TemplateMetadata {
+  name: string;
+  description: string;
+  author: string;
+  tags: string[];
+  maxTokens: number;
+  recommendedTemperature: number;
+}
+
+interface TemplateMetadataMap {
+  [key: string]: TemplateMetadata;
+}
 
 /**
  * Централизованный сервис для работы с шаблонами промптов
@@ -101,17 +116,23 @@ export class PromptTemplateService extends BaseService {
     emotionalState?: EmotionalState,
     context?: string,
   ): string {
-    return this.createPrompt('character-system', {
-      characterName: character.name,
-      characterDescription: character.biography,
-      personalityTraits: character.personality?.traits?.join(', ') || 'не указаны',
-      hobbies: character.personality?.hobbies?.join(', ') || 'не указаны',
-      fears: character.personality?.fears?.join(', ') || 'не указаны',
-      values: character.personality?.values?.join(', ') || 'не указаны',
-      currentEmotion: emotionalState?.primary || 'нейтральное',
-      emotionalIntensity: emotionalState?.intensity || 50,
-      additionalContext: context || '',
-    });
+    const contextPrompt = context ? `<context>\n${context}\n</context>` : '';
+
+    return this.createPrompt(
+      'character-system',
+      {
+        characterName: character.name,
+        characterDescription: character.biography,
+        personalityTraits: character.personality?.traits?.join(', ') || 'не указаны',
+        hobbies: character.personality?.hobbies?.join(', ') || 'не указаны',
+        fears: character.personality?.fears?.join(', ') || 'не указаны',
+        values: character.personality?.values?.join(', ') || 'не указаны',
+        currentEmotion: emotionalState?.primary || 'нейтральное',
+        emotionalIntensity: emotionalState?.intensity || 50,
+        additionalContext: contextPrompt,
+      },
+      '1.1.0',
+    );
   }
 
   /**
@@ -343,133 +364,88 @@ export class PromptTemplateService extends BaseService {
    * Инициализация стандартных шаблонов
    */
   private initializeDefaultTemplates(): void {
-    // Шаблон для системного промпта персонажа
-    this.registerTemplate({
-      name: 'Системный промпт персонажа',
-      type: 'character-system',
-      version: '1.0.0',
-      template: `Ты - {{characterName}}, персонаж с описанием: {{characterDescription}}.
+    const templatesDir = path.join(__dirname, 'templates');
 
-Твои личностные черты: {{personalityTraits}}
-Твои хобби и интересы: {{hobbies}}
-Твои страхи: {{fears}}
-Твои ценности: {{values}}
+    // Метаданные для шаблонов. В будущем можно вынести в отдельный manifest.json
+    const templateMetadata: TemplateMetadataMap = {
+      'character-system': {
+        name: 'Системный промпт персонажа',
+        description: 'Системный промпт для создания характера персонажа',
+        author: 'System',
+        tags: ['character', 'system', 'personality'],
+        maxTokens: 2048,
+        recommendedTemperature: 0.8,
+      },
+      'message-analysis': {
+        name: 'Детальный анализ сообщения',
+        description: 'Централизованный промпт для детального анализа пользовательских сообщений',
+        author: 'System',
+        tags: ['analysis', 'message', 'json', 'detailed'],
+        maxTokens: 2000,
+        recommendedTemperature: 0.1,
+      },
+      'character-name-generation': {
+        name: 'Генерация имени персонажа',
+        description: 'Промпт для генерации имен персонажей',
+        author: 'System',
+        tags: ['character', 'name', 'generation'],
+        maxTokens: 50,
+        recommendedTemperature: 0.9,
+      },
+      'context-importance-analysis': {
+        name: 'Анализ важности контекста',
+        description: 'Промпт для определения важности контекста в системе компрессии',
+        author: 'System',
+        tags: ['context', 'analysis', 'importance'],
+        maxTokens: 10,
+        recommendedTemperature: 0.1,
+      },
+    };
 
-Текущее эмоциональное состояние: {{currentEmotion}} (интенсивность: {{emotionalIntensity}})
+    try {
+      const templateFiles = fs.readdirSync(templatesDir);
 
-{{#if additionalContext}}
-Дополнительный контекст: {{additionalContext}}
-{{/if}}
+      for (const file of templateFiles) {
+        if (file.endsWith('.hbs')) {
+          const filePath = path.join(templatesDir, file);
+          const fileContent = fs.readFileSync(filePath, 'utf-8');
 
-Отвечай всегда в характере этого персонажа, учитывая его личностные особенности и текущее эмоциональное состояние.`,
-      maxTokens: 2048,
-      recommendedTemperature: 0.8,
-      description: 'Системный промпт для создания характера персонажа',
-      author: 'System',
-      tags: ['character', 'system', 'personality'],
-    });
+          // Парсим имя файла: character-system-v1.0.0.hbs
+          const nameParts = file.replace('.hbs', '').split('-v');
+          if (nameParts.length !== 2) {
+            this.logWarning(`Неверный формат имени файла шаблона: ${file}`);
+            continue;
+          }
 
-    // Шаблон для анализа сообщений
-    this.registerTemplate({
-      name: 'Детальный анализ сообщения',
-      type: 'message-analysis',
-      version: '2.0.0',
-      template: `Ты - эксперт-аналитик сообщений для системы ИИ-персонажей.
-Твоя задача - провести анализ сообщения пользователя и вернуть результат в формате JSON.
+          const type = nameParts[0];
+          const version = nameParts[1];
+          const metadata = templateMetadata[type];
 
-Информация о персонаже:
-- Имя: {{characterName}}
-- Личность: {{characterPersonality}}
-- Текущие потребности: {{currentNeeds}}
-- Эмоциональное состояние: {{emotionalState}}
-- Специализация: {{specialization}}
+          if (!metadata) {
+            this.logWarning(`Не найдены метаданные для шаблона типа: ${type}`);
+            continue;
+          }
 
-Контекст разговора:
-- Последние сообщения: {{recentMessages}}
-- Тон разговора: {{conversationTone}}
+          this.registerTemplate({
+            type,
+            version,
+            template: fileContent,
+            ...metadata,
+          });
+        }
+      }
+    } catch (error) {
+      this.logError('Ошибка при инициализации шаблонов промптов из файлов', {
+        error: (error as Error).message,
+      });
+      // Можно добавить fallback на старый метод, если файлы не найдены
+    }
 
-Верни JSON с анализом в точно таком формате:
-{
-  "needsImpact": { "communication": 5, "attention": 3 },
-  "emotionalAnalysis": {
-    "userMood": "neutral",
-    "emotionalIntensity": 0.5,
-    "triggerEmotions": ["curiosity"],
-    "expectedEmotionalResponse": "engaged"
-  },
-  "manipulationAnalysis": {
-    "userVulnerability": 0.3,
-    "applicableTechniques": [],
-    "riskLevel": "low",
-    "recommendedIntensity": 0.1
-  },
-  "specializationAnalysis": {
-    "topicsRelevantToCharacter": [],
-    "knowledgeGapDetected": false,
-    "responseComplexityLevel": "simple"
-  },
-  "behaviorAnalysis": {
-    "interactionType": "casual",
-    "responseTone": "friendly",
-    "initiativeLevel": 0.6,
-    "conversationDirection": "continue"
-  },
-  "urgency": 0.5,
-  "sentiment": "neutral",
-  "keywords": [],
-  "topics": []
-}
+    // Устанавливаем новые версии как активные
+    this.setActiveVersion('character-system', '1.1.0');
+    this.setActiveVersion('message-analysis', '2.1.0');
 
-Анализируй исключительно эмоциональные, психологические и коммуникативные аспекты.`,
-      maxTokens: 2000,
-      recommendedTemperature: 0.1,
-      description: 'Централизованный промпт для детального анализа пользовательских сообщений',
-      author: 'System',
-      tags: ['analysis', 'message', 'json', 'detailed'],
-    });
-
-    // Шаблон для генерации имени персонажа
-    this.registerTemplate({
-      name: 'Генерация имени персонажа',
-      type: 'character-name-generation',
-      version: '1.0.0',
-      template: `Сгенерируй подходящее имя для персонажа с архетипом "{{archetype}}".
-
-{{#if additionalRequirements}}
-Дополнительные требования: {{additionalRequirements}}
-{{/if}}
-
-Ответь только именем без дополнительных объяснений.`,
-      maxTokens: 50,
-      recommendedTemperature: 0.9,
-      description: 'Промпт для генерации имен персонажей',
-      author: 'System',
-      tags: ['character', 'name', 'generation'],
-    });
-
-    // Шаблон для анализа важности контекста
-    this.registerTemplate({
-      name: 'Анализ важности контекста',
-      type: 'context-importance-analysis',
-      version: '1.0.0',
-      template: `Определи важность следующего фрагмента контекста для персонажа.
-
-Контент: {{content}}
-
-Оцени важность по трем уровням:
-- critical: критически важная информация (эмоциональные события, важные решения, ключевые моменты отношений)
-- significant: значимая информация (предпочтения, мнения, интересные факты)
-- background: фоновая информация (обычные разговоры, повседневные темы)
-
-Ответь только одним словом: critical, significant или background.`,
-      maxTokens: 10,
-      recommendedTemperature: 0.1,
-      description: 'Промпт для определения важности контекста в системе компрессии',
-      author: 'System',
-      tags: ['context', 'analysis', 'importance'],
-    });
-
-    this.logService.debug('Инициализированы стандартные шаблоны промптов с версионированием', {
+    this.logService.debug('Инициализированы шаблоны промптов из файлов.', {
       templatesCount: this.templates.size,
       totalVersions: this.getAllTemplates().length,
     });

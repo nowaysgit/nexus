@@ -3,7 +3,7 @@ import { Context } from '../interfaces/context.interface';
 import { MessageService } from '../services/message.service';
 import { NeedsService } from '../../character/services/needs.service';
 import { CharacterBehaviorService } from '../../character/services/character-behavior.service';
-import { ActionService } from '../../character/services/action.service';
+import { ActionExecutorService } from '../../character/services/action-executor.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Dialog } from '../../dialog/entities/dialog.entity';
@@ -26,7 +26,7 @@ export class MessageHandler extends BaseService {
     private characterService: CharacterService,
     private needsService: NeedsService,
     private characterBehaviorService: CharacterBehaviorService,
-    private actionService: ActionService,
+    private actionExecutorService: ActionExecutorService,
     @InjectRepository(Dialog)
     private dialogRepository: Repository<Dialog>,
     private moduleRef: ModuleRef,
@@ -104,8 +104,8 @@ export class MessageHandler extends BaseService {
     dialog.lastInteractionDate = new Date();
     await this.dialogRepository.save(dialog);
 
-    // Уведомляем ActionService о связи персонажа с чатом
-    this.actionService.updateChatState(characterId.toString(), userId.toString(), true);
+    // Уведомляем ActionExecutorService о связи персонажа с чатом
+    this.actionExecutorService.updateChatState(characterId.toString(), userId.toString(), true);
 
     this.logInfo(
       `Активирован диалог #${dialog.id} между пользователем ${userId} и персонажем ${characterId}`,
@@ -132,8 +132,12 @@ export class MessageHandler extends BaseService {
         dialog.isActive = false;
         await this.dialogRepository.save(dialog);
 
-        // Уведомляем ActionService об отключении связи персонажа с чатом
-        this.actionService.updateChatState(dialog.characterId.toString(), userId.toString(), false);
+        // Уведомляем ActionExecutorService об отключении связи персонажа с чатом
+        this.actionExecutorService.updateChatState(
+          dialog.characterId.toString(),
+          userId.toString(),
+          false,
+        );
 
         this.logInfo(
           `Деактивирован диалог #${dialog.id} между пользователем ${userId} и персонажем ${dialog.characterId}`,

@@ -5,7 +5,7 @@ import { TelegramInitializationService } from '../services/telegram-initializati
 import { MessageService } from '../services/message.service';
 import { UserService } from '../../user/services/user.service';
 import { ConfigService } from '@nestjs/config';
-import { ActionService } from '../../character/services/action.service';
+import { ActionExecutorService } from '../../character/services/action-executor.service';
 import { CharacterBehaviorService } from '../../character/services/character-behavior.service';
 import { DialogService } from '../../dialog/services/dialog.service';
 import { CharacterManagementService } from '../../character/services/character-management.service';
@@ -40,7 +40,7 @@ export class CommandHandler extends BaseService {
     private readonly userService: UserService,
     logService: LogService,
     private readonly messageService: MessageService,
-    private readonly actionService: ActionService,
+    private readonly actionExecutorService: ActionExecutorService,
     private readonly characterBehaviorService: CharacterBehaviorService,
     private readonly characterManagementService: CharacterManagementService,
     private readonly characterService: CharacterService,
@@ -397,8 +397,10 @@ export class CommandHandler extends BaseService {
       }
 
       // Получаем информацию о текущем действии персонажа
-      const isPerformingAction = this.actionService.isPerformingAction(characterId.toString());
-      const currentAction = this.actionService.getCurrentAction(characterId.toString());
+      const isPerformingAction = this.actionExecutorService.isPerformingAction(
+        characterId.toString(),
+      );
+      const currentAction = this.actionExecutorService.getCurrentAction(characterId.toString());
 
       let actionText = '';
       let keyboard:
@@ -486,7 +488,7 @@ ${currentAction.content || ''}`;
       // Обрабатываем остановку действия
       if (callbackData.startsWith('stop_action:')) {
         const characterId = callbackData.split(':')[1];
-        await this.actionService.completeAction(characterId, false);
+        await this.actionExecutorService.stopCurrentAction(characterId);
         await ctx.editMessageText('Действие прервано пользователем');
         return;
       }
@@ -523,7 +525,7 @@ ${currentAction.content || ''}`;
         }
 
         // Инициируем действие
-        const action = await this.actionService.determineAndPerformAction(character, {
+        const action = await this.actionExecutorService.determineAndPerformAction(character, {
           characterId: characterId,
           userId: Number(ctx.from?.id),
           triggerType: 'user_suggestion',

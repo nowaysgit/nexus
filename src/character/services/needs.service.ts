@@ -9,6 +9,8 @@ import { Character } from '../entities/character.entity';
 import { INeedsService, INeed, INeedUpdate } from '../interfaces/needs.interfaces';
 import { CharacterNeedType } from '../enums/character-need-type.enum';
 import { BaseService } from '../../common/base/base.service';
+import { MessageQueueService, MessagePriority } from '../../message-queue/message-queue.service';
+import { MessageContext } from '../../common/interfaces/message-processor.interface';
 
 @Injectable()
 export class NeedsService extends BaseService implements INeedsService {
@@ -19,6 +21,7 @@ export class NeedsService extends BaseService implements INeedsService {
     private readonly characterRepository: Repository<Character>,
     private readonly eventEmitter: EventEmitter2,
     logService: LogService,
+    private readonly messageQueueService: MessageQueueService,
   ) {
     super(logService);
   }
@@ -108,7 +111,7 @@ export class NeedsService extends BaseService implements INeedsService {
   }
 
   /**
-   * Обрабатывает рост потребностей (фоновая задача)
+   * Обрабатывает рост потребностей с учетом многофакторной модели
    */
   async processNeedsGrowth(characterId: number): Promise<INeed[]> {
     try {
@@ -123,10 +126,18 @@ export class NeedsService extends BaseService implements INeedsService {
 
         if (hoursSinceUpdate > 0) {
           const oldValue = need.currentValue;
+          const oldState = need.state;
+
+          // Используем обновленный метод роста с учетом индивидуальных факторов
           need.grow(hoursSinceUpdate);
 
           await this.needRepository.save(need);
           updatedNeeds.push(this.mapToInterface(need));
+
+          // Обрабатываем влияние на связанные потребности при изменении состояния
+          if (oldState !== need.state) {
+            await this.processRelatedNeedsInfluence(characterId, need);
+          }
 
           // Генерируем событие роста потребности
           this.eventEmitter.emit('need.grown', {
@@ -136,6 +147,9 @@ export class NeedsService extends BaseService implements INeedsService {
             newValue: need.currentValue,
             growth: need.currentValue - oldValue,
             hours: hoursSinceUpdate,
+            frustrationLevel: need.frustrationLevel,
+            state: need.state,
+            dynamicPriority: need.dynamicPriority,
           });
 
           // Проверяем достижение порога
@@ -145,6 +159,17 @@ export class NeedsService extends BaseService implements INeedsService {
               needType: need.type,
               currentValue: need.currentValue,
               threshold: need.threshold,
+              frustrationLevel: need.frustrationLevel,
+            });
+          }
+
+          // Проверяем критическое состояние
+          if (need.isCritical() && !need.isCritical.call({ ...need, currentValue: oldValue })) {
+            this.eventEmitter.emit('need.critical_state', {
+              characterId,
+              needType: need.type,
+              currentValue: need.currentValue,
+              frustrationLevel: need.frustrationLevel,
             });
           }
         }
@@ -254,31 +279,87 @@ export class NeedsService extends BaseService implements INeedsService {
   }
 
   /**
-   * Фоновая задача для автоматического обновления потребностей всех персонажей
+   * Фоновая обработка потребностей всех персонажей
+   * Метод запускается по расписанию и ставит в очередь задачи
+   * для обработки потребностей каждого активного персонажа.
    */
   @Cron(CronExpression.EVERY_HOUR)
   async processAllCharactersNeeds(): Promise<void> {
+    this.logInfo('Запуск фоновой обработки потребностей для всех персонажей');
     try {
       const characters = await this.characterRepository.find({
-        where: { isArchived: false },
-        select: ['id'],
+        where: { isActive: true },
+        select: ['id'], // Выбираем только ID для оптимизации
       });
 
-      this.logInfo(`Запуск фонового обновления потребностей для ${characters.length} персонажей`);
+      this.logInfo(`Найдено ${characters.length} активных персонажей для обработки.`);
 
       for (const character of characters) {
-        try {
-          await this.processNeedsGrowth(character.id);
-        } catch (error) {
-          this.logError(`Ошибка обновления потребностей для персонажа ${character.id}`, {
-            error: error instanceof Error ? error.message : String(error),
+        const messageContext: MessageContext = {
+          id: `needs-growth-${character.id}-${Date.now()}`,
+          type: 'PROCESS_NEEDS_GROWTH',
+          source: 'SYSTEM_CRON',
+          metadata: {
+            characterId: character.id,
+            description: `Обработка роста потребностей для персонажа ${character.id}`,
+          },
+        };
+
+        // Ставим задачу в очередь и не ждем ее выполнения
+        this.messageQueueService
+          .enqueue(
+            messageContext,
+            async (context: MessageContext) => {
+              // Безопасно извлекаем characterId
+              const charId = context.metadata?.characterId;
+              if (typeof charId !== 'number') {
+                const error = new Error(
+                  `Неверный или отсутствующий characterId в метаданных задачи: ${String(charId)}`,
+                );
+                this.logError(error.message, { context });
+                return { success: false, handled: true, context, error };
+              }
+
+              try {
+                this.logInfo(`Начало обработки потребностей из очереди для персонажа: ${charId}`);
+                const updatedNeeds = await this.processNeedsGrowth(charId);
+                this.logInfo(
+                  `Завершение обработки потребностей из очереди для персонажа: ${charId}`,
+                );
+                return {
+                  success: true,
+                  handled: true,
+                  context,
+                  result: {
+                    message: `Потребности для персонажа ${charId} успешно обработаны. Обновлено: ${updatedNeeds.length}`,
+                  },
+                };
+              } catch (error) {
+                const typedError = error instanceof Error ? error : new Error(String(error));
+                this.logError(
+                  `Ошибка при обработке потребностей из очереди для персонажа: ${charId}`,
+                  { error: typedError },
+                );
+                return {
+                  success: false,
+                  handled: true,
+                  context,
+                  error: typedError,
+                };
+              }
+            },
+            { priority: MessagePriority.LOW }, // Используем корректный enum и значение
+          )
+          .catch(error => {
+            this.logError(`Ошибка при постановке задачи в очередь для персонажа ${character.id}`, {
+              error,
+            });
           });
-        }
       }
 
-      this.logInfo('Завершено фоновое обновление потребностей всех персонажей');
+      this.logInfo('Все задачи по обработке потребностей поставлены в очередь.');
     } catch (error) {
-      this.logError('Ошибка фонового обновления потребностей', {
+      this.logError('Критическая ошибка при запуске фоновой обработки потребностей', {
         error: error instanceof Error ? error.message : String(error),
       });
     }
@@ -327,6 +408,7 @@ export class NeedsService extends BaseService implements INeedsService {
       maxValue: Number(need.maxValue),
       lastUpdated: need.lastUpdated,
       isActive: need.isActive,
+      dynamicPriority: need.dynamicPriority,
     };
   }
 
@@ -385,6 +467,294 @@ export class NeedsService extends BaseService implements INeedsService {
         error: error instanceof Error ? error.message : String(error),
       });
       throw error;
+    }
+  }
+
+  /**
+   * Устанавливает индивидуальную скорость накопления для потребности
+   */
+  async setIndividualAccumulationRate(
+    characterId: number,
+    needType: CharacterNeedType,
+    rate: number,
+  ): Promise<void> {
+    try {
+      const need = await this.needRepository.findOne({
+        where: { characterId, type: needType, isActive: true },
+      });
+
+      if (!need) {
+        this.logWarning(`Потребность ${needType} не найдена для персонажа ${characterId}`);
+        return;
+      }
+
+      need.individualAccumulationRate = Math.max(0.1, Math.min(5.0, rate)); // Ограничиваем диапазон
+      await this.needRepository.save(need);
+
+      this.logInfo(
+        `Установлена индивидуальная скорость накопления ${rate} для потребности ${needType} персонажа ${characterId}`,
+      );
+    } catch (error) {
+      this.logError('Ошибка установки индивидуальной скорости накопления', {
+        characterId,
+        needType,
+        rate,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Обновляет динамический приоритет потребности на основе контекста
+   */
+  async updateDynamicPriority(
+    characterId: number,
+    needType: CharacterNeedType,
+    contextFactor: number,
+  ): Promise<void> {
+    try {
+      const need = await this.needRepository.findOne({
+        where: { characterId, type: needType, isActive: true },
+      });
+
+      if (!need) {
+        this.logWarning(`Потребность ${needType} не найдена для персонажа ${characterId}`);
+        return;
+      }
+
+      // Динамический приоритет учитывает контекстные факторы
+      need.dynamicPriority = Math.max(0.1, Math.min(3.0, contextFactor));
+      await this.needRepository.save(need);
+
+      this.eventEmitter.emit('need.priority_updated', {
+        characterId,
+        needType,
+        newPriority: need.dynamicPriority,
+        contextFactor,
+      });
+
+      this.logInfo(
+        `Обновлен динамический приоритет для потребности ${needType} персонажа ${characterId}: ${need.dynamicPriority}`,
+      );
+    } catch (error) {
+      this.logError('Ошибка обновления динамического приоритета', {
+        characterId,
+        needType,
+        contextFactor,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Блокирует потребность на определенное время
+   */
+  async blockNeed(
+    characterId: number,
+    needType: CharacterNeedType,
+    hours: number,
+    reason: string,
+  ): Promise<void> {
+    try {
+      const need = await this.needRepository.findOne({
+        where: { characterId, type: needType, isActive: true },
+      });
+
+      if (!need) {
+        this.logWarning(`Потребность ${needType} не найдена для персонажа ${characterId}`);
+        return;
+      }
+
+      need.blockFor(hours, reason);
+      await this.needRepository.save(need);
+
+      // Обрабатываем влияние на связанные потребности
+      await this.processRelatedNeedsInfluence(characterId, need);
+
+      this.eventEmitter.emit('need.blocked', {
+        characterId,
+        needType,
+        hours,
+        reason,
+        frustrationLevel: need.frustrationLevel,
+      });
+
+      this.logInfo(
+        `Заблокирована потребность ${needType} для персонажа ${characterId} на ${hours} часов. Причина: ${reason}`,
+      );
+    } catch (error) {
+      this.logError('Ошибка блокировки потребности', {
+        characterId,
+        needType,
+        hours,
+        reason,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Разблокирует потребность
+   */
+  async unblockNeed(characterId: number, needType: CharacterNeedType): Promise<void> {
+    try {
+      const need = await this.needRepository.findOne({
+        where: { characterId, type: needType, isActive: true },
+      });
+
+      if (!need) {
+        this.logWarning(`Потребность ${needType} не найдена для персонажа ${characterId}`);
+        return;
+      }
+
+      need.unblock();
+      await this.needRepository.save(need);
+
+      this.eventEmitter.emit('need.unblocked', {
+        characterId,
+        needType,
+      });
+
+      this.logInfo(`Разблокирована потребность ${needType} для персонажа ${characterId}`);
+    } catch (error) {
+      this.logError('Ошибка разблокировки потребности', {
+        characterId,
+        needType,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Настраивает связи между потребностями
+   */
+  async setupNeedRelations(
+    characterId: number,
+    needType: CharacterNeedType,
+    relatedNeeds: CharacterNeedType[],
+    influenceCoefficients: Partial<Record<CharacterNeedType, number>>,
+  ): Promise<void> {
+    try {
+      const need = await this.needRepository.findOne({
+        where: { characterId, type: needType, isActive: true },
+      });
+
+      if (!need) {
+        this.logWarning(`Потребность ${needType} не найдена для персонажа ${characterId}`);
+        return;
+      }
+
+      need.setRelatedNeeds(relatedNeeds);
+      need.setInfluenceCoefficients(influenceCoefficients);
+      await this.needRepository.save(need);
+
+      this.logInfo(
+        `Настроены связи для потребности ${needType} персонажа ${characterId}: ${relatedNeeds.length} связанных потребностей`,
+      );
+    } catch (error) {
+      this.logError('Ошибка настройки связей между потребностями', {
+        characterId,
+        needType,
+        relatedNeeds,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Получает потребности в критическом состоянии
+   */
+  async getCriticalNeeds(characterId: number): Promise<INeed[]> {
+    try {
+      const needs = await this.needRepository.find({
+        where: { characterId, isActive: true },
+      });
+
+      const criticalNeeds = needs.filter(need => need.isCritical());
+      return criticalNeeds.map(need => this.mapToInterface(need));
+    } catch (error) {
+      this.logError('Ошибка получения критических потребностей', {
+        characterId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Получает заблокированные потребности
+   */
+  async getBlockedNeeds(characterId: number): Promise<INeed[]> {
+    try {
+      const needs = await this.needRepository.find({
+        where: { characterId, isActive: true },
+      });
+
+      const blockedNeeds = needs.filter(need => need.isBlocked());
+      return blockedNeeds.map(need => this.mapToInterface(need));
+    } catch (error) {
+      this.logError('Ошибка получения заблокированных потребностей', {
+        characterId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Обрабатывает влияние на связанные потребности
+   */
+  private async processRelatedNeedsInfluence(characterId: number, sourceNeed: Need): Promise<void> {
+    try {
+      const relatedNeedTypes = sourceNeed.getRelatedNeeds();
+      if (relatedNeedTypes.length === 0) return;
+
+      const influence = sourceNeed.calculateInfluenceOnRelated();
+
+      for (const relatedType of relatedNeedTypes) {
+        const coefficient = influence[relatedType];
+        if (!coefficient) continue;
+
+        const relatedNeed = await this.needRepository.findOne({
+          where: { characterId, type: relatedType, isActive: true },
+        });
+
+        if (relatedNeed) {
+          // Влияние зависит от состояния источника и коэффициента
+          let influenceAmount = 0;
+
+          if (sourceNeed.state === 'blocked' || sourceNeed.state === 'frustrated') {
+            // Негативное влияние при блокировке или фрустрации
+            influenceAmount = coefficient * sourceNeed.frustrationLevel * 0.1;
+            relatedNeed.increaseFrustration(influenceAmount);
+          } else if (sourceNeed.state === 'satisfied') {
+            // Позитивное влияние при удовлетворении
+            influenceAmount = coefficient * 10;
+            relatedNeed.decreaseFrustration(Math.abs(influenceAmount));
+          }
+
+          await this.needRepository.save(relatedNeed);
+
+          this.eventEmitter.emit('need.influenced', {
+            characterId,
+            sourceNeedType: sourceNeed.type,
+            targetNeedType: relatedType,
+            influence: influenceAmount,
+            coefficient,
+          });
+        }
+      }
+    } catch (error) {
+      this.logError('Ошибка обработки влияния на связанные потребности', {
+        characterId,
+        sourceNeedType: sourceNeed.type,
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 }

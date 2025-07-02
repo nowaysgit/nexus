@@ -27,8 +27,13 @@ export {
 export { MockLLMProviderManagerService, MockEmotionalStateService } from './jest.mocks';
 export { MockProviderFactory } from './mock-provider';
 export { MockInfrastructureModule } from './mock-infrastructure.module';
+export { MockNeedsService } from './needs-service.mock';
+export { MockTypeOrmModule } from './mock-typeorm.module';
+export { TelegrafTokenMockModule as MockTelegrafTokenModule } from './telegraf-token.module';
 
 export class MockApiKeyService {
+  private readonly validApiKeys: string[];
+
   extractApiKey(req: any): string | undefined {
     return req.headers?.['x-api-key'] || req.query?.apiKey;
   }

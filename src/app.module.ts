@@ -28,6 +28,7 @@ import { PromptTemplateModule } from './prompt-template/prompt-template.module';
 
 import { AuthModule } from './auth/auth.module';
 import { MonitoringModule } from './monitoring/monitoring.module';
+import { StoryModule } from './story/story.module';
 
 // Guards and Middleware
 import { ApiKeyGuard } from './common/guards/api-key.guard';
@@ -135,6 +136,7 @@ interface EnvironmentConfig {
 
     AuthModule,
     MonitoringModule,
+    StoryModule,
   ],
   controllers: [ApiController],
   providers: [

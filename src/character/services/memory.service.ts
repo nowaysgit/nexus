@@ -9,6 +9,8 @@ import {
 } from '../entities/character-memory.entity';
 import { MemoryType } from '../interfaces/memory.interfaces';
 import { BaseService } from '../../common/base/base.service';
+import { LLMService } from '../../llm/services/llm.service';
+import { Vector } from 'victor';
 
 /**
  * Интерфейс для создания памяти о сообщении
@@ -56,6 +58,7 @@ export class MemoryService extends BaseService {
   constructor(
     @InjectRepository(CharacterMemory)
     private memoryRepository: Repository<CharacterMemory>,
+    private readonly llmService: LLMService,
     logService: LogService,
   ) {
     super(logService);
@@ -105,6 +108,19 @@ export class MemoryService extends BaseService {
     metadata: Record<string, unknown> = {},
   ): Promise<CharacterMemory> {
     return this.withErrorHandling('создании воспоминания', async () => {
+      // Генерируем эмбеддинг для контента
+      const embedding = await this.llmService.generateEmbedding(content);
+
+      // Находим релевантные воспоминания для создания ассоциативной связи
+      const relevantMemories = await this.findRelevantMemories(
+        characterId,
+        content, // Используем сам контент для поиска
+        3, // Ограничимся тремя наиболее релевантными
+      );
+
+      // Определяем, должно ли воспоминание быть долгосрочным
+      const isLongTerm = importance >= 9;
+
       // Создаем новое воспоминание
       const memory = this.memoryRepository.create({
         characterId,
@@ -112,8 +128,11 @@ export class MemoryService extends BaseService {
         type,
         importance,
         metadata,
+        embedding,
         memoryDate: new Date(),
         isActive: true,
+        isLongTerm,
+        relatedMemories: relevantMemories,
       });
 
       // Сохраняем воспоминание
@@ -322,29 +341,31 @@ export class MemoryService extends BaseService {
     characterId: number,
     maxCount: number = this.maxMemoryCount,
   ): Promise<void> {
-    return this.withErrorHandling('ограничении количества воспоминаний', async () => {
-      // Подсчитываем общее количество воспоминаний персонажа
-      const totalCount = await this.memoryRepository.count({
-        where: { characterId, isActive: true },
+    return this.withErrorHandling('лимитировании воспоминаний', async () => {
+      // Подсчитываем только "краткосрочные" воспоминания
+      const currentCount = await this.memoryRepository.count({
+        where: { characterId, isLongTerm: false },
       });
 
-      if (totalCount > maxCount) {
-        // Получаем воспоминания, отсортированные по важности и дате (самые старые и неважные первыми)
-        const memoriesToRemove = await this.memoryRepository.find({
-          where: { characterId, isActive: true },
+      // Если количество превышает лимит
+      if (currentCount > maxCount) {
+        // Определяем, сколько воспоминаний нужно удалить
+        const toDeleteCount = currentCount - maxCount;
+
+        // Находим наименее важные и самые старые "краткосрочные" воспоминания
+        const memoriesToDelete = await this.memoryRepository.find({
+          where: { characterId, isLongTerm: false },
           order: { importance: 'ASC', memoryDate: 'ASC' },
-          take: totalCount - maxCount,
+          take: toDeleteCount,
         });
 
-        // Помечаем воспоминания как неактивные вместо удаления
-        for (const memory of memoriesToRemove) {
-          memory.isActive = false;
-          await this.memoryRepository.save(memory);
+        // Удаляем найденные воспоминания
+        if (memoriesToDelete.length > 0) {
+          await this.memoryRepository.remove(memoriesToDelete);
+          this.logService.debug(
+            `Удалено ${memoriesToDelete.length} старых воспоминаний для персонажа ${characterId}`,
+          );
         }
-
-        this.logInfo(
-          `Деактивировано ${memoriesToRemove.length} воспоминаний персонажа ${characterId}`,
-        );
       }
     });
   }
@@ -392,6 +413,45 @@ export class MemoryService extends BaseService {
       };
 
       return await this.memoryRepository.save(memory);
+    });
+  }
+
+  /**
+   * Находит наиболее релевантные воспоминания семантически, используя векторный поиск.
+   * @param characterId ID персонажа
+   * @param queryText Текст, по которому ищутся релевантные воспоминания
+   * @param limit Максимальное количество воспоминаний
+   * @returns Массив наиболее релевантных воспоминаний
+   */
+  async findRelevantMemories(
+    characterId: number,
+    queryText: string,
+    limit: number = 5,
+  ): Promise<CharacterMemory[]> {
+    return this.withErrorHandling('поиске релевантных воспоминаний', async () => {
+      // 1. Генерируем эмбеддинг для запроса
+      const queryEmbedding = await this.llmService.generateEmbedding(queryText);
+      const queryVector = new Vector(queryEmbedding);
+
+      // 2. Получаем все активные воспоминания персонажа с эмбеддингами
+      const allMemories = await this.memoryRepository.find({
+        where: { characterId, isActive: true },
+        select: ['id', 'content', 'embedding', 'importance'], // Выбираем только нужные поля
+      });
+
+      // 3. Вычисляем косинусное сходство и фильтруем
+      const memoriesWithSimilarity = allMemories
+        .filter(memory => memory.embedding && memory.embedding.length > 0)
+        .map(memory => {
+          const memoryVector = new Vector(memory.embedding);
+          const similarity = queryVector.dot(memoryVector); // В `victor` dot product для нормализованных векторов = косинусное сходство
+          return { ...memory, similarity };
+        });
+
+      // 4. Сортируем по релевантности и возвращаем топ-N
+      memoriesWithSimilarity.sort((a, b) => b.similarity - a.similarity);
+
+      return memoriesWithSimilarity.slice(0, limit);
     });
   }
 }

@@ -6,6 +6,8 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  ManyToMany,
+  JoinTable,
 } from 'typeorm';
 import { Character } from './character.entity';
 import { MemoryType } from '../interfaces/memory.interfaces';
@@ -60,6 +62,9 @@ export class CharacterMemory {
   @Column({ default: true })
   isActive: boolean;
 
+  @Column({ type: 'boolean', default: false })
+  isLongTerm: boolean;
+
   @ManyToOne(() => Character, character => character.memories, {
     onDelete: 'CASCADE',
   })
@@ -75,9 +80,26 @@ export class CharacterMemory {
   @Column({ type: 'json', nullable: true })
   metadata: Record<string, any>;
 
+  @Column({ type: 'jsonb', nullable: true, comment: 'Векторное представление воспоминания для семантического поиска' })
+  embedding: number[];
+
   @CreateDateColumn()
   createdAt: Date;
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @ManyToMany(() => CharacterMemory)
+  @JoinTable({
+    name: 'character_memory_relations',
+    joinColumn: {
+      name: 'memory_id_1',
+      referencedColumnName: 'id',
+    },
+    inverseJoinColumn: {
+      name: 'memory_id_2',
+      referencedColumnName: 'id',
+    },
+  })
+  relatedMemories: CharacterMemory[];
 }

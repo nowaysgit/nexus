@@ -1,60 +1,80 @@
 /**
+ * Эмоциональный анализ
+ */
+export interface EmotionalAnalysis {
+  userMood: 'positive' | 'negative' | 'neutral' | 'mixed';
+  emotionalIntensity: number; // 0-1
+  triggerEmotions: string[];
+  expectedEmotionalResponse: string;
+}
+
+/**
+ * Анализ для системы манипулятивных техник
+ */
+export interface ManipulationAnalysis {
+  userVulnerability: number; // 0-1
+  applicableTechniques: string[];
+  riskLevel: 'low' | 'medium' | 'high';
+  recommendedIntensity: number; // 0-1
+}
+
+/**
+ * Анализ для системы специализации
+ */
+export interface SpecializationAnalysis {
+  responseComplexityLevel: 'simple' | 'intermediate' | 'advanced';
+  requiredKnowledge: string[];
+  domain: string;
+}
+
+/**
+ * Анализ для системы поведения
+ */
+export interface BehaviorAnalysis {
+  interactionType: 'casual' | 'intimate' | 'conflict' | 'support' | 'playful';
+  conversationDirection: 'continue' | 'redirect' | 'deepen' | 'lighten';
+  userIntent: string;
+  keyTopics: string[];
+}
+
+/**
  * Интерфейс для анализа сообщения пользователя
- * Включает все аспекты, необходимые для различных компонентов системы
  */
 export interface MessageAnalysis {
+  /**
+   * Срочность или важность сообщения от 0.0 до 1.0
+   */
+  urgency: number;
+
+  /**
+   * Основное намерение пользователя
+   */
+  userIntent: UserIntent;
+
   /**
    * Анализ для системы потребностей
    */
   needsImpact: Record<string, number>;
 
   /**
-   * Анализ для эмоциональной системы
+   * Эмоциональный анализ
    */
-  emotionalAnalysis: {
-    userMood: 'positive' | 'negative' | 'neutral' | 'mixed';
-    emotionalIntensity: number; // 0-1
-    triggerEmotions: string[];
-    expectedEmotionalResponse: string;
-  };
+  emotionalAnalysis: EmotionalAnalysis;
 
   /**
    * Анализ для системы манипулятивных техник
    */
-  manipulationAnalysis: {
-    userVulnerability: number; // 0-1
-    applicableTechniques: string[];
-    riskLevel: 'low' | 'medium' | 'high';
-    recommendedIntensity: number; // 0-1
-  };
+  manipulationAnalysis: ManipulationAnalysis;
 
   /**
    * Анализ для системы специализации
    */
-  specializationAnalysis: {
-    topicsRelevantToCharacter: string[];
-    knowledgeGapDetected: boolean;
-    responseComplexityLevel: 'simple' | 'intermediate' | 'advanced';
-    suggestedTopicRedirection?: string;
-  };
+  specializationAnalysis: SpecializationAnalysis;
 
   /**
    * Анализ для системы поведения
    */
-  behaviorAnalysis: {
-    interactionType: 'casual' | 'intimate' | 'conflict' | 'support' | 'playful';
-    responseTone: string;
-    initiativeLevel: number; // 0-1, насколько персонаж должен быть инициативным
-    conversationDirection: 'continue' | 'redirect' | 'deepen' | 'lighten';
-  };
-
-  /**
-   * Общие свойства сообщения
-   */
-  urgency: number; // 0-1
-  sentiment: string;
-  keywords: string[];
-  topics: string[];
+  behaviorAnalysis: BehaviorAnalysis;
 
   /**
    * Метаданные анализа
@@ -77,7 +97,7 @@ export interface MessageAnalysisContext {
     name: string;
     personality: string;
     currentNeeds: Record<string, number>;
-    currentEmotionalState: string;
+    currentEmotionalState: 'positive' | 'negative' | 'neutral' | 'mixed';
     specialization: string[];
   };
   user: {
@@ -91,3 +111,16 @@ export interface MessageAnalysisContext {
     topicHistory: string[];
   };
 }
+
+/**
+ * Определяет возможное намерение пользователя.
+ */
+export type UserIntent =
+  | 'question'
+  | 'complaint'
+  | 'compliment'
+  | 'joke'
+  | 'threat'
+  | 'casual_talk'
+  | 'request'
+  | 'unknown';

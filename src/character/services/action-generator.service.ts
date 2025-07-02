@@ -403,7 +403,10 @@ export class ActionGeneratorService extends BaseService {
       [ActionType.CONFESS]: [CharacterNeedType.AFFECTION, CharacterNeedType.VALIDATION],
       [ActionType.APOLOGIZE]: [CharacterNeedType.SOCIAL_CONNECTION, CharacterNeedType.VALIDATION],
       [ActionType.TEASE]: [CharacterNeedType.FUN, CharacterNeedType.SOCIAL_CONNECTION],
-      [ActionType.EMOTIONAL_RESPONSE]: [CharacterNeedType.AFFECTION, CharacterNeedType.COMMUNICATION],
+      [ActionType.EMOTIONAL_RESPONSE]: [
+        CharacterNeedType.AFFECTION,
+        CharacterNeedType.COMMUNICATION,
+      ],
       [ActionType.REST]: [CharacterNeedType.REST],
       [ActionType.WORK]: [CharacterNeedType.REST],
       [ActionType.ENTERTAINMENT]: [CharacterNeedType.FUN],

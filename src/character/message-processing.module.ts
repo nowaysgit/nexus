@@ -7,7 +7,7 @@ import { CharacterResponseService } from './services/character-response.service'
 import { EmotionalStateService } from './services/emotional-state.service';
 import { ManipulationService } from './services/manipulation.service';
 import { TechniqueExecutorService } from './services/technique-executor.service';
-import { ActionService } from './services/action.service';
+import { ActionExecutorService } from './services/action-executor.service';
 import { MemoryService } from './services/memory.service';
 import { CharacterService } from './services/character.service';
 import { DialogModule } from '../dialog/dialog.module';
@@ -52,7 +52,7 @@ import { Action } from './entities/action.entity';
     EmotionalStateService,
     ManipulationService,
     TechniqueExecutorService,
-    ActionService,
+    ActionExecutorService,
     MemoryService,
     CharacterService,
   ],

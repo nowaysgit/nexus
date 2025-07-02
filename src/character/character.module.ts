@@ -88,6 +88,8 @@ import {
 import { TechniqueExecutionRepository } from './repositories/technique-execution.repository';
 import { UserManipulationProfileRepository } from './repositories/user-manipulation-profile.repository';
 
+import { OpenAICoreService } from '../../llm/services/openai-core.service';
+
 /**
  * Основной модуль персонажей - объединяет всю функциональность character
  */
@@ -181,6 +183,8 @@ import { UserManipulationProfileRepository } from './repositories/user-manipulat
 
     // Monitoring Services
     CharacterMonitoringService,
+
+    OpenAICoreService,
   ],
   exports: [
     // Unified Management Service
@@ -239,6 +243,8 @@ import { UserManipulationProfileRepository } from './repositories/user-manipulat
 
     // Monitoring Services
     CharacterMonitoringService,
+
+    OpenAICoreService,
   ],
 })
 export class CharacterModule implements ICharacterModule {
