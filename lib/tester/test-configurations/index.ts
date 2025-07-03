@@ -58,6 +58,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Test, TestingModule } from '@nestjs/testing';
 import { TelegrafTokenMockModule } from '../mocks/telegraf-token.module';
 import { TestConfigType } from '../index';
+import { MessageQueueService } from '../../../src/message-queue/message-queue.service';
+import { LLMService } from '../../../src/llm/services/llm.service';
 
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -157,6 +159,34 @@ export function requiredMocksAdder(
     updatedProviders.push({
       provide: EventEmitter2,
       useValue: new MockEventEmitter(),
+    });
+  }
+
+  // Добавляем мок для MessageQueueService
+  const hasMessageQueueService = updatedProviders.some(
+    (p: any) => p === MessageQueueService || p?.provide === MessageQueueService,
+  );
+  if (!hasMessageQueueService) {
+    updatedProviders.push({
+      provide: MessageQueueService,
+      useValue: {
+        publish: jest.fn(),
+        subscribe: jest.fn(),
+      },
+    });
+  }
+
+  // Добавляем мок для LLMService
+  const hasLLMService = updatedProviders.some(
+    (p: any) => p === LLMService || p?.provide === LLMService,
+  );
+  if (!hasLLMService) {
+    updatedProviders.push({
+      provide: LLMService,
+      useValue: {
+        generateText: jest.fn().mockResolvedValue('mocked LLM response'),
+        generateEmbedding: jest.fn().mockResolvedValue([0.1, 0.2, 0.3]),
+      },
     });
   }
 
@@ -554,7 +584,15 @@ export function prepareImportsForTesting(
 
   // Заменяем TypeOrmModule на MockTypeOrmModule только для unit тестов, НЕ для интеграционных
   if (configType !== TestConfigType.INTEGRATION) {
+    console.log('[prepareImportsForTesting] Обрабатываем импорты для configType:', configType);
+    console.log('[prepareImportsForTesting] Импорты до обработки:', updatedImports.map(imp => (imp as any)?.module?.name || (imp as any)?.name || imp));
+    
     updatedImports = updatedImports.map(mod => {
+      console.log('[prepareImportsForTesting] Обрабатываем модуль:', (mod as any)?.module?.name || (mod as any)?.name || mod);
+      console.log('[prepareImportsForTesting] Модуль полностью:', mod);
+      console.log('[prepareImportsForTesting] Тип модуля:', typeof mod);
+      console.log('[prepareImportsForTesting] Это MockTypeOrmModule?:', (mod as any)?.module?.name === 'MockTypeOrmModule');
+      
       // Заменяем TypeOrmModule.forFeature() на MockTypeOrmModule.forFeature()
       if ((mod as any)?.module === TypeOrmModule && (mod as any)?.providers?.length > 0) {
         const { MockTypeOrmModule } = require('../mocks/mock-typeorm.module');

@@ -57,27 +57,24 @@ createTestSuite('DbConnectionChecker - Тесты проверки соедин�
     },
   );
 
-  createTest(
-    { name: 'должен получать DataSource для теста', requiresDatabase: false },
-    async () => {
-      // Проверяем функцию getDataSourceForTest
-      expect(typeof getDataSourceForTest).toBe('function');
+  createTest({ name: 'должен получать DataSource для теста', requiresDatabase: true }, async () => {
+    // Проверяем функцию getDataSourceForTest
+    expect(typeof getDataSourceForTest).toBe('function');
 
-      // Получаем DataSource для теста
-      const dataSource = await getDataSourceForTest([User]);
+    // Получаем DataSource для теста
+    const dataSource = await getDataSourceForTest([User]);
 
-      expect(dataSource).toBeDefined();
-      if (dataSource) {
-        expect(dataSource.options).toBeDefined();
-        expect(dataSource.options.type).toBe('postgres');
+    expect(dataSource).toBeDefined();
+    if (dataSource) {
+      expect(dataSource.options).toBeDefined();
+      expect(dataSource.options.type).toBe('postgres');
 
-        // Закрываем полученный DataSource
-        if (dataSource.isInitialized) {
-          await dataSource.destroy();
-        }
+      // Закрываем полученный DataSource
+      if (dataSource.isInitialized) {
+        await dataSource.destroy();
       }
-    },
-  );
+    }
+  });
 
   createTest(
     { name: 'должен проверять и исправлять соединение с базой данных', requiresDatabase: false },

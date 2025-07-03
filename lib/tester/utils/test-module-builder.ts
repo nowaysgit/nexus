@@ -3,12 +3,14 @@ import { Test, TestingModule, TestingModuleBuilder } from '@nestjs/testing';
 import {
   TestConfigurations,
   containsTelegrafModule,
+  prepareImportsForTesting,
   replaceTelegrafModule,
 } from '../test-configurations';
 import { TelegrafTokenProvider } from '../mocks/telegraf-token.provider';
 import { MockTypeOrmModule } from '../mocks/mock-typeorm.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ALL_TEST_ENTITIES } from '../entities';
+import { TestConfigType } from '..';
 
 /**
  * Интерфейс для конфигурации тестового модуля
@@ -347,21 +349,11 @@ export class TestModuleBuilder {
     this.withRequiredMocks();
     this.withTelegramMock();
 
-    // Если тест требует БД, но она не была явно добавлена, добавляем мок
-    if (this.requiresDatabase) {
-      const hasTypeOrm = this.imports.some(
-        imp =>
-          (imp as any) === MockTypeOrmModule ||
-          (typeof imp === 'object' &&
-            imp !== null &&
-            'module' in imp &&
-            (imp as any).module === MockTypeOrmModule),
-      );
-
-      if (!hasTypeOrm) {
-        this.imports.push(MockTypeOrmModule.forRoot());
-      }
-    }
+    // Используем централизованную функцию для подготовки импортов
+    this.imports = prepareImportsForTesting(
+      this.imports,
+      this.requiresDatabase ? TestConfigType.INTEGRATION : TestConfigType.BASIC,
+    );
 
     const testingModuleBuilder: TestingModuleBuilder = Test.createTestingModule({
       imports: this.imports,

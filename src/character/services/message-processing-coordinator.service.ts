@@ -37,7 +37,6 @@ export class MessageProcessingCoordinator extends BaseService {
     character: Character,
     userId: number | string,
     userMessage: string,
-    recentMessages: string[] = [],
   ): Promise<{
     analysis: MessageAnalysis;
     response: string;
@@ -60,7 +59,6 @@ export class MessageProcessingCoordinator extends BaseService {
           character,
           numericUserId,
           userMessage,
-          recentMessages,
         );
 
         this.logDebug('Анализ сообщения завершен', {
@@ -77,7 +75,12 @@ export class MessageProcessingCoordinator extends BaseService {
           // Обновление поведенческих паттернов
           this.updateBehaviorPatterns(character.id, userId, userMessage, analysis),
           // Применение манипулятивных техник (если применимо)
-          this.applyManipulativeTechniques(character.id, userId, userMessage, analysis),
+          // this.applyManipulativeTechniques(
+          //   character.id,
+          //   userId,
+          //   userMessage,
+          //   analysis,
+          // ),
         ];
 
         await Promise.allSettled(updatePromises);
@@ -196,34 +199,20 @@ export class MessageProcessingCoordinator extends BaseService {
     characterId: number,
     userId: number | string,
     userMessage: string,
-    _analysis: MessageAnalysis,
+    analysis: MessageAnalysis,
   ): Promise<void> {
     try {
       // Преобразуем userId в number для внутреннего использования
       const numericUserId = typeof userId === 'string' ? parseInt(userId, 10) : userId;
 
-      // Анализируем ситуацию и выбираем подходящую технику
-      const chosenTechnique = await this.manipulationService.analyzeSituationAndChooseTechnique(
+      // Передаем анализ в ManipulationService
+      await this.manipulationService.applyTechniques(
         characterId,
         numericUserId,
         userMessage,
+        analysis,
       );
-
-      if (chosenTechnique) {
-        this.logDebug('Выбрана манипулятивная техника', {
-          characterId,
-          userId: numericUserId,
-          technique: chosenTechnique,
-        });
-
-        // Техника будет применена при генерации ответа
-        // Сохраняем информацию о выбранной технике в контексте
-      } else {
-        this.logDebug('Манипулятивные техники не применимы в данной ситуации', {
-          characterId,
-          userId: numericUserId,
-        });
-      }
+      this.logDebug('Манипулятивные техники применены', { characterId });
     } catch (error) {
       this.logError('Ошибка применения манипулятивных техник', {
         error: error instanceof Error ? error.message : String(error),

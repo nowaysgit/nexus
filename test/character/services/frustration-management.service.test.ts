@@ -63,6 +63,7 @@ export default createTestSuite('FrustrationManagementService', () => {
     createdAt: new Date(),
     updatedAt: new Date(),
     lastInteraction: new Date(),
+    storyProgress: [],
   };
 
   beforeEach(() => {

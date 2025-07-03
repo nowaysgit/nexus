@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Provider } from '@nestjs/common';
 
 import { Character } from '../../src/character/entities/character.entity';
 import { Need } from '../../src/character/entities/need.entity';
@@ -8,14 +9,15 @@ import { Action } from '../../src/character/entities/action.entity';
 import { CharacterArchetype } from '../../src/character/enums/character-archetype.enum';
 import { ActionType } from '../../src/character/enums/action-type.enum';
 import { NeedsService } from '../../src/character/services/needs.service';
-import { ActionService } from '../../src/character/services/action.service';
 import { createTestSuite, createTest } from '../../lib/tester/test-suite';
 import { FixtureManager } from '../../lib/tester/fixtures/fixture-manager';
 import { createEnhancedMockDataSource } from '../../lib/tester/utils/data-source';
 import { TestConfigurations } from '../../lib/tester/test-configurations';
+import { MessageQueueModule } from '../../src/message-queue/message-queue.module';
+import { ActionService } from '../../src/character/services/action.service';
 
 createTestSuite('Needs and Motivation Workflow Integration Tests', () => {
-  let moduleRef: TestingModule | null = null;
+  let moduleRef: TestingModule;
   let needsService: NeedsService;
   let actionService: ActionService;
   let _characterRepository: Repository<Character>;
@@ -25,10 +27,11 @@ createTestSuite('Needs and Motivation Workflow Integration Tests', () => {
 
   beforeEach(async () => {
     const mockDataSource = createEnhancedMockDataSource();
+    await mockDataSource.initialize();
     fixtureManager = new FixtureManager(mockDataSource);
 
-    const imports: any[] = [];
-    const baseProviders = [
+    const imports = [MessageQueueModule];
+    const baseProviders: Provider[] = [
       { provide: getRepositoryToken(Character), useValue: { findOne: jest.fn(), save: jest.fn() } },
       { provide: getRepositoryToken(Need), useValue: { find: jest.fn(), save: jest.fn() } },
       { provide: getRepositoryToken(Action), useValue: { save: jest.fn() } },

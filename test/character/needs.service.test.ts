@@ -8,6 +8,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { LogService } from '../../src/logging/log.service';
 import { MockLogService } from '../../lib/tester/mocks/log.service.mock';
+import { MessageQueueService } from '../../src/message-queue/message-queue.service';
 
 // Фабрика для создания полных моков Need
 const createMockNeed = (override: Partial<Need> = {}): Need => {
@@ -88,6 +89,13 @@ describe('NeedsService', () => {
         {
           provide: LogService,
           useClass: MockLogService,
+        },
+        {
+          provide: MessageQueueService,
+          useValue: {
+            publish: jest.fn(),
+            subscribe: jest.fn(),
+          },
         },
       ],
     }).compile();

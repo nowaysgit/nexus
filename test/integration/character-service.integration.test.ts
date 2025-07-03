@@ -1,9 +1,11 @@
-import { TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 // Entities
 import { Character } from '../../src/character/entities/character.entity';
+import { CharacterMotivation } from '../../src/character/entities/character-motivation.entity';
+import { Need } from '../../src/character/entities/need.entity';
+import { CharacterMemory } from '../../src/character/entities/character-memory.entity';
 import { CharacterNeedType } from '../../src/character/enums/character-need-type.enum';
 
 // Services
@@ -15,50 +17,24 @@ import { MemoryService } from '../../src/character/services/memory.service';
 import { MemoryType } from '../../src/character/interfaces/memory.interfaces';
 
 // Tester utilities
-import { TestModuleBuilder, createTestSuite, createTest } from '../../lib/tester';
+import { createTestSuite, createTest, TestConfigType } from '../../lib/tester';
+import { MockTypeOrmModule } from '../../lib/tester/mocks/mock-typeorm.module';
 
 createTestSuite('Character Service Integration Tests', () => {
-  let moduleRef: TestingModule | null = null;
-  let characterService: CharacterService;
-  let needsService: NeedsService;
-  let _motivationService: MotivationService;
-  let _actionService: ActionService;
-  let memoryService: MemoryService;
-  let characterRepository: Repository<Character>;
-
-  beforeEach(async () => {
-    moduleRef = await TestModuleBuilder.create()
-      .withDatabase(false)
-      .withProviders([
-        CharacterService,
-        NeedsService,
-        MotivationService,
-        ActionService,
-        MemoryService,
-      ])
-      .withRequiredMocks()
-      .compile();
-
-    characterService = moduleRef.get<CharacterService>(CharacterService);
-    needsService = moduleRef.get<NeedsService>(NeedsService);
-    _motivationService = moduleRef.get<MotivationService>(MotivationService);
-    _actionService = moduleRef.get<ActionService>(ActionService);
-    memoryService = moduleRef.get<MemoryService>(MemoryService);
-    characterRepository = moduleRef.get<Repository<Character>>(getRepositoryToken(Character));
-  });
-
-  afterEach(async () => {
-    if (moduleRef) {
-      await moduleRef.close();
-      moduleRef = null;
-    }
-  });
-
   createTest(
     {
       name: 'should create, find and update character',
+      configType: TestConfigType.BASIC,
+      requiresDatabase: false,
+      imports: [
+        MockTypeOrmModule.forFeature([CharacterMotivation, Character, Need, CharacterMemory]),
+      ],
+      providers: [CharacterService, NeedsService, MotivationService, ActionService, MemoryService],
     },
-    async () => {
+    async context => {
+      const characterService = context.get<CharacterService>(CharacterService);
+      const characterRepository = context.get<Repository<Character>>(getRepositoryToken(Character));
+
       // Create character
       const character = await characterService.create({
         name: 'Иван',
@@ -109,8 +85,17 @@ createTestSuite('Character Service Integration Tests', () => {
   createTest(
     {
       name: 'should initialize character with default needs',
+      configType: TestConfigType.BASIC,
+      requiresDatabase: false,
+      imports: [
+        MockTypeOrmModule.forFeature([CharacterMotivation, Character, Need, CharacterMemory]),
+      ],
+      providers: [CharacterService, NeedsService, MotivationService, ActionService, MemoryService],
     },
-    async () => {
+    async context => {
+      const characterService = context.get<CharacterService>(CharacterService);
+      const needsService = context.get<NeedsService>(NeedsService);
+
       const character = await characterService.create({
         name: 'Мария',
         age: 28,
@@ -142,8 +127,17 @@ createTestSuite('Character Service Integration Tests', () => {
   createTest(
     {
       name: 'should handle character memories',
+      configType: TestConfigType.BASIC,
+      requiresDatabase: false,
+      imports: [
+        MockTypeOrmModule.forFeature([CharacterMotivation, Character, Need, CharacterMemory]),
+      ],
+      providers: [CharacterService, NeedsService, MotivationService, ActionService, MemoryService],
     },
-    async () => {
+    async context => {
+      const characterService = context.get<CharacterService>(CharacterService);
+      const memoryService = context.get<MemoryService>(MemoryService);
+
       const character = await characterService.create({
         name: 'Алексей',
         age: 35,

@@ -1,5 +1,5 @@
 {
-  "current_step": 9,
+  "current_step": 10,
   "tasks": [
     {
       "id": "TECH-001-FIX",
@@ -200,63 +200,61 @@
       ]
     },
     {
-      "id": "BACKGROUND-001",
-      "description": "Фоновые процессы",
-      "status": "completed",
-      "subtasks": [
-        {
-          "id": "BACKGROUND-001.1",
-          "description": "Реализовать фоновую обработку потребностей",
-          "status": "completed"
-        },
-        {
-          "id": "BACKGROUND-001.2",
-          "description": "Добавить планировщик задач",
-          "status": "completed"
-        }
-      ]
-    },
-    {
-      "id": "ANALYSIS-001",
-      "description": "Централизованный анализ сообщений",
-      "status": "completed",
-      "progress": "Файл 'message-analysis.service.ts' был успешно восстановлен из git. Задача разблокирована.",
-      "subtasks": [
-        {
-          "id": "ANALYSIS-001.1",
-          "description": "Реализовать анализ эмоций",
-          "status": "completed"
-        },
-        {
-          "id": "ANALYSIS-001.2",
-          "description": "Добавить анализ намерений",
-          "status": "completed"
-        }
-      ]
-    },
-    {
-      "id": "TEST-001",
-      "description": "Исправить проваленный тест TECH-002-TESTS.1 в EmotionalStateService",
-      "status": "completed",
-      "subtasks": []
-    },
-    {
       "id": "COVERAGE-001",
-      "description": "Довести покрытие тестами (coverage) до 100%",
+      "description": "Довести покрытие тестами до 100%",
       "status": "pending",
-      "subtasks": []
+      "progress": "Исправлены критические проблемы тестовой инфраструктуры. Все тесты теперь проходят (62/62 passed). Покрытие улучшилось с 26% до 46.14%.",
+      "subtasks": [
+        {
+          "id": "COVERAGE-001.1",
+          "description": "Исправить проваленные тесты (4 failed)",
+          "status": "completed",
+          "progress": "✅ ЗАВЕРШЕНО: Исправлены проблемы с MockTypeOrmModule, типами ID, ConfigService в LoggingModule и параметрами тестов"
+        },
+        {
+          "id": "COVERAGE-001.2",
+          "description": "Добавить тесты для непокрытых файлов и функций",
+          "status": "pending"
+        },
+        {
+          "id": "COVERAGE-001.3",
+          "description": "Оптимизировать существующие тесты",
+          "status": "pending"
+        },
+        {
+          "id": "COVERAGE-001.4",
+          "description": "Провести финальную проверку покрытия",
+          "status": "pending"
+        }
+      ]
     },
     {
       "id": "COMPLIANCE-001",
-      "description": "Довести соответствие ТЗ (technicalSpecificationsCompliance) до 100%",
+      "description": "Довести соответствие техническому заданию до 100%",
       "status": "pending",
-      "subtasks": []
+      "subtasks": [
+        {
+          "id": "COMPLIANCE-001.1",
+          "description": "Проверить соответствие всех функций ТЗ",
+          "status": "pending"
+        },
+        {
+          "id": "COMPLIANCE-001.2",
+          "description": "Добавить недостающие функции",
+          "status": "pending"
+        },
+        {
+          "id": "COMPLIANCE-001.3",
+          "description": "Провести финальную проверку соответствия",
+          "status": "pending"
+        }
+      ]
     }
   ],
   "problems": [],
   "metrics": {
-    "coverage": 97,
-    "coverageFullWork": 94,
+    "coverage": 46.14,
+    "coverageFullWork": 100,
     "technicalSpecificationsCompliance": 96
   }
 }

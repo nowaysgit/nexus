@@ -10,7 +10,28 @@ import {
 import { MemoryType } from '../interfaces/memory.interfaces';
 import { BaseService } from '../../common/base/base.service';
 import { LLMService } from '../../llm/services/llm.service';
-import { Vector } from 'victor';
+
+/**
+ * Вычисляет косинусное сходство между двумя векторами
+ */
+function cosineSimilarity(a: number[], b: number[]): number {
+  if (a.length !== b.length) {
+    return 0;
+  }
+
+  let dotProduct = 0;
+  let normA = 0;
+  let normB = 0;
+
+  for (let i = 0; i < a.length; i++) {
+    dotProduct += a[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
+  }
+
+  const magnitude = Math.sqrt(normA) * Math.sqrt(normB);
+  return magnitude === 0 ? 0 : dotProduct / magnitude;
+}
 
 /**
  * Интерфейс для создания памяти о сообщении
@@ -431,7 +452,6 @@ export class MemoryService extends BaseService {
     return this.withErrorHandling('поиске релевантных воспоминаний', async () => {
       // 1. Генерируем эмбеддинг для запроса
       const queryEmbedding = await this.llmService.generateEmbedding(queryText);
-      const queryVector = new Vector(queryEmbedding);
 
       // 2. Получаем все активные воспоминания персонажа с эмбеддингами
       const allMemories = await this.memoryRepository.find({
@@ -439,12 +459,23 @@ export class MemoryService extends BaseService {
         select: ['id', 'content', 'embedding', 'importance'], // Выбираем только нужные поля
       });
 
+      // Проверяем, что allMemories не undefined и является массивом
+      if (!allMemories || !Array.isArray(allMemories)) {
+        this.logService.warn(`Не удалось получить воспоминания для персонажа ${characterId}`);
+        return [];
+      }
+
       // 3. Вычисляем косинусное сходство и фильтруем
       const memoriesWithSimilarity = allMemories
-        .filter(memory => memory.embedding && memory.embedding.length > 0)
+        .filter(
+          memory =>
+            memory &&
+            memory.embedding &&
+            Array.isArray(memory.embedding) &&
+            memory.embedding.length > 0,
+        )
         .map(memory => {
-          const memoryVector = new Vector(memory.embedding);
-          const similarity = queryVector.dot(memoryVector); // В `victor` dot product для нормализованных векторов = косинусное сходство
+          const similarity = cosineSimilarity(queryEmbedding, memory.embedding);
           return { ...memory, similarity };
         });
 

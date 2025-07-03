@@ -12,7 +12,32 @@ let globalTestDataSource: DataSource | null = null;
 
 // Генератор уникальных ID для моков
 let mockIdCounter = 1;
-const getMockId = () => mockIdCounter++;
+
+// Маппинг сущностей к типам их первичных ключей
+const entityIdTypes = new Map<string, 'number' | 'string'>([
+  ['User', 'string'], // UUID
+  ['Character', 'number'], // Auto-increment
+  ['Dialog', 'number'], // Auto-increment
+  ['Need', 'number'], // Auto-increment
+  ['CharacterMemory', 'number'], // Auto-increment
+  ['CharacterMotivation', 'number'], // Auto-increment
+  ['Action', 'number'], // Auto-increment
+  ['Message', 'number'], // Auto-increment
+  ['AccessKey', 'string'], // UUID
+  ['PsychologicalTest', 'number'], // Auto-increment
+]);
+
+const getMockId = (entityName?: string) => {
+  const idType = entityName ? entityIdTypes.get(entityName) : 'number';
+  
+  if (idType === 'string') {
+    // Генерируем UUID-подобный строковый ID
+    return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${Math.random().toString(36).substr(2, 11)}`;
+  } else {
+    // Генерируем числовой ID
+    return mockIdCounter++;
+  }
+};
 
 // Хранилище для данных мок-репозиториев
 const mockRepositoryStorage = new Map<string, any[]>();
@@ -23,250 +48,239 @@ interface MockDataSource extends DataSource {
 }
 
 // Улучшенный мок для репозитория с реализацией основных методов
-const createMockRepository = (entityName: string) => {
-  // Инициализируем хранилище для этого типа сущности, если его еще нет
+const createMockRepository = (entity: any) => {
+  // Получаем имя сущности
+  const entityName = typeof entity === 'string' ? entity : (entity.name || entity.constructor?.name || 'Unknown');
+  
+  // Получаем или создаем хранилище для этой сущности
   if (!mockRepositoryStorage.has(entityName)) {
     mockRepositoryStorage.set(entityName, []);
   }
   
-  // Получаем хранилище для этой сущности
-  const storage = mockRepositoryStorage.get(entityName) || [];
-
+  const storage = mockRepositoryStorage.get(entityName)!;
+  
   return {
-    metadata: { type: 'postgres', name: entityName },
+    target: { name: entityName },
+    metadata: { name: entityName, columns: [] },
     
-    create: jest.fn().mockImplementation((data: any) => {
-      // Добавляем ID, если его нет
-      if (!data.id) {
-        data.id = getMockId();
-      }
-      
-      // Добавляем timestamps, если их нет
-      if (!data.createdAt) {
-        data.createdAt = new Date();
-      }
-      if (!data.updatedAt) {
-        data.updatedAt = new Date();
-      }
-      
-      return { ...data };
+    create: jest.fn().mockImplementation((entityLike: any) => {
+      const id = getMockId(entityName);
+      return { id, ...entityLike };
     }),
     
     save: jest.fn().mockImplementation(async (entity: any) => {
-      // Если это массив, обрабатываем каждый элемент
-      if (Array.isArray(entity)) {
-        const repo = createMockRepository(entityName);
-        return Promise.all(entity.map(item => repo.save(item)));
-      }
-      
-      // Добавляем ID, если его нет
-      if (!entity.id) {
-        entity.id = getMockId();
-      }
-      
-      // Обновляем updatedAt
-      entity.updatedAt = new Date();
-      
-      // Если createdAt отсутствует, добавляем его
-      if (!entity.createdAt) {
-        entity.createdAt = new Date();
-      }
-      
-      // Ищем существующую запись по ID
-      const existingIndex = storage.findIndex(item => item.id === entity.id);
-      
-      if (existingIndex >= 0) {
-        // Обновляем существующую запись
-        storage[existingIndex] = { ...storage[existingIndex], ...entity };
-        return storage[existingIndex];
+      if (entity.id) {
+        // Обновление существующей сущности
+        const index = storage.findIndex(item => String(item.id) === String(entity.id));
+        if (index !== -1) {
+          storage[index] = { ...storage[index], ...entity };
+          return storage[index];
+        }
       } else {
-        // Добавляем новую запись
-        storage.push(entity);
-        return entity;
-      }
-    }),
-    
-    findOne: jest.fn().mockImplementation(async (options: any) => {
-      // Обрабатываем разные форматы опций
-      let where = options;
-      
-      // Обработка findOne({ where: ... })
-      if (options && options.where) {
-        where = options.where;
+        // Создание новой сущности
+        entity.id = getMockId(entityName);
       }
       
-      // Обработка findOne(id)
-      if (typeof options === 'string' || typeof options === 'number') {
-        where = { id: options };
-      }
-      
-      // Поиск по ID
-      if (where && where.id !== undefined) {
-        const idToFind = where.id;
-        return storage.find(item => {
-          // Сравниваем строковые представления ID для поддержки разных типов
-          return String(item.id) === String(idToFind);
-        }) || null;
-      }
-      
-      // Поиск по другим полям
-      if (where && typeof where === 'object') {
-        const keys = Object.keys(where);
-        return storage.find(item => 
-          keys.every(key => {
-            // Для ID используем строковое сравнение
-            if (key === 'id') {
-              return String(item[key]) === String(where[key]);
-            }
-            return item[key] === where[key];
-          })
-        ) || null;
-      }
-      
-      return null;
+      storage.push(entity);
+      return entity;
     }),
     
     find: jest.fn().mockImplementation(async (options: any = {}) => {
-      // Обрабатываем разные форматы опций
-      let where = options.where || {};
-      
-      // Фильтрация по условиям
       let results = [...storage];
-      if (Object.keys(where).length > 0) {
+      
+      if (options.where) {
         results = storage.filter(item => 
-          Object.keys(where).every(key => item[key] === where[key])
+          Object.keys(options.where).every(key => {
+            // Для ID используем строковое сравнение
+            if (key === 'id') {
+              return String(item[key]) === String(options.where[key]);
+            }
+            return item[key] === options.where[key];
+          })
         );
       }
       
-      // Применяем пагинацию, если указана
-      if (options.skip !== undefined || options.take !== undefined) {
-        const skip = options.skip || 0;
-        const take = options.take !== undefined ? options.take : results.length;
-        results = results.slice(skip, skip + take);
-      }
-      
-      // Применяем сортировку, если указана
+      // Применяем сортировку
       if (options.order) {
         const orderKey = Object.keys(options.order)[0];
-        const orderDir = options.order[orderKey];
-        
-        results = [...results].sort((a, b) => {
-          if (orderDir === 'ASC') {
-            return a[orderKey] > b[orderKey] ? 1 : -1;
-          } else {
+        const orderDirection = options.order[orderKey];
+        results.sort((a, b) => {
+          if (orderDirection === 'DESC') {
             return a[orderKey] < b[orderKey] ? 1 : -1;
+          } else {
+            return a[orderKey] > b[orderKey] ? 1 : -1;
           }
         });
+      }
+      
+      // Применяем лимит
+      if (options.take) {
+        results = results.slice(0, options.take);
       }
       
       return results;
     }),
     
-    findAndCount: jest.fn().mockImplementation(async (options: any = {}) => {
-      const repo = createMockRepository(entityName);
-      const results = await repo.find(options);
-      
-      // Для общего количества учитываем только фильтрацию, без пагинации
-      let where = options.where || {};
-      let totalCount = storage.length;
-      
-      if (Object.keys(where).length > 0) {
-        totalCount = storage.filter(item => 
-          Object.keys(where).every(key => item[key] === where[key])
-        ).length;
+    findOne: jest.fn().mockImplementation(async (options: any = {}) => {
+      if (options.where) {
+        return storage.find(item => 
+          Object.keys(options.where).every(key => {
+            // Для ID используем строковое сравнение
+            if (key === 'id') {
+              return String(item[key]) === String(options.where[key]);
+            }
+            return item[key] === options.where[key];
+          })
+        ) || null;
       }
-      
-      return [results, totalCount];
+      return storage[0] || null;
     }),
     
-    update: jest.fn().mockImplementation(async (criteria: any, partialEntity: any) => {
-      let affected = 0;
+    findOneBy: jest.fn().mockImplementation(async (where: any) => {
+      return storage.find(item => 
+        Object.keys(where).every(key => {
+          // Для ID используем строковое сравнение
+          if (key === 'id') {
+            return String(item[key]) === String(where[key]);
+          }
+          return item[key] === where[key];
+        })
+      ) || null;
+    }),
+    
+    findBy: jest.fn().mockImplementation(async (where: any) => {
+      return storage.filter(item => 
+        Object.keys(where).every(key => {
+          // Для ID используем строковое сравнение
+          if (key === 'id') {
+            return String(item[key]) === String(where[key]);
+          }
+          return item[key] === where[key];
+        })
+      );
+    }),
+    
+         findAndCount: jest.fn().mockImplementation(async (options: any = {}) => {
+       let results = [...storage];
+       
+       if (options.where) {
+         results = storage.filter(item => 
+           Object.keys(options.where).every(key => {
+             // Для ID используем строковое сравнение
+             if (key === 'id') {
+               return String(item[key]) === String(options.where[key]);
+             }
+             return item[key] === options.where[key];
+           })
+         );
+       }
+       
+       // Применяем сортировку
+       if (options.order) {
+         const orderKey = Object.keys(options.order)[0];
+         const orderDirection = options.order[orderKey];
+         results.sort((a, b) => {
+           if (orderDirection === 'DESC') {
+             return a[orderKey] < b[orderKey] ? 1 : -1;
+           } else {
+             return a[orderKey] > b[orderKey] ? 1 : -1;
+           }
+         });
+       }
+       
+       // Применяем лимит
+       if (options.take) {
+         results = results.slice(0, options.take);
+       }
+       
+       return [results, results.length];
+     }),
+    
+    remove: jest.fn().mockImplementation(async (entities: any | any[]) => {
+      const entitiesToRemove = Array.isArray(entities) ? entities : [entities];
       
-      // Обновляем все записи, соответствующие критериям
-      storage.forEach((item, index) => {
-        if (typeof criteria === 'string' || typeof criteria === 'number') {
-          // Если критерий - просто ID
-          if (item.id === criteria) {
-            storage[index] = { ...item, ...partialEntity, updatedAt: new Date() };
-            affected++;
-          }
-        } else {
-          // Если критерий - объект с условиями
-          const keys = Object.keys(criteria);
-          if (keys.every(key => item[key] === criteria[key])) {
-            storage[index] = { ...item, ...partialEntity, updatedAt: new Date() };
-            affected++;
-          }
+      entitiesToRemove.forEach(entity => {
+        const index = storage.findIndex(item => String(item.id) === String(entity.id));
+        if (index !== -1) {
+          storage.splice(index, 1);
         }
       });
       
-      return { affected };
+      return entitiesToRemove;
     }),
     
     delete: jest.fn().mockImplementation(async (criteria: any) => {
-      const initialLength = storage.length;
+      let deletedCount = 0;
       
-      // Удаляем все записи, соответствующие критериям
-      if (typeof criteria === 'string' || typeof criteria === 'number') {
-        // Если критерий - просто ID
+      if (typeof criteria === 'object' && criteria !== null) {
+        // Удаление по критериям
         for (let i = storage.length - 1; i >= 0; i--) {
-          if (storage[i].id === criteria) {
-            storage.splice(i, 1);
-          }
-        }
-      } else if (criteria && criteria.where) {
-        // Если критерий имеет формат { where: {...} }
-        const where = criteria.where;
-        const keys = Object.keys(where);
-        for (let i = storage.length - 1; i >= 0; i--) {
-          if (keys.every(key => {
+          const item = storage[i];
+          const matches = Object.keys(criteria).every(key => {
             // Для ID используем строковое сравнение
             if (key === 'id') {
-              return String(storage[i][key]) === String(where[key]);
+              return String(item[key]) === String(criteria[key]);
             }
-            return storage[i][key] === where[key];
-          })) {
+            return item[key] === criteria[key];
+          });
+          
+          if (matches) {
             storage.splice(i, 1);
+            deletedCount++;
           }
         }
-      } else if (criteria && typeof criteria === 'object') {
-        // Если критерий - объект с условиями
-        const keys = Object.keys(criteria);
-        for (let i = storage.length - 1; i >= 0; i--) {
-          if (keys.every(key => {
-            // Для ID используем строковое сравнение
-            if (key === 'id') {
-              return String(storage[i][key]) === String(criteria[key]);
-            }
-            return storage[i][key] === criteria[key];
-          })) {
-            storage.splice(i, 1);
-          }
+      } else {
+        // Удаление по ID
+        const index = storage.findIndex(item => String(item.id) === String(criteria));
+        if (index !== -1) {
+          storage.splice(index, 1);
+          deletedCount = 1;
         }
       }
       
-      return { affected: initialLength - storage.length };
+      return { affected: deletedCount };
     }),
     
-    remove: jest.fn().mockImplementation(async (entity: any) => {
-      // Если это массив, обрабатываем каждый элемент
-      if (Array.isArray(entity)) {
-        const repo = createMockRepository(entityName);
-        return Promise.all(entity.map(item => repo.remove(item)));
-      }
+    update: jest.fn().mockImplementation(async (criteria: any, partialEntity: any) => {
+      let updatedCount = 0;
       
-      // Удаляем сущность по ID
-      if (entity && entity.id) {
-        const index = storage.findIndex(item => String(item.id) === String(entity.id));
-        if (index >= 0) {
-          storage.splice(index, 1);
-          return entity;
+      for (const item of storage) {
+        const matches = typeof criteria === 'object' 
+          ? Object.keys(criteria).every(key => {
+              // Для ID используем строковое сравнение
+              if (key === 'id') {
+                return String(item[key]) === String(criteria[key]);
+              }
+              return item[key] === criteria[key];
+            })
+          : String(item.id) === String(criteria);
+          
+        if (matches) {
+          Object.assign(item, partialEntity);
+          updatedCount++;
         }
       }
+      
+      return { affected: updatedCount };
+    }),
+    
+    insert: jest.fn().mockImplementation(async (entity: any) => {
+      if (!entity.id) {
+        entity.id = getMockId(entity.name);
+      }
+      
+      storage.push(entity);
+      
+      return {
+        identifiers: [{ id: entity.id }],
+        generatedMaps: [{ id: entity.id }],
+        raw: [entity]
+      };
       
       return entity;
     }),
     
+    // ИСПРАВЛЕНИЕ: Перемещаю метод count в основной объект репозитория
     count: jest.fn().mockImplementation(async (options: any = {}) => {
       console.log(`[MOCK DEBUG] ${entityName} Repository count called with options:`, options);
       
@@ -635,15 +649,20 @@ export class MockTypeOrmModule {
           
           if (!requiresDatabase) {
             console.log(`[MockTypeOrmModule.forFeature] Создаем мок репозиторий для ${entity.name}, т.к. requiresDatabase: false`);
-            return createMockRepository(entity.name);
+            const mockRepo = createMockRepository(entity);
+            console.log(`[MockTypeOrmModule.forFeature] Мок репозиторий для ${entity.name} создан, методы:`, Object.getOwnPropertyNames(mockRepo));
+            console.log(`[MockTypeOrmModule.forFeature] Мок репозиторий для ${entity.name} имеет count:`, typeof mockRepo.count);
+            return mockRepo;
           }
           
           try {
             return dataSource.getRepository(entity);
           } catch (error) {
             console.error(`[MockTypeOrmModule.forFeature] Ошибка получения репозитория для ${entity.name}:`, error);
-            // Возвращаем улучшенный мок репозитория
-            return createMockRepository(entity.name);
+            // Возвращаем улучшенный мок репозиторий
+            const mockRepo = createMockRepository(entity);
+            console.log(`[MockTypeOrmModule.forFeature] Мок репозиторий для ${entity.name} создан после ошибки, методы:`, Object.getOwnPropertyNames(mockRepo));
+            return mockRepo;
           }
         },
         inject: [getDataSourceToken()],

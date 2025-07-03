@@ -41,6 +41,7 @@ const defaultLoggerConfig: LoggerConfig = {
 @Global()
 @Module({
   imports: [
+    ConfigModule,
     WinstonModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

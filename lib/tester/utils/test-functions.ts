@@ -80,29 +80,53 @@ export function createTest(
   testFn: (context: TestingModule) => Promise<void>,
 ): void {
   const testFunction = async () => {
-    // Используем динамический импорт для избежания циклических зависимостей
-    // но с типизацией для безопасности
-    const tester = Tester.getInstance();
-    // Если указан config.type, используем его для обратной совместимости
-    const actualConfigType = config?.type || configType;
+    // Устанавливаем параметры текущего теста в глобальную переменную
+    const testParams = {
+      name,
+      configType,
+      imports,
+      providers,
+      requiresDatabase,
+    };
 
-    // Если тест не требует базы данных, используем BASIC конфигурацию
-    const finalConfigType = requiresDatabase ? actualConfigType : TestConfigType.BASIC;
+    (global as any).__currentTest = {
+      params: testParams,
+      name,
+      configType,
+    };
 
-    const module = await tester.init(finalConfigType, { imports, providers });
+    try {
+      // Используем динамический импорт для избежания циклических зависимостей
+      // но с типизацией для безопасности
+      const tester = Tester.getInstance();
 
-    // Оборачиваем get чтобы сохранить корректный this при деструктуризации
-    const boundGet = <T>(token: any, options?: any): T => module.get<T>(token, options);
-    const context = Object.assign(Object.create(module), {
-      get: boundGet,
-    }) as TestingModule & { get: typeof boundGet };
+      // Устанавливаем параметры теста в tester
+      tester.setCurrentTestParams(testParams);
 
-    // Если тест требует базу данных, выполняем очистку непосредственно перед запуском теста
-    if (requiresDatabase) {
-      await cleanupDatabase(module);
+      // Если указан config.type, используем его для обратной совместимости
+      const actualConfigType = config?.type || configType;
+
+      // Если тест не требует базы данных, используем BASIC конфигурацию
+      const finalConfigType = requiresDatabase ? actualConfigType : TestConfigType.BASIC;
+
+      const module = await tester.init(finalConfigType, { imports, providers });
+
+      // Оборачиваем get чтобы сохранить корректный this при деструктуризации
+      const boundGet = <T>(token: any, options?: any): T => module.get<T>(token, options);
+      const context = Object.assign(Object.create(module), {
+        get: boundGet,
+      }) as TestingModule & { get: typeof boundGet };
+
+      // Если тест требует базу данных, выполняем очистку непосредственно перед запуском теста
+      if (requiresDatabase) {
+        await cleanupDatabase(module);
+      }
+
+      await testFn(context);
+    } finally {
+      // Очищаем глобальную переменную после завершения теста
+      (global as any).__currentTest = null;
     }
-
-    await testFn(context);
   };
 
   if (timeout) {

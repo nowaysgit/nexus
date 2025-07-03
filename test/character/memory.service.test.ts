@@ -5,6 +5,7 @@ import { DataSource } from 'typeorm';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MemoryService } from '../../src/character/services/memory.service';
 import { LogService } from '../../src/logging/log.service';
+import { MockLogService } from '../../lib/tester/mocks/log.service.mock';
 import {
   CharacterMemory,
   MemoryImportanceLevel,
@@ -38,13 +39,7 @@ createTestSuite('MemoryService Tests', () => {
     })),
   } as unknown as jest.Mocked<Repository<CharacterMemory>>;
 
-  const mockLogService: Partial<LogService> = {
-    setContext: jest.fn(),
-    debug: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    log: jest.fn(),
-  };
+  const mockLogService = new MockLogService();
 
   beforeEach(async () => {
     moduleRef = await TestModuleBuilder.create()
@@ -84,6 +79,7 @@ createTestSuite('MemoryService Tests', () => {
     const character = await fixtureManager.createCharacter({
       name: 'Тест Персонаж',
     });
+
     const mockMemory = {
       id: 1,
       characterId: character.id,
@@ -93,11 +89,20 @@ createTestSuite('MemoryService Tests', () => {
       metadata: {},
       memoryDate: new Date(),
       isActive: true,
-    };
+      recallCount: 0,
+      lastRecalled: null,
+      isLongTerm: false,
+      character: character,
+      summary: null,
+      embedding: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      relatedMemories: [],
+    } as CharacterMemory;
 
-    (mockRepository.create as jest.Mock).mockReturnValue(mockMemory);
-    (mockRepository.save as jest.Mock).mockResolvedValue(mockMemory);
-    (mockRepository.count as jest.Mock).mockResolvedValue(5);
+    jest.mocked(mockRepository.create).mockReturnValue(mockMemory);
+    jest.mocked(mockRepository.save).mockResolvedValue(mockMemory);
+    jest.mocked(mockRepository.count).mockResolvedValue(5);
 
     const result = await memoryService.createMemory(
       character.id,
@@ -115,6 +120,9 @@ createTestSuite('MemoryService Tests', () => {
       metadata: {},
       memoryDate: expect.any(Date),
       isActive: true,
+      embedding: expect.any(Array),
+      isLongTerm: false,
+      relatedMemories: [],
     });
     expect(mockRepository.save).toHaveBeenCalledWith(mockMemory);
     expect(result).toEqual(mockMemory);
@@ -127,11 +135,26 @@ createTestSuite('MemoryService Tests', () => {
       id: 1,
       content: 'Test memory',
       importance: MemoryImportanceLevel.AVERAGE,
-    };
+      characterId: 1,
+      type: MemoryType.CONVERSATION,
+      metadata: {},
+      memoryDate: new Date(),
+      isActive: true,
+      recallCount: 0,
+      lastRecalled: null,
+      isLongTerm: false,
+      character: null,
+      summary: null,
+      embedding: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      relatedMemories: [],
+    } as CharacterMemory;
+
     const updatedMemory = {
       ...mockMemory,
       importance: MemoryImportanceLevel.HIGH,
-    };
+    } as CharacterMemory;
 
     (mockRepository.findOne as jest.Mock).mockResolvedValue(mockMemory);
     (mockRepository.save as jest.Mock).mockResolvedValue(updatedMemory);

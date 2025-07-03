@@ -118,47 +118,61 @@ export class MessageAnalysisService extends BaseService {
       const specializationAnalysis = this.parseObject(response.specialization, {});
 
       return {
+        urgency: this.parseNumber(response.urgency, 0.5),
+        userIntent: this.parseString(response.userIntent, 'unknown') as any,
         needsImpact,
         emotionalAnalysis: {
           userMood: this.parseString(
-            emotionalAnalysis?.mood,
+            (emotionalAnalysis as any)?.userMood,
             'neutral',
           ) as EmotionalAnalysis['userMood'],
-          emotionalIntensity: this.parseNumber(emotionalAnalysis?.intensity, 0.5),
-          triggerEmotions: this.parseStringArray(emotionalAnalysis?.triggers, []),
+          emotionalIntensity: this.parseNumber((emotionalAnalysis as any)?.emotionalIntensity, 0.5),
+          triggerEmotions: this.parseStringArray((emotionalAnalysis as any)?.triggerEmotions, []),
           expectedEmotionalResponse: this.parseString(
-            emotionalAnalysis?.expectedResponse,
+            (emotionalAnalysis as any)?.expectedEmotionalResponse,
             'neutral',
           ),
         },
         manipulationAnalysis: {
-          userVulnerability: this.parseNumber(manipulationAnalysis?.vulnerability, 0.1),
-          applicableTechniques: this.parseStringArray(manipulationAnalysis?.technique, []),
+          userVulnerability: this.parseNumber(
+            (manipulationAnalysis as any)?.userVulnerability,
+            0.1,
+          ),
+          applicableTechniques: this.parseStringArray(
+            (manipulationAnalysis as any)?.applicableTechniques,
+            [],
+          ),
           riskLevel: this.parseString(
-            manipulationAnalysis?.risk,
+            (manipulationAnalysis as any)?.riskLevel,
             'low',
           ) as ManipulationAnalysis['riskLevel'],
-          recommendedIntensity: this.parseNumber(manipulationAnalysis?.intensity, 0.1),
+          recommendedIntensity: this.parseNumber(
+            (manipulationAnalysis as any)?.recommendedIntensity,
+            0.1,
+          ),
         },
         specializationAnalysis: {
           responseComplexityLevel: this.parseString(
-            specializationAnalysis?.complexity,
+            (specializationAnalysis as any)?.responseComplexityLevel,
             'simple',
           ) as SpecializationAnalysis['responseComplexityLevel'],
-          requiredKnowledge: this.parseStringArray(specializationAnalysis?.knowledge, []),
-          domain: this.parseString(specializationAnalysis?.domain, 'general'),
+          requiredKnowledge: this.parseStringArray(
+            (specializationAnalysis as any)?.requiredKnowledge,
+            [],
+          ),
+          domain: this.parseString((specializationAnalysis as any)?.domain, 'general'),
         },
         behaviorAnalysis: {
           interactionType: this.parseString(
-            behaviorAnalysis?.interaction,
+            (behaviorAnalysis as any)?.interactionType,
             'casual',
           ) as BehaviorAnalysis['interactionType'],
           conversationDirection: this.parseString(
-            behaviorAnalysis?.direction,
+            (behaviorAnalysis as any)?.conversationDirection,
             'continue',
           ) as BehaviorAnalysis['conversationDirection'],
-          userIntent: this.parseString(behaviorAnalysis?.intent, 'unknown'),
-          keyTopics: this.parseStringArray(behaviorAnalysis?.topics, []),
+          userIntent: this.parseString((behaviorAnalysis as any)?.userIntent, 'unknown'),
+          keyTopics: this.parseStringArray((behaviorAnalysis as any)?.keyTopics, []),
         },
       };
     } catch (error) {
@@ -195,6 +209,8 @@ export class MessageAnalysisService extends BaseService {
 
   private getDefaultAnalysis(message: string): MessageAnalysis {
     return {
+      urgency: 0.5,
+      userIntent: 'unknown',
       needsImpact: { communication: 1, attention: 1 },
       emotionalAnalysis: {
         userMood: 'neutral',

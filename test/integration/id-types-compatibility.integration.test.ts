@@ -75,26 +75,38 @@ createTestSuite('ID Types Compatibility Tests', () => {
     {
       name: 'should handle numeric and string IDs correctly',
       requiresDatabase: false,
+      imports: [TypeOrmModule.forFeature([Character, Need, User, Dialog])] as any[],
+      providers: [
+        CharacterService,
+        DialogService,
+        UserService,
+        {
+          provide: CacheService,
+          useValue: {
+            get: jest.fn().mockResolvedValue(null),
+            set: jest.fn().mockResolvedValue(undefined),
+            del: jest.fn().mockResolvedValue(undefined),
+            clear: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+      ],
     },
-    async () => {
-      // Создаем пользователя (в моках ID будет числовым, в реальной БД - UUID)
-      const user = await fixtureManager.createUser();
+    async context => {
+      // Получаем DataSource из контекста createTest (не из beforeEach)
+      const dataSource = context.get<DataSource>(DataSource);
+      const testFixtureManager = new FixtureManager(dataSource);
+
+      // Создаем пользователя (в моках ID будет UUID строкой)
+      const user = await testFixtureManager.createUser();
       expect(user).toBeDefined();
       expect(user.id).toBeDefined();
 
-      // В тестовом окружении с моками ID будет числовым
-      // В реальной БД это будет UUID строка
-      const isTestEnvironment = process.env.NODE_ENV === 'test';
-      if (isTestEnvironment) {
-        // В моках ID генерируется как число
-        expect(typeof user.id).toBe('number');
-      } else {
-        // В реальной БД User.id должен быть UUID строкой
-        expect(typeof user.id).toBe('string');
-      }
+      // User.id всегда должен быть строкой (UUID) согласно сущности
+      // @PrimaryGeneratedColumn('uuid') в User entity
+      expect(typeof user.id).toBe('string');
 
       // Создаем персонажа (с числовым ID)
-      const character = await fixtureManager.createCharacter({
+      const character = await testFixtureManager.createCharacter({
         user,
         userId: user.id,
         name: 'Test Character',
@@ -104,7 +116,7 @@ createTestSuite('ID Types Compatibility Tests', () => {
       expect(typeof character.id).toBe('number');
 
       // Создаем диалог (связывает пользователя с персонажем)
-      const dialog = await fixtureManager.createDialog({
+      const dialog = await testFixtureManager.createDialog({
         telegramId: '123456789',
         characterId: character.id,
         userId: user.id,
@@ -117,7 +129,7 @@ createTestSuite('ID Types Compatibility Tests', () => {
       expect(dialog.characterId).toBeDefined();
 
       // Проверяем, что диалог правильно связывается с пользователем и персонажем
-      // Используем строковое преобразование для универсальности
+      // Используем строговое преобразование для универсальности
       expect(dialog.userId.toString()).toBe(user.id.toString());
       expect(dialog.characterId.toString()).toBe(character.id.toString());
     },

@@ -57,7 +57,7 @@ export class MockIntegrationDataSource implements IMockIntegrationDataSource {
 
       save: jest.fn().mockImplementation(async (entity: any) => {
         if (!entity.id) {
-          entity.id = this.generateMockId();
+          entity.id = this.generateMockId(entityName);
         }
 
         const existingIndex = entityData.findIndex(item => item.id === entity.id);
@@ -139,8 +139,32 @@ export class MockIntegrationDataSource implements IMockIntegrationDataSource {
     } as any;
   }
 
-  private generateMockId(): string {
-    return `mock_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  // Маппинг сущностей к типам их первичных ключей
+  private entityIdTypes = new Map<string, 'number' | 'string'>([
+    ['User', 'string'], // UUID
+    ['Character', 'number'], // Auto-increment
+    ['Dialog', 'number'], // Auto-increment
+    ['Need', 'number'], // Auto-increment
+    ['CharacterMemory', 'number'], // Auto-increment
+    ['CharacterMotivation', 'number'], // Auto-increment
+    ['Action', 'number'], // Auto-increment
+    ['Message', 'number'], // Auto-increment
+    ['AccessKey', 'string'], // UUID
+    ['PsychologicalTest', 'number'], // Auto-increment
+  ]);
+
+  private mockIdCounter = 1;
+
+  private generateMockId(entityName?: string): string | number {
+    const idType = entityName ? this.entityIdTypes.get(entityName) : 'number';
+
+    if (idType === 'string') {
+      // Генерируем UUID-подобный строковый ID
+      return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${Math.random().toString(36).substr(2, 11)}`;
+    } else {
+      // Генерируем числовой ID
+      return this.mockIdCounter++;
+    }
   }
 
   async initialize(): Promise<IMockIntegrationDataSource> {
