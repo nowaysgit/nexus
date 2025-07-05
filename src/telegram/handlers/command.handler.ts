@@ -5,11 +5,11 @@ import { TelegramInitializationService } from '../services/telegram-initializati
 import { MessageService } from '../services/message.service';
 import { UserService } from '../../user/services/user.service';
 import { ConfigService } from '@nestjs/config';
-import { ActionExecutorService } from '../../character/services/action-executor.service';
-import { CharacterBehaviorService } from '../../character/services/character-behavior.service';
+import { ActionExecutorService } from '../../character/services/action/action-executor.service';
+import { CharacterBehaviorService } from '../../character/services/behavior/character-behavior.service';
 import { DialogService } from '../../dialog/services/dialog.service';
-import { CharacterManagementService } from '../../character/services/character-management.service';
-import { CharacterService } from '../../character/services/character.service';
+import { CharacterManagementService } from '../../character/services/core/character-management.service';
+import { CharacterService } from '../../character/services/core/character.service';
 import { AccessControlService } from '../services/access-control.service';
 import { CharacterCreationService } from '../services/character-creation.service';
 import { CharacterNeedType } from '../../character/enums/character-need-type.enum';

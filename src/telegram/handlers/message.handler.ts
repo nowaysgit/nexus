@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { Context } from '../interfaces/context.interface';
 import { MessageService } from '../services/message.service';
-import { NeedsService } from '../../character/services/needs.service';
-import { CharacterBehaviorService } from '../../character/services/character-behavior.service';
-import { ActionExecutorService } from '../../character/services/action-executor.service';
+import { NeedsService } from '../../character/services/core/needs.service';
+import { CharacterBehaviorService } from '../../character/services/behavior/character-behavior.service';
+import { ActionExecutorService } from '../../character/services/action/action-executor.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Dialog } from '../../dialog/entities/dialog.entity';
@@ -11,10 +11,10 @@ import { ModuleRef } from '@nestjs/core';
 import { LogService } from '../../logging/log.service';
 import { MessageFormatterService } from '../services/message-formatter.service';
 import { DialogService } from '../../dialog/services/dialog.service';
-import { CharacterService } from '../../character/services/character.service';
+import { CharacterService } from '../../character/services/core/character.service';
 import { AccessControlService } from '../services/access-control.service';
 import { ConfigService } from '@nestjs/config';
-import { MessageProcessingCoordinator } from '../../character/services/message-processing-coordinator.service';
+import { MessageProcessingCoordinator } from '../../character/services/core/message-processing-coordinator.service';
 import { BaseService } from '../../common/base/base.service';
 import { getErrorMessage } from '../../common/utils/error.utils';
 

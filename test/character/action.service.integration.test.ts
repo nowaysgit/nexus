@@ -1,20 +1,20 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { ActionService } from '../../src/character/services/action.service';
+import { ActionExecutorService } from '../../src/character/services/action/action-executor.service';
 import { Character } from '../../src/character/entities/character.entity';
 import { ActionType } from '../../src/character/enums/action-type.enum';
 import { LogService } from '../../src/logging/log.service';
 import { MockLogService } from '../../lib/tester/mocks/log.service.mock';
 import { Repository } from 'typeorm';
-import { ActionExecutorService } from '../../src/character/services/action-executor.service';
-import { ActionLifecycleService } from '../../src/character/services/action-lifecycle.service';
-import { ActionSchedulerService } from '../../src/character/services/action-scheduler.service';
-import { ActionGeneratorService } from '../../src/character/services/action-generator.service';
+import { ActionLifecycleService } from '../../src/character/services/action/action-lifecycle.service';
+import { ActionSchedulerService } from '../../src/character/services/action/action-scheduler.service';
+import { ActionGeneratorService } from '../../src/character/services/action/action-generator.service';
+import { ActionResourceService } from '../../src/character/services/action/action-resource.service';
 import { ModuleRef } from '@nestjs/core';
 
-describe('ActionService Unit Tests', () => {
-  let actionService: ActionService;
-  let mockCharacterRepository: jest.Mocked<Repository<Character>>;
+describe('ActionExecutorService Unit Tests', () => {
+  let actionExecutorService: ActionExecutorService;
+  let _mockCharacterRepository: jest.Mocked<Repository<Character>>;
 
   beforeEach(async () => {
     const mockCharacterRepo = {
@@ -29,23 +29,6 @@ describe('ActionService Unit Tests', () => {
     const mockModuleRef = {
       get: jest.fn(),
       resolve: jest.fn(),
-    } as any;
-
-    const mockActionExecutorService = {
-      getSupportedActionTypes: jest.fn(() => [ActionType.REST]),
-      canExecute: jest.fn(() => Promise.resolve(true)),
-      execute: jest.fn(() => Promise.resolve({ success: true })),
-      interrupt: jest.fn(() => Promise.resolve()),
-      determineAndPerformAction: jest.fn(() => Promise.resolve(null)),
-      processActionTrigger: jest.fn(() => Promise.resolve({ success: true })),
-      createActionWithResources: jest.fn(() =>
-        Promise.resolve({
-          id: '1',
-          type: ActionType.REST,
-          description: 'Персонаж отдыхает',
-          resourceCost: 10,
-        }),
-      ),
     };
 
     const mockActionLifecycleService = {
@@ -83,9 +66,32 @@ describe('ActionService Unit Tests', () => {
       ),
     };
 
+    const mockActionResourceService = {
+      checkResourceAvailability: jest.fn(() => Promise.resolve(true)),
+      executeActionWithResources: jest.fn(() => Promise.resolve({ success: true })),
+      createActionWithResources: jest.fn(
+        (characterId: number, actionType: ActionType, options: Record<string, unknown> = {}) => ({
+          type: actionType,
+          description: (options.description as string) || `Действие типа ${actionType}`,
+          status: 'pending' as const,
+          startTime: new Date(),
+          duration: 5000,
+          relatedNeeds: [],
+          metadata: {
+            id: 'test-action-id',
+            characterId,
+            resourceCost: (options.resourceCost as number) || 25,
+            successProbability: (options.successProbability as number) || 80,
+            potentialReward: (options.potentialReward as Record<string, unknown>) || {},
+            timestamp: new Date(),
+          },
+        }),
+      ),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        ActionService,
+        ActionExecutorService,
         {
           provide: ModuleRef,
           useValue: mockModuleRef,
@@ -93,10 +99,6 @@ describe('ActionService Unit Tests', () => {
         {
           provide: getRepositoryToken(Character),
           useValue: mockCharacterRepo,
-        },
-        {
-          provide: ActionExecutorService,
-          useValue: mockActionExecutorService,
         },
         {
           provide: ActionLifecycleService,
@@ -111,24 +113,28 @@ describe('ActionService Unit Tests', () => {
           useValue: mockActionGeneratorService,
         },
         {
+          provide: ActionResourceService,
+          useValue: mockActionResourceService,
+        },
+        {
           provide: LogService,
           useClass: MockLogService,
         },
       ],
     }).compile();
 
-    actionService = module.get<ActionService>(ActionService);
-    mockCharacterRepository = module.get(getRepositoryToken(Character));
+    actionExecutorService = module.get<ActionExecutorService>(ActionExecutorService);
+    _mockCharacterRepository = module.get(getRepositoryToken(Character));
   });
 
   it('должен быть определен', () => {
-    expect(actionService).toBeDefined();
+    expect(actionExecutorService).toBeDefined();
   });
 
-  it('should create action with resources', async () => {
+  it('should create action with resources', () => {
     const characterId = 1;
 
-    const result = await actionService.createActionWithResources(characterId, ActionType.REST, {
+    const result = actionExecutorService.createActionWithResources(characterId, ActionType.REST, {
       description: 'Персонаж отдыхает',
       resourceCost: 10,
     });
@@ -137,12 +143,13 @@ describe('ActionService Unit Tests', () => {
     expect(result.type).toBe(ActionType.REST);
   });
 
-  it('должен прерывать действие', async () => {
+  it('должен останавливать текущее действие', async () => {
     const characterId = 'char-1';
 
-    await actionService.interruptAction(characterId);
+    const result = await actionExecutorService.stopCurrentAction(characterId);
 
     // Проверяем, что метод был вызван без ошибок
-    expect(actionService).toBeDefined();
+    expect(result).toBe(true);
+    expect(actionExecutorService).toBeDefined();
   });
 });

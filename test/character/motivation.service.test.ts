@@ -4,8 +4,8 @@ import {
   TestConfigType,
   createTestDataSource,
 } from '../../lib/tester';
-import { MotivationService } from '../../src/character/services/motivation.service';
-import { CharacterService } from '../../src/character/services/character.service';
+import { MotivationService } from '../../src/character/services/core/motivation.service';
+import { CharacterService } from '../../src/character/services/core/character.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import {
   CharacterMotivation,
@@ -18,7 +18,7 @@ import { ConfigService } from '@nestjs/config';
 import { CharacterNeedType } from '../../src/character/enums/character-need-type.enum';
 import { FixtureManager } from '../../lib/tester/fixtures';
 import { CacheService } from '../../src/cache/cache.service';
-import { NeedsService } from '../../src/character/services/needs.service';
+import { NeedsService } from '../../src/character/services/core/needs.service';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Client } from 'pg';
 import { DataSource } from 'typeorm';

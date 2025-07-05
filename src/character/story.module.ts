@@ -1,6 +1,6 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { StoryService } from './services/story.service';
+import { StoryService } from './services/core/story.service';
 import { StoryEvent } from './entities/story-event.entity';
 import { StoryPlan, StoryMilestone } from './entities/story-plan.entity';
 import { DialogModule } from '../dialog/dialog.module';

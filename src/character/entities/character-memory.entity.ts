@@ -80,7 +80,11 @@ export class CharacterMemory {
   @Column({ type: 'json', nullable: true })
   metadata: Record<string, any>;
 
-  @Column({ type: 'jsonb', nullable: true, comment: 'Векторное представление воспоминания для семантического поиска' })
+  @Column({
+    type: 'jsonb',
+    nullable: true,
+    comment: 'Векторное представление воспоминания для семантического поиска',
+  })
   embedding: number[];
 
   @CreateDateColumn()

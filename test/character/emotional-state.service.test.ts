@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { EmotionalStateService } from '../../src/character/services/emotional-state.service';
+import { EmotionalStateService } from '../../src/character/services/core/emotional-state.service';
 import {
   Character,
   CharacterGender,
@@ -13,7 +13,7 @@ import { EmotionalState } from '../../src/character/entities/emotional-state';
 import { CharacterArchetype } from '../../src/character/enums/character-archetype.enum';
 import { LogService } from '../../src/logging/log.service';
 import { MockLogService, MockNeedsService } from '../../lib/tester/mocks';
-import { NeedsService } from '../../src/character/services/needs.service';
+import { NeedsService } from '../../src/character/services/core/needs.service';
 
 // Фабрика для создания полных моков Need, адаптированная из needs.service.test.ts
 const createMockNeed = (override: Partial<Need> = {}): Need => {

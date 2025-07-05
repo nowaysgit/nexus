@@ -4,7 +4,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { createTest } from '../../lib/tester';
 import { createTestDataSource } from '../../lib/tester/utils/data-source';
 
-import { CharacterService } from '../../src/character/services/character.service';
+import { CharacterService } from '../../src/character/services/core/character.service';
 import { Character, CharacterGender } from '../../src/character/entities/character.entity';
 import { CharacterArchetype } from '../../src/character/enums/character-archetype.enum';
 import { LogService } from '../../src/logging/log.service';

@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Body, Param, Put, NotFoundException } from '@nestjs/common';
-import { StoryService } from '../services/story.service';
+import { StoryService } from '../services/core/story.service';
 import { StoryEvent } from '../entities/story-event.entity';
 import { MessageQueueService, MessagePriority } from '../../message-queue/message-queue.service';
 import { withErrorHandling } from '../../common/utils/error-handling/error-handling.utils';

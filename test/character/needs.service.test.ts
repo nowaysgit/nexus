@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NeedsService } from '../../src/character/services/needs.service';
+import { NeedsService } from '../../src/character/services/core/needs.service';
 import { Need, NeedState } from '../../src/character/entities/need.entity';
 import { Character } from '../../src/character/entities/character.entity';
 import { CharacterNeedType } from '../../src/character/enums/character-need-type.enum';

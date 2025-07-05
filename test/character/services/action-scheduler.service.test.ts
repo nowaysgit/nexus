@@ -1,5 +1,5 @@
 import { TestModuleBuilder } from '../../../lib/tester/utils/test-module-builder';
-import { ActionSchedulerService } from '../../../src/character/services/action-scheduler.service';
+import { ActionSchedulerService } from '../../../src/character/services/action/action-scheduler.service';
 import { ActionType } from '../../../src/character/enums/action-type.enum';
 import { CharacterAction } from '../../../src/character/interfaces/behavior.interfaces';
 

@@ -1,0 +1,281 @@
+{
+  "current_step": 6,
+  "tasks": [
+    {
+      "id": "ARCH-001",
+      "description": "Создать архитектуру системы интеллектуальных персонажей",
+      "status": "completed",
+      "subtasks": [
+        {
+          "id": "ARCH-001.1",
+          "description": "Спроектировать микросервисную архитектуру",
+          "status": "completed"
+        },
+        {
+          "id": "ARCH-001.2",
+          "description": "Создать модули для персонажей, диалогов, LLM",
+          "status": "completed"
+        },
+        {
+          "id": "ARCH-001.3",
+          "description": "Настроить базы данных PostgreSQL",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "CHAR-001",
+      "description": "Реализовать систему управления персонажами",
+      "status": "completed",
+      "subtasks": [
+        {
+          "id": "CHAR-001.1",
+          "description": "Создать сущности персонажей и их характеристик",
+          "status": "completed"
+        },
+        {
+          "id": "CHAR-001.2",
+          "description": "Реализовать поведенческие модели",
+          "status": "completed"
+        },
+        {
+          "id": "CHAR-001.3",
+          "description": "Добавить эмоциональные состояния",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "BEHAV-001",
+      "description": "Создать систему поведенческих паттернов",
+      "status": "completed",
+      "subtasks": [
+        {
+          "id": "BEHAV-001.1",
+          "description": "Реализовать действия персонажей",
+          "status": "completed"
+        },
+        {
+          "id": "BEHAV-001.2",
+          "description": "Добавить систему потребностей",
+          "status": "completed"
+        },
+        {
+          "id": "BEHAV-001.3",
+          "description": "Создать мотивационную систему",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "MEM-001",
+      "description": "Реализовать систему памяти персонажей",
+      "status": "completed",
+      "subtasks": [
+        {
+          "id": "MEM-001.1",
+          "description": "Создать сущности памяти",
+          "status": "completed"
+        },
+        {
+          "id": "MEM-001.2",
+          "description": "Добавить сжатие контекста",
+          "status": "completed"
+        },
+        {
+          "id": "MEM-001.3",
+          "description": "Реализовать семантический поиск",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "LLM-001",
+      "description": "Интегрировать большие языковые модели",
+      "status": "completed",
+      "subtasks": [
+        {
+          "id": "LLM-001.1",
+          "description": "Создать провайдеры LLM (OpenAI, Llama)",
+          "status": "completed"
+        },
+        {
+          "id": "LLM-001.2",
+          "description": "Реализовать менеджер провайдеров",
+          "status": "completed"
+        },
+        {
+          "id": "LLM-001.3",
+          "description": "Добавить шаблоны промптов",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "DIALOG-001",
+      "description": "Создать систему диалогов",
+      "status": "completed",
+      "subtasks": [
+        {
+          "id": "DIALOG-001.1",
+          "description": "Реализовать сущности диалогов и сообщений",
+          "status": "completed"
+        },
+        {
+          "id": "DIALOG-001.2",
+          "description": "Добавить обработку сообщений",
+          "status": "completed"
+        },
+        {
+          "id": "DIALOG-001.3",
+          "description": "Создать проактивные сообщения",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "TELEGRAM-001",
+      "description": "Интегрировать Telegram бота",
+      "status": "completed",
+      "subtasks": [
+        {
+          "id": "TELEGRAM-001.1",
+          "description": "Создать Telegram сервисы",
+          "status": "completed"
+        },
+        {
+          "id": "TELEGRAM-001.2",
+          "description": "Добавить обработчики команд и сообщений",
+          "status": "completed"
+        },
+        {
+          "id": "TELEGRAM-001.3",
+          "description": "Реализовать клавиатуры и форматирование",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "STORY-001",
+      "description": "Реализовать систему сюжета",
+      "status": "completed",
+      "subtasks": [
+        {
+          "id": "STORY-001.1",
+          "description": "Создать сущности сюжетных событий",
+          "status": "completed"
+        },
+        {
+          "id": "STORY-001.2",
+          "description": "Добавить планирование сюжета",
+          "status": "completed"
+        },
+        {
+          "id": "STORY-001.3",
+          "description": "Реализовать прогресс персонажей",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "MANIP-001",
+      "description": "Создать систему манипулятивных техник",
+      "status": "completed",
+      "subtasks": [
+        {
+          "id": "MANIP-001.1",
+          "description": "Реализовать сущности техник",
+          "status": "completed"
+        },
+        {
+          "id": "MANIP-001.2",
+          "description": "Добавить исполнитель техник",
+          "status": "completed"
+        },
+        {
+          "id": "MANIP-001.3",
+          "description": "Создать историю применения",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "INFRA-001",
+      "description": "Настроить инфраструктуру",
+      "status": "completed",
+      "subtasks": [
+        {
+          "id": "INFRA-001.1",
+          "description": "Добавить кэширование (Redis)",
+          "status": "completed"
+        },
+        {
+          "id": "INFRA-001.2",
+          "description": "Реализовать логирование",
+          "status": "completed"
+        },
+        {
+          "id": "INFRA-001.3",
+          "description": "Настроить мониторинг",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "SECURITY-001",
+      "description": "Реализовать систему безопасности",
+      "status": "completed",
+      "subtasks": [
+        {
+          "id": "SECURITY-001.1",
+          "description": "Добавить аутентификацию JWT",
+          "status": "completed"
+        },
+        {
+          "id": "SECURITY-001.2",
+          "description": "Создать API ключи",
+          "status": "completed"
+        },
+        {
+          "id": "SECURITY-001.3",
+          "description": "Добавить шифрование данных",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "TESTING-001",
+      "description": "Создать комплексную систему тестирования",
+      "status": "completed",
+      "subtasks": [
+        {
+          "id": "TESTING-001.1",
+          "description": "Реализовать библиотеку тестирования",
+          "status": "completed"
+        },
+        {
+          "id": "TESTING-001.2",
+          "description": "Добавить моки и фикстуры",
+          "status": "completed"
+        },
+        {
+          "id": "TESTING-001.3",
+          "description": "Создать интеграционные тесты",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "TECH-004-FIX-CRITICAL",
+      "description": "Исправить ошибку типизации в методе getRelatedNeeds - возвращает string[] вместо CharacterNeedType[]",
+      "status": "completed",
+      "subtasks": []
+    }
+  ],
+  "problems": [],
+  "metrics": {
+    "coverage": 47.43,
+    "coverageFullWork": 99.77,
+    "technicalSpecificationsCompliance": 95.5
+  }
+}

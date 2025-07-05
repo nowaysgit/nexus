@@ -24,53 +24,44 @@ import { StoryEvent } from './entities/story-event.entity';
 import { StoryPlan, StoryMilestone } from './entities/story-plan.entity';
 import { CharacterMotivation } from './entities/character-motivation.entity';
 
-// Unified Management Service
-import { CharacterManagementService } from './services/character-management.service';
-
 // Core Services
-import { CharacterService } from './services/character.service';
-import { NeedsService } from './services/needs.service';
-import { MotivationService } from './services/motivation.service';
+import { CharacterManagementService } from './services/core/character-management.service';
+import { CharacterService } from './services/core/character.service';
+import { NeedsService } from './services/core/needs.service';
+import { MotivationService } from './services/core/motivation.service';
+import { EmotionalStateService } from './services/core/emotional-state.service';
+import { MemoryService } from './services/core/memory.service';
+import { CharacterResponseService } from './services/core/character-response.service';
+import { MessageProcessingCoordinator } from './services/core/message-processing-coordinator.service';
+import { SpecializationService } from './services/core/specialization.service';
+import { CharacterSchedulerService } from './services/core/character-scheduler.service';
+import { CharacterMonitoringService } from './services/core/character-monitoring.service';
+
+// Action Services
+import { ActionLifecycleService } from './services/action/action-lifecycle.service';
+import { ActionSchedulerService } from './services/action/action-scheduler.service';
+import { ActionResourceService } from './services/action/action-resource.service';
+import { ActionGeneratorService } from './services/action/action-generator.service';
+import { ActionExecutorService } from './services/action/action-executor.service';
 
 // Behavior Services
-import { EmotionalStateService } from './services/emotional-state.service';
-import { CharacterBehaviorService } from './services/character-behavior.service';
-import { ActionService } from './services/action.service';
-import { ActionLifecycleService } from './services/action-lifecycle.service';
-import { ActionSchedulerService } from './services/action-scheduler.service';
-import { ActionResourceService } from './services/action-resource.service';
-import { ActionGeneratorService } from './services/action-generator.service';
-import { ActionExecutorService } from './services/action-executor.service';
-import { FrustrationManagementService } from './services/frustration-management.service';
-import { BehaviorPatternService } from './services/behavior-pattern.service';
-import { EmotionalBehaviorService } from './services/emotional-behavior.service';
+import { CharacterBehaviorService } from './services/behavior/character-behavior.service';
+import { FrustrationManagementService } from './services/behavior/frustration-management.service';
+import { BehaviorPatternService } from './services/behavior/behavior-pattern.service';
+import { EmotionalBehaviorService } from './services/behavior/emotional-behavior.service';
+import { MessageBehaviorService } from './services/behavior/message-behavior.service';
 
-// Communication Services
-import { MemoryService } from './services/memory.service';
-import { MessageAnalysisService } from './services/message-analysis.service';
-import { MessageBehaviorService } from './services/message-behavior.service';
-import { CharacterResponseService } from './services/character-response.service';
-import { ContextCompressionService } from './services/context-compression.service';
-import { MessageProcessingCoordinator } from './services/message-processing-coordinator.service';
-
-// Specialization Services
-import { SpecializationService } from './services/specialization.service';
+// Analysis Services
+import { ContextCompressionService } from './services/analysis/context-compression.service';
+import { MessageAnalysisService } from './services/analysis/message-analysis.service';
 
 // Manipulation Services
-import { ManipulationService } from './services/manipulation.service';
-import { TechniqueExecutorService } from './services/technique-executor.service';
-import { TechniqueStrategyService } from './services/technique-strategy.service';
-import { TechniqueValidatorService } from './services/technique-validator.service';
-import { TechniqueAnalyzerService } from './services/technique-analyzer.service';
-import { TechniqueGeneratorService } from './services/technique-generator.service';
-import { TechniqueAdapterService } from './services/technique-adapter.service';
-import { TechniqueHistoryService } from './services/technique-history.service';
+import { ManipulationService } from './services/manipulation/manipulation.service';
 
-// Scheduler Services
-import { CharacterSchedulerService } from './services/character-scheduler.service';
-
-// Monitoring Services
-import { CharacterMonitoringService } from './services/character-monitoring.service';
+// Technique Services
+import { TechniqueExecutorService } from './services/technique/technique-executor.service';
+import { TechniqueStrategyService } from './services/technique/technique-strategy.service';
+import { TechniqueHistoryService } from './services/technique/technique-history.service';
 
 // Story Integration
 import { StoryController } from './controllers/story.controller';
@@ -137,7 +128,6 @@ import { UserManipulationProfileRepository } from './repositories/user-manipulat
     EmotionalBehaviorService,
 
     // Action Services
-    ActionService,
     ActionLifecycleService,
     ActionSchedulerService,
     ActionResourceService,
@@ -157,10 +147,6 @@ import { UserManipulationProfileRepository } from './repositories/user-manipulat
     ManipulationService,
     TechniqueExecutorService,
     TechniqueStrategyService,
-    TechniqueValidatorService,
-    TechniqueAnalyzerService,
-    TechniqueGeneratorService,
-    TechniqueAdapterService,
     TechniqueHistoryService,
 
     // Context Services
@@ -198,7 +184,6 @@ import { UserManipulationProfileRepository } from './repositories/user-manipulat
     EmotionalBehaviorService,
 
     // Action Services
-    ActionService,
     ActionLifecycleService,
     ActionSchedulerService,
     ActionResourceService,
@@ -218,10 +203,6 @@ import { UserManipulationProfileRepository } from './repositories/user-manipulat
     ManipulationService,
     TechniqueExecutorService,
     TechniqueStrategyService,
-    TechniqueValidatorService,
-    TechniqueAnalyzerService,
-    TechniqueGeneratorService,
-    TechniqueAdapterService,
     TechniqueHistoryService,
 
     // Context Services

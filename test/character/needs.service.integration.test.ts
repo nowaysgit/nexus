@@ -1,6 +1,6 @@
 import { Tester, createTestSuite, createTest, TestConfigType } from '../../lib/tester';
 import { FixtureManager } from '../../lib/tester/fixtures';
-import { NeedsService } from '../../src/character/services/needs.service';
+import { NeedsService } from '../../src/character/services/core/needs.service';
 import { CharacterNeedType } from '../../src/character/enums/character-need-type.enum';
 import { DataSource } from 'typeorm';
 import { Need } from '../../src/character/entities/need.entity';

@@ -2,12 +2,11 @@ import { createTest, createTestSuite, TestConfigType } from '../../../lib/tester
 import {
   EmotionalBehaviorService,
   FrustrationLevel,
-} from '../../../src/character/services/emotional-behavior.service';
-import { EmotionalStateService } from '../../../src/character/services/emotional-state.service';
-import { NeedsService } from '../../../src/character/services/needs.service';
-import { MemoryService } from '../../../src/character/services/memory.service';
-import { ActionService } from '../../../src/character/services/action.service';
-import { ActionExecutorService } from '../../../src/character/services/action-executor.service';
+} from '../../../src/character/services/behavior/emotional-behavior.service';
+import { EmotionalStateService } from '../../../src/character/services/core/emotional-state.service';
+import { NeedsService } from '../../../src/character/services/core/needs.service';
+import { MemoryService } from '../../../src/character/services/core/memory.service';
+import { ActionExecutorService } from '../../../src/character/services/action/action-executor.service';
 import { LogService } from '../../../src/logging/log.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
@@ -98,7 +97,7 @@ createTestSuite('EmotionalBehaviorService Tests', () => {
           useValue: createMemoryServiceMock(),
         },
         {
-          provide: ActionService,
+          provide: ActionExecutorService,
           useValue: createActionServiceMock(),
         },
         {
@@ -145,7 +144,7 @@ createTestSuite('EmotionalBehaviorService Tests', () => {
           useValue: createMemoryServiceMock(),
         },
         {
-          provide: ActionService,
+          provide: ActionExecutorService,
           useValue: createActionServiceMock(),
         },
         {
@@ -203,7 +202,7 @@ createTestSuite('EmotionalBehaviorService Tests', () => {
           useValue: createMemoryServiceMock(),
         },
         {
-          provide: ActionService,
+          provide: ActionExecutorService,
           useValue: createActionServiceMock(),
         },
         {
@@ -253,7 +252,7 @@ createTestSuite('EmotionalBehaviorService Tests', () => {
           useValue: createMemoryServiceMock(),
         },
         {
-          provide: ActionService,
+          provide: ActionExecutorService,
           useValue: createActionServiceMock(),
         },
         {
@@ -318,7 +317,7 @@ createTestSuite('EmotionalBehaviorService Tests', () => {
           useValue: createMemoryServiceMock(),
         },
         {
-          provide: ActionService,
+          provide: ActionExecutorService,
           useValue: createActionServiceMock(),
         },
         {
@@ -371,7 +370,7 @@ createTestSuite('EmotionalBehaviorService Tests', () => {
           useValue: createMemoryServiceMock(),
         },
         {
-          provide: ActionService,
+          provide: ActionExecutorService,
           useValue: createActionServiceMock(),
         },
         {
@@ -433,7 +432,7 @@ createTestSuite('EmotionalBehaviorService Tests', () => {
           useValue: createMemoryServiceMock(),
         },
         {
-          provide: ActionService,
+          provide: ActionExecutorService,
           useValue: createActionServiceMock(),
         },
         {
@@ -518,7 +517,7 @@ createTestSuite('EmotionalBehaviorService Tests', () => {
           useValue: createMemoryServiceMock(),
         },
         {
-          provide: ActionService,
+          provide: ActionExecutorService,
           useValue: createActionServiceMock(),
         },
         {

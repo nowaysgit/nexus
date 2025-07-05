@@ -1,8 +1,8 @@
 import { createTestSuite, createTest, TestConfigType } from '../../lib/tester';
-import { CharacterResponseService } from '../../src/character/services/character-response.service';
+import { CharacterResponseService } from '../../src/character/services/core/character-response.service';
 import { LLMService } from '../../src/llm/services/llm.service';
 import { PromptTemplateService } from '../../src/prompt-template/prompt-template.service';
-import { NeedsService } from '../../src/character/services/needs.service';
+import { NeedsService } from '../../src/character/services/core/needs.service';
 import { LogService } from '../../src/logging/log.service';
 import { Character } from '../../src/character/entities/character.entity';
 import { EmotionalState } from '../../src/character/entities/emotional-state';

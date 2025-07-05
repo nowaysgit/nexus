@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { LogService } from '../../logging/log.service';
-import { CharacterManagementService } from '../../character/services/character-management.service';
+import { CharacterManagementService } from '../../character/services/core/character-management.service';
 import { Character } from '../../character/entities/character.entity';
 import { CharacterArchetype } from '../../character/enums/character-archetype.enum';
 import { CreateCharacterDto } from '../../character/dto/create-character.dto';

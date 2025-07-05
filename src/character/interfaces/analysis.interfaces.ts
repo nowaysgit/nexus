@@ -124,3 +124,23 @@ export type UserIntent =
   | 'casual_talk'
   | 'request'
   | 'unknown';
+
+/**
+ * Эмоциональный тон сообщения
+ */
+export type EmotionalTone =
+  | 'positive'
+  | 'negative'
+  | 'neutral'
+  | 'mixed'
+  | 'excited'
+  | 'angry'
+  | 'sad'
+  | 'fearful'
+  | 'surprised'
+  | 'disgusted';
+
+/**
+ * Тип намерения пользователя (более детализированный)
+ */
+export type IntentType = UserIntent;

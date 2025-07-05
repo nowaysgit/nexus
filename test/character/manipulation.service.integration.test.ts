@@ -1,5 +1,5 @@
 import { createTestSuite, createTest, TestConfigType } from '../../lib/tester';
-import { ManipulationService } from '../../src/character/services/manipulation.service';
+import { ManipulationService } from '../../src/character/services/manipulation/manipulation.service';
 import {
   ManipulativeTechniqueType,
   TechniqueIntensity,

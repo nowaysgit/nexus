@@ -2,7 +2,7 @@ import { TestModuleBuilder } from '../../../lib/tester/utils/test-module-builder
 import {
   ActionLifecycleService,
   ActionStats,
-} from '../../../src/character/services/action-lifecycle.service';
+} from '../../../src/character/services/action/action-lifecycle.service';
 import { ActionType } from '../../../src/character/enums/action-type.enum';
 import { CharacterAction } from '../../../src/character/interfaces/behavior.interfaces';
 

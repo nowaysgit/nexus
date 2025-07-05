@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ContextCompressionService } from './services/context-compression.service';
+import { ContextCompressionService } from './services/analysis/context-compression.service';
 import { DialogModule } from '../dialog/dialog.module';
 import { LLMModule } from '../llm/llm.module';
 import { PromptTemplateModule } from '../prompt-template/prompt-template.module';

@@ -7,7 +7,7 @@ import {
   ContextCompressionService,
   DataImportanceLevel,
   CompressionType,
-} from '../../src/character/services/context-compression.service';
+} from '../../src/character/services/analysis/context-compression.service';
 import { LogService } from '../../src/logging/log.service';
 import { MockLogService } from '../../lib/tester/mocks';
 import { LLMService } from '../../src/llm/services/llm.service';

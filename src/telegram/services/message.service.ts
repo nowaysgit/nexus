@@ -8,7 +8,7 @@ import { KeyboardFormatterService } from './keyboard-formatter.service';
 import { CharacterMetadata, TelegramSendOptions } from '../interfaces/telegram.interfaces';
 import { ErrorHandlingService } from '../../common/utils/error-handling/error-handling.service';
 import { LogService } from '../../logging/log.service';
-import { CharacterManagementService } from '../../character/services/character-management.service';
+import { CharacterManagementService } from '../../character/services/core/character-management.service';
 import { TelegramService } from '../telegram.service';
 import { Context } from '../interfaces/context.interface';
 import { getErrorMessage } from '../../common/utils/error.utils';

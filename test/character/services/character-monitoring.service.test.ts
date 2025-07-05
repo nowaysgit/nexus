@@ -1,5 +1,5 @@
 import { createTest, createTestSuite, TestConfigType } from '../../../lib/tester';
-import { CharacterMonitoringService } from '../../../src/character/services/character-monitoring.service';
+import { CharacterMonitoringService } from '../../../src/character/services/core/character-monitoring.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { LogService } from '../../../src/logging/log.service';
 

@@ -1,16 +1,12 @@
-import { ActionExecutorService } from '../../../src/character/services/action-executor.service';
-import { ActionLifecycleService } from '../../../src/character/services/action-lifecycle.service';
-import { ActionSchedulerService } from '../../../src/character/services/action-scheduler.service';
-import { ActionGeneratorService } from '../../../src/character/services/action-generator.service';
-import { ActionResourceService } from '../../../src/character/services/action-resource.service';
+import { ActionExecutorService } from '../../../src/character/services/action/action-executor.service';
+import { ActionLifecycleService } from '../../../src/character/services/action/action-lifecycle.service';
+import { ActionSchedulerService } from '../../../src/character/services/action/action-scheduler.service';
+import { ActionGeneratorService } from '../../../src/character/services/action/action-generator.service';
+import { ActionResourceService } from '../../../src/character/services/action/action-resource.service';
 
-import { TechniqueValidatorService } from '../../../src/character/services/technique-validator.service';
-import { TechniqueAdapterService } from '../../../src/character/services/technique-adapter.service';
-import { TechniqueGeneratorService } from '../../../src/character/services/technique-generator.service';
-import { TechniqueAnalyzerService } from '../../../src/character/services/technique-analyzer.service';
-import { TechniqueHistoryService } from '../../../src/character/services/technique-history.service';
-import { TechniqueStrategyService } from '../../../src/character/services/technique-strategy.service';
-import { TechniqueExecutorService } from '../../../src/character/services/technique-executor.service';
+import { TechniqueHistoryService } from '../../../src/character/services/technique/technique-history.service';
+import { TechniqueStrategyService } from '../../../src/character/services/technique/technique-strategy.service';
+import { TechniqueExecutorService } from '../../../src/character/services/technique/technique-executor.service';
 /* eslint-disable */
 
 /**
@@ -509,10 +505,6 @@ export function requiredMocksAdder(
 
   // Добавляем специализированные сервисы техник
   const techniqueServices = [
-    { service: TechniqueValidatorService, name: 'TechniqueValidatorService' },
-    { service: TechniqueAdapterService, name: 'TechniqueAdapterService' },
-    { service: TechniqueGeneratorService, name: 'TechniqueGeneratorService' },
-    { service: TechniqueAnalyzerService, name: 'TechniqueAnalyzerService' },
     { service: TechniqueHistoryService, name: 'TechniqueHistoryService' },
     { service: TechniqueStrategyService, name: 'TechniqueStrategyService' },
     { service: TechniqueExecutorService, name: 'TechniqueExecutorService' },

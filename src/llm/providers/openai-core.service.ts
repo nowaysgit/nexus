@@ -359,35 +359,50 @@ export class OpenAICoreService implements OnModuleDestroy {
     model: string = 'text-embedding-ada-002',
   ): Promise<number[]> {
     const requestId = this.generateRequestId();
+    const messageContext = {
+      id: requestId,
+      type: 'openai_embedding_request',
+      source: 'llm_openai_core',
+    };
+
     this.emitMonitoringEvent({ type: 'request_start', requestId, model, timestamp: new Date() });
 
     try {
-      this.logService.debug('Отправляем запрос на эмбеддинг к OpenAI API', {
-        requestId,
-        model,
-        textLength: text.length,
+      const queueResult = await this.queueService.enqueue(messageContext, async () => {
+        this.logService.debug('Отправляем запрос на эмбеддинг к OpenAI API', {
+          requestId,
+          model,
+          textLength: text.length,
+        });
+
+        const response = await this.openai.embeddings.create({
+          input: text,
+          model,
+        });
+
+        const embedding = response.data[0]?.embedding;
+        if (!embedding) {
+          throw new Error('API не вернул эмбеддинг в ожидаемом формате.');
+        }
+
+        this.emitMonitoringEvent({
+          type: 'request_complete',
+          requestId,
+          model,
+          promptTokens: response.usage.prompt_tokens,
+          totalTokens: response.usage.total_tokens,
+          timestamp: new Date(),
+        });
+
+        return {
+          success: true,
+          handled: true,
+          context: messageContext,
+          result: embedding,
+        };
       });
 
-      const response = await this.openai.embeddings.create({
-        input: text,
-        model,
-      });
-
-      const embedding = response.data[0]?.embedding;
-      if (!embedding) {
-        throw new Error('API не вернул эмбеддинг в ожидаемом формате.');
-      }
-
-      this.emitMonitoringEvent({
-        type: 'request_complete',
-        requestId,
-        model,
-        promptTokens: response.usage.prompt_tokens,
-        totalTokens: response.usage.total_tokens,
-        timestamp: new Date(),
-      });
-
-      return embedding;
+      return queueResult.result;
     } catch (error) {
       this.logService.error('Ошибка генерации эмбеддинга через OpenAI', {
         requestId,

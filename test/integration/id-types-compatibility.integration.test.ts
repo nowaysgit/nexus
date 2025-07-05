@@ -11,7 +11,9 @@ import { User } from '../../src/user/entities/user.entity';
 import { Dialog } from '../../src/dialog/entities/dialog.entity';
 
 // Services
-import { CharacterService } from '../../src/character/services/character.service';
+import { CharacterService } from '../../src/character/services/core/character.service';
+import { NeedsService } from '../../src/character/services/core/needs.service';
+import { MemoryService } from '../../src/character/services/core/memory.service';
 import { DialogService } from '../../src/dialog/services/dialog.service';
 import { UserService } from '../../src/user/services/user.service';
 import { CacheService } from '../../src/cache/cache.service';

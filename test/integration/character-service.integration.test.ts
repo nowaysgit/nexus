@@ -9,11 +9,11 @@ import { CharacterMemory } from '../../src/character/entities/character-memory.e
 import { CharacterNeedType } from '../../src/character/enums/character-need-type.enum';
 
 // Services
-import { CharacterService } from '../../src/character/services/character.service';
-import { NeedsService } from '../../src/character/services/needs.service';
-import { MotivationService } from '../../src/character/services/motivation.service';
-import { ActionService } from '../../src/character/services/action.service';
-import { MemoryService } from '../../src/character/services/memory.service';
+import { CharacterService } from '../../src/character/services/core/character.service';
+import { NeedsService } from '../../src/character/services/core/needs.service';
+import { MotivationService } from '../../src/character/services/core/motivation.service';
+import { ActionExecutorService } from '../../src/character/services/action/action-executor.service';
+import { MemoryService } from '../../src/character/services/core/memory.service';
 import { MemoryType } from '../../src/character/interfaces/memory.interfaces';
 
 // Tester utilities
@@ -29,7 +29,13 @@ createTestSuite('Character Service Integration Tests', () => {
       imports: [
         MockTypeOrmModule.forFeature([CharacterMotivation, Character, Need, CharacterMemory]),
       ],
-      providers: [CharacterService, NeedsService, MotivationService, ActionService, MemoryService],
+      providers: [
+        CharacterService,
+        NeedsService,
+        MotivationService,
+        ActionExecutorService,
+        MemoryService,
+      ],
     },
     async context => {
       const characterService = context.get<CharacterService>(CharacterService);
@@ -90,7 +96,13 @@ createTestSuite('Character Service Integration Tests', () => {
       imports: [
         MockTypeOrmModule.forFeature([CharacterMotivation, Character, Need, CharacterMemory]),
       ],
-      providers: [CharacterService, NeedsService, MotivationService, ActionService, MemoryService],
+      providers: [
+        CharacterService,
+        NeedsService,
+        MotivationService,
+        ActionExecutorService,
+        MemoryService,
+      ],
     },
     async context => {
       const characterService = context.get<CharacterService>(CharacterService);
@@ -132,7 +144,13 @@ createTestSuite('Character Service Integration Tests', () => {
       imports: [
         MockTypeOrmModule.forFeature([CharacterMotivation, Character, Need, CharacterMemory]),
       ],
-      providers: [CharacterService, NeedsService, MotivationService, ActionService, MemoryService],
+      providers: [
+        CharacterService,
+        NeedsService,
+        MotivationService,
+        ActionExecutorService,
+        MemoryService,
+      ],
     },
     async context => {
       const characterService = context.get<CharacterService>(CharacterService);

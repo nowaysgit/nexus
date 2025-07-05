@@ -1,8 +1,8 @@
 import { createTestSuite, createTest } from '../../lib/tester';
 import { TestModuleBuilder } from '../../lib/tester/utils/test-module-builder';
-import { ManipulationService } from '../../src/character/services/manipulation.service';
-import { NeedsService } from '../../src/character/services/needs.service';
-import { EmotionalStateService } from '../../src/character/services/emotional-state.service';
+import { ManipulationService } from '../../src/character/services/manipulation/manipulation.service';
+import { NeedsService } from '../../src/character/services/core/needs.service';
+import { EmotionalStateService } from '../../src/character/services/core/emotional-state.service';
 import { LLMService } from '../../src/llm/services/llm.service';
 import { PromptTemplateService } from '../../src/prompt-template/prompt-template.service';
 import { LogService } from '../../src/logging/log.service';
@@ -13,7 +13,7 @@ import {
   TechniqueIntensity,
 } from '../../src/character/enums/technique.enums';
 import { IManipulationContext } from '../../src/character/interfaces/technique.interfaces';
-import { TechniqueExecutorService } from '../../src/character/services/technique-executor.service';
+import { TechniqueExecutorService } from '../../src/character/services/technique/technique-executor.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Character } from '../../src/character/entities/character.entity';
 import {

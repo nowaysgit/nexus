@@ -26,7 +26,7 @@ jest.mock('openai', () => {
 
 describe('OpenAICoreService', () => {
   let service: OpenAICoreService;
-  let configService: jest.Mocked<ConfigService>;
+  let _configService: jest.Mocked<ConfigService>;
   let logService: jest.Mocked<LogService>;
   let cacheService: jest.Mocked<CacheService>;
   let messageQueueService: jest.Mocked<MessageQueueService>;
@@ -91,7 +91,7 @@ describe('OpenAICoreService', () => {
     }).compile();
 
     service = module.get<OpenAICoreService>(OpenAICoreService);
-    configService = module.get(ConfigService);
+    _configService = module.get(ConfigService);
     logService = module.get(LogService);
     cacheService = module.get(CacheService);
     messageQueueService = module.get(MessageQueueService);
@@ -157,7 +157,7 @@ describe('OpenAICoreService', () => {
         ],
       }).compile();
 
-      const testService = module.get<OpenAICoreService>(OpenAICoreService);
+      const _testService = module.get<OpenAICoreService>(OpenAICoreService);
       const testLogService = module.get<LogService>(LogService);
 
       expect(testLogService.warn).toHaveBeenCalledWith(
@@ -176,22 +176,28 @@ describe('OpenAICoreService', () => {
 
     it('должен успешно отправлять запрос через очередь', async () => {
       const mockResponse = 'Тестовый ответ от OpenAI';
+      const mockResult = {
+        success: true,
+        handled: true,
+        result: mockResponse,
+        context: { id: 'test', type: 'openai_request', source: 'llm_openai_core' },
+      };
 
       // Мокаем enqueue чтобы он выполнил переданную функцию
-      messageQueueService.enqueue.mockImplementation(async (context, handler) => {
-        return await handler();
+      messageQueueService.enqueue.mockImplementation(async (context: any, handler: any) => {
+        return await handler(context);
       });
 
       // Мокаем результат выполнения
-      const mockHandler = jest.fn().mockResolvedValue(mockResponse);
-      messageQueueService.enqueue.mockResolvedValue(mockResponse);
+      const _mockHandler = jest.fn().mockResolvedValue(mockResult);
+      messageQueueService.enqueue.mockResolvedValue(mockResult);
 
       const result = await service.sendRequest('gpt-4', mockMessages);
 
       expect(result).toBe(mockResponse);
       expect(messageQueueService.enqueue).toHaveBeenCalled();
       expect(eventEmitter.emit).toHaveBeenCalledWith(
-        'monitoring.event',
+        'openai.monitoring',
         expect.objectContaining({
           type: 'request_start',
           model: 'gpt-4',
@@ -213,9 +219,15 @@ describe('OpenAICoreService', () => {
 
     it('должен пропускать кэш если useCache = false', async () => {
       const mockResponse = 'Ответ без кэша';
-      messageQueueService.enqueue.mockResolvedValue(mockResponse);
+      const mockResult = {
+        success: true,
+        handled: true,
+        result: mockResponse,
+        context: { id: 'test', type: 'openai_request', source: 'llm_openai_core' },
+      };
+      messageQueueService.enqueue.mockResolvedValue(mockResult);
 
-      const result = await service.sendRequest('gpt-4', mockMessages, { useCache: false });
+      const _result = await service.sendRequest('gpt-4', mockMessages, { useCache: false });
 
       expect(cacheService.get).not.toHaveBeenCalled();
       expect(messageQueueService.enqueue).toHaveBeenCalled();
@@ -227,7 +239,7 @@ describe('OpenAICoreService', () => {
 
       await expect(service.sendRequest('gpt-4', mockMessages)).rejects.toThrow('API Error');
       expect(eventEmitter.emit).toHaveBeenCalledWith(
-        'monitoring.event',
+        'openai.monitoring',
         expect.objectContaining({
           type: 'request_start',
         }),
@@ -238,7 +250,13 @@ describe('OpenAICoreService', () => {
   describe('generateText', () => {
     it('должен генерировать текст с правильными параметрами', async () => {
       const mockResponse = 'Сгенерированный текст';
-      messageQueueService.enqueue.mockResolvedValue(mockResponse);
+      const mockResult = {
+        success: true,
+        handled: true,
+        result: mockResponse,
+        context: { id: 'test', type: 'openai_request', source: 'llm_openai_core' },
+      };
+      messageQueueService.enqueue.mockResolvedValue(mockResult);
 
       const messages: ChatMessage[] = [{ role: 'user', content: 'Напиши текст' }];
 
@@ -258,7 +276,13 @@ describe('OpenAICoreService', () => {
   describe('generateJSON', () => {
     it('должен генерировать JSON с правильными параметрами', async () => {
       const mockJsonData = { name: 'test', value: 123 };
-      messageQueueService.enqueue.mockResolvedValue(mockJsonData);
+      const mockResult = {
+        success: true,
+        handled: true,
+        result: mockJsonData,
+        context: { id: 'test', type: 'openai_request', source: 'llm_openai_core' },
+      };
+      messageQueueService.enqueue.mockResolvedValue(mockResult);
 
       const messages: ChatMessage[] = [{ role: 'user', content: 'Верни JSON' }];
 
@@ -278,7 +302,13 @@ describe('OpenAICoreService', () => {
   describe('generateEmbedding', () => {
     it('должен генерировать эмбеддинг для текста', async () => {
       const mockEmbedding = [0.1, 0.2, 0.3, 0.4, 0.5];
-      messageQueueService.enqueue.mockResolvedValue(mockEmbedding);
+      const mockResult = {
+        success: true,
+        handled: true,
+        result: mockEmbedding,
+        context: { id: 'test', type: 'openai_request', source: 'llm_openai_core' },
+      };
+      messageQueueService.enqueue.mockResolvedValue(mockResult);
 
       const text = 'Тестовый текст для эмбеддинга';
 
@@ -290,7 +320,13 @@ describe('OpenAICoreService', () => {
 
     it('должен использовать пользовательскую модель для эмбеддинга', async () => {
       const mockEmbedding = [0.1, 0.2, 0.3];
-      messageQueueService.enqueue.mockResolvedValue(mockEmbedding);
+      const mockResult = {
+        success: true,
+        handled: true,
+        result: mockEmbedding,
+        context: { id: 'test', type: 'openai_request', source: 'llm_openai_core' },
+      };
+      messageQueueService.enqueue.mockResolvedValue(mockResult);
 
       const text = 'Тестовый текст';
       const customModel = 'text-embedding-3-small';

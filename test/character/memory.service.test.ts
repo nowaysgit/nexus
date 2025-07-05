@@ -3,7 +3,7 @@ import { FixtureManager } from '../../lib/tester/fixtures/fixture-manager';
 import { TestModuleBuilder } from '../../lib/tester/utils/test-module-builder';
 import { DataSource } from 'typeorm';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { MemoryService } from '../../src/character/services/memory.service';
+import { MemoryService } from '../../src/character/services/core/memory.service';
 import { LogService } from '../../src/logging/log.service';
 import { MockLogService } from '../../lib/tester/mocks/log.service.mock';
 import {

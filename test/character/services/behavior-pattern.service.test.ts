@@ -1,8 +1,8 @@
 import { createTest, createTestSuite, TestConfigType } from '../../../lib/tester';
-import { BehaviorPatternService } from '../../../src/character/services/behavior-pattern.service';
+import { BehaviorPatternService } from '../../../src/character/services/behavior/behavior-pattern.service';
 import { LLMService } from '../../../src/llm/services/llm.service';
 import { LogService } from '../../../src/logging/log.service';
-import { EmotionalStateService } from '../../../src/character/services/emotional-state.service';
+import { EmotionalStateService } from '../../../src/character/services/core/emotional-state.service';
 import { MotivationIntensity } from '../../../src/character/entities/character-motivation.entity';
 
 // Создаем мок для EmotionalStateService

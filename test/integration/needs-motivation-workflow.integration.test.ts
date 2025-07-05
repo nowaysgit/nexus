@@ -8,18 +8,19 @@ import { Need } from '../../src/character/entities/need.entity';
 import { Action } from '../../src/character/entities/action.entity';
 import { CharacterArchetype } from '../../src/character/enums/character-archetype.enum';
 import { ActionType } from '../../src/character/enums/action-type.enum';
-import { NeedsService } from '../../src/character/services/needs.service';
+import { NeedsService } from '../../src/character/services/core/needs.service';
+import { MotivationService } from '../../src/character/services/core/motivation.service';
 import { createTestSuite, createTest } from '../../lib/tester/test-suite';
 import { FixtureManager } from '../../lib/tester/fixtures/fixture-manager';
 import { createEnhancedMockDataSource } from '../../lib/tester/utils/data-source';
 import { TestConfigurations } from '../../lib/tester/test-configurations';
 import { MessageQueueModule } from '../../src/message-queue/message-queue.module';
-import { ActionService } from '../../src/character/services/action.service';
+import { ActionExecutorService } from '../../src/character/services/action/action-executor.service';
 
 createTestSuite('Needs and Motivation Workflow Integration Tests', () => {
   let moduleRef: TestingModule;
   let needsService: NeedsService;
-  let actionService: ActionService;
+  let actionService: ActionExecutorService;
   let _characterRepository: Repository<Character>;
   let _needRepository: Repository<Need>;
   let _actionRepository: Repository<Action>;
@@ -37,7 +38,7 @@ createTestSuite('Needs and Motivation Workflow Integration Tests', () => {
       { provide: getRepositoryToken(Action), useValue: { save: jest.fn() } },
       { provide: 'DATA_SOURCE', useValue: mockDataSource },
       NeedsService,
-      ActionService,
+      ActionExecutorService,
     ];
 
     const providers = TestConfigurations.requiredMocksAdder(imports, baseProviders) as any;
@@ -48,7 +49,7 @@ createTestSuite('Needs and Motivation Workflow Integration Tests', () => {
     }).compile();
 
     needsService = moduleRef.get<NeedsService>(NeedsService);
-    actionService = moduleRef.get<ActionService>(ActionService);
+    actionService = moduleRef.get<ActionExecutorService>(ActionExecutorService);
     _characterRepository = moduleRef.get<Repository<Character>>(getRepositoryToken(Character));
     _needRepository = moduleRef.get<Repository<Need>>(getRepositoryToken(Need));
     _actionRepository = moduleRef.get<Repository<Action>>(getRepositoryToken(Action));

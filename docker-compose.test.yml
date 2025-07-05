@@ -32,27 +32,5 @@ services:
     networks:
       - test-network
 
-  test-runner:
-    image: node:18-alpine
-    container_name: nexus-test-runner
-    working_dir: /app
-    environment:
-      - NODE_ENV=test
-      - POSTGRES_HOST=nexus-test-postgres
-      - DB_TEST_HOST=nexus-test-postgres
-      - DB_TEST_PORT=5432
-      - DB_TEST_NAME=nexus_test
-      - DB_TEST_USER=test_user
-      - DB_TEST_PASSWORD=test_password
-    volumes:
-      - .:/app
-      - /app/node_modules
-    networks:
-      - test-network
-    depends_on:
-      postgres-test:
-        condition: service_healthy
-    command: sh -c "yarn install && yarn test:all:combined"
-
 volumes:
   postgres_test_data:

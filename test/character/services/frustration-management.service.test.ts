@@ -3,7 +3,7 @@ import {
   FrustrationManagementService,
   FrustrationLevel,
   FrustrationType,
-} from '../../../src/character/services/frustration-management.service';
+} from '../../../src/character/services/behavior/frustration-management.service';
 import {
   Character,
   CharacterGender,

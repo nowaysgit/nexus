@@ -21,13 +21,13 @@ import { Character } from '../entities/character.entity';
 import { CreateCharacterDto } from '../dto/create-character.dto';
 import { UpdateCharacterDto } from '../dto/update-character.dto';
 import { UpdateNeedDto } from '../dto/update-needs.dto';
-import { CharacterService } from '../services/character.service';
+import { CharacterService } from '../services/core/character.service';
 import { LogService } from '../../logging/log.service';
 import { CHARACTER_SERVICE } from '../../common/constants/injection-tokens';
 import {
   CharacterManagementService,
   ICharacterAnalysis,
-} from '../services/character-management.service';
+} from '../services/core/character-management.service';
 import { GlobalExceptionFilter } from '../../logging/global-exception.filter';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { User } from '../../auth/user.decorator';
@@ -227,7 +227,7 @@ export class CharacterController {
       });
 
       // Метод createAction был удален из CharacterManagementService
-      // Возвращаем заглушку до реализации специализированного ActionService
+      // Возвращаем заглушку до реализации специализированного ActionExecutorService
       const action = { id: 'temp', type, description, context, createdAt: new Date() };
 
       this.logService.log(`Действие ${type} создано для персонажа ${id}`);

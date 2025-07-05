@@ -1,16 +1,17 @@
-import { StoryService, RelationshipStage } from '../../src/character/services/story.service';
+import { StoryService } from '../../src/character/services/core/story.service';
 import {
   StoryEvent,
   EventType,
   EventStatus,
 } from '../../src/character/entities/story-event.entity';
-import { CharacterService } from '../../src/character/services/character.service';
+import { CharacterService } from '../../src/character/services/core/character.service';
 import { LogService } from '../../src/logging/log.service';
 import { DialogService } from '../../src/dialog/services/dialog.service';
 import { StoryPlan, StoryMilestone } from '../../src/character/entities/story-plan.entity';
 import { TestModuleBuilder } from '../../lib/tester/utils/test-module-builder';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { TestingModule } from '@nestjs/testing';
+import { RelationshipStage } from '../../src/character/services/core/story.service';
 
 // Создаем моки для зависимостей
 const mockStoryEventRepository = {

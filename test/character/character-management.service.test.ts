@@ -1,6 +1,6 @@
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { createTest, createTestSuite, TestConfigType } from '../../lib/tester';
-import { CharacterManagementService } from '../../src/character/services/character-management.service';
+import { CharacterManagementService } from '../../src/character/services/core/character-management.service';
 import { LogService } from '../../src/logging/log.service';
 import { CacheService } from '../../src/cache/cache.service';
 import { ErrorHandlingService } from '../../src/common/utils/error-handling/error-handling.service';
