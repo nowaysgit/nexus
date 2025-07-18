@@ -24,7 +24,7 @@ export const SENSITIVE_FIELDS = [
   'secret',
   'credit_card',
   'card',
-  'apiKey',
+  'apikey',
   'api_key',
   'access_token',
   'refresh_token',
@@ -60,11 +60,30 @@ export function sanitizeHeaders(
 /**
  * Утилита для очистки данных запроса от чувствительной информации
  * @param data Данные запроса
+ * @param visited Множество для отслеживания уже обработанных объектов (защита от циклических ссылок)
  * @returns Очищенные данные
  */
-export function sanitizeData(data: unknown): Record<string, unknown> {
+export function sanitizeData(data: unknown, visited: WeakSet<object> = new WeakSet()): unknown {
   if (!data) return {};
   if (typeof data !== 'object' || data === null) return { value: data };
+
+  // Защита от циклических ссылок
+  if (visited.has(data)) {
+    return { '[ЦИКЛИЧЕСКАЯ_ССЫЛКА]': true };
+  }
+  visited.add(data);
+
+  // Обработка массивов
+  if (Array.isArray(data)) {
+    return data.map(item => {
+      // Если элемент массива - примитивное значение, возвращаем его как есть
+      if (typeof item !== 'object' || item === null) {
+        return item;
+      }
+      // Если элемент массива - объект, рекурсивно обрабатываем его
+      return sanitizeData(item, visited);
+    });
+  }
 
   const sanitized: Record<string, unknown> = {};
 
@@ -72,8 +91,17 @@ export function sanitizeData(data: unknown): Record<string, unknown> {
     const lowerKey = key.toLowerCase();
     if (SENSITIVE_FIELDS.includes(lowerKey)) {
       sanitized[key] = '[РЕДАКТИРОВАНО]';
+    } else if (Array.isArray(value)) {
+      sanitized[key] = value.map(item => {
+        // Если элемент массива - примитивное значение, возвращаем его как есть
+        if (typeof item !== 'object' || item === null) {
+          return item;
+        }
+        // Если элемент массива - объект, рекурсивно обрабатываем его
+        return sanitizeData(item, visited);
+      });
     } else if (typeof value === 'object' && value !== null) {
-      sanitized[key] = sanitizeData(value);
+      sanitized[key] = sanitizeData(value, visited);
     } else {
       sanitized[key] = value;
     }

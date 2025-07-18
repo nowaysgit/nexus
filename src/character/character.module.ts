@@ -12,6 +12,10 @@ import { CacheModule } from '../cache/cache.module';
 import { UserModule } from '../user/user.module';
 
 import { CharacterController } from './controllers/character.controller';
+import { SpecializationController } from './controllers/specialization.controller';
+import { StoryController } from './controllers/story.controller';
+import { TechniqueAnalyticsController } from './controllers/technique-analytics.controller';
+import { EmotionalStateController } from './controllers/emotional-state.controller';
 
 import { ICharacterModule } from '../common/interfaces';
 
@@ -64,7 +68,6 @@ import { TechniqueStrategyService } from './services/technique/technique-strateg
 import { TechniqueHistoryService } from './services/technique/technique-history.service';
 
 // Story Integration
-import { StoryController } from './controllers/story.controller';
 import { StoryModule } from './story.module';
 import { forwardRef } from '@nestjs/common';
 
@@ -110,7 +113,13 @@ import { UserManipulationProfileRepository } from './repositories/user-manipulat
     CacheModule,
     forwardRef(() => StoryModule),
   ],
-  controllers: [CharacterController, StoryController],
+  controllers: [
+    CharacterController,
+    StoryController,
+    TechniqueAnalyticsController,
+    SpecializationController,
+    EmotionalStateController,
+  ],
   providers: [
     // Unified Management Service
     CharacterManagementService,

@@ -28,9 +28,11 @@ createTestSuite('ManipulationService Tests', () => {
   // Моки для зависимостей
   const mockLogService = {
     log: jest.fn(),
+    info: jest.fn(),
     error: jest.fn(),
     warn: jest.fn(),
     debug: jest.fn(),
+    setContext: jest.fn().mockReturnThis(),
   };
 
   const mockLLMService = {
@@ -229,7 +231,7 @@ createTestSuite('ManipulationService Tests', () => {
       expect(strategy.primaryTechniques).toBeDefined();
       expect(Array.isArray(strategy.primaryTechniques)).toBe(true);
       expect(strategy.ethicalLimits).toBeDefined();
-      expect(mockLogService.log).toHaveBeenCalled();
+      expect(mockLogService.info).toHaveBeenCalled();
     },
   );
 

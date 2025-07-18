@@ -168,10 +168,10 @@ export class PromptTemplateService extends BaseService {
     const templateVersions = this.templates.get(template.type);
     templateVersions.set(template.version, template);
 
-    // Устанавливаем активную версию если это первая или если не указана
-    if (!this.activeVersions.has(template.type) || templateVersions.size === 1) {
-      this.activeVersions.set(template.type, template.version);
-    }
+    // Обновляем активную версию на последнюю зарегистрированную
+    const versions = Array.from(templateVersions.keys()).sort();
+    const latestVersion = versions[versions.length - 1];
+    this.activeVersions.set(template.type, latestVersion);
 
     this.logDebug(`Зарегистрирован шаблон промпта: ${template.type} v${template.version}`, {
       template,

@@ -61,6 +61,40 @@
                   "d": "Контроллер для управления сюжетом"
                 },
                 {
+                  "p": "/character/controllers/technique-analytics.controller.ts",
+                  "t": "f",
+                  "e": [
+                    "TechniqueAnalyticsController"
+                  ],
+                  "d": "Контроллер для аналитики и управления техниками влияния"
+                },
+                {
+                  "p": "/character/controllers/specialization.controller.ts",
+                  "t": "f",
+                  "e": [
+                    "SpecializationController",
+                    "CreateSpecializationCombinationDto",
+                    "UpdateSpecializationProfileDto",
+                    "InteractionContextDto"
+                  ],
+                  "d": "Контроллер для управления системой специализации персонажей с поддержкой динамических комбинаций, аналитики и рекомендаций"
+                },
+                {
+                  "p": "/character/controllers/emotional-state.controller.ts",
+                  "t": "f",
+                  "e": [
+                    "EmotionalStateController",
+                    "CreateEmotionalUpdateDto",
+                    "CreateEmotionalMemoryDto",
+                    "ApplyEmotionalRegulationDto",
+                    "PredictEmotionalReactionDto",
+                    "SimulateEmotionalCascadeDto",
+                    "AnalyzeEmotionalCompatibilityDto",
+                    "OptimizeEmotionalStateDto"
+                  ],
+                  "d": "Контроллер для управления эмоциональным состоянием персонажей с полным API для эмоциональной системы, включая память, регуляцию, предсказания и аналитику"
+                },
+                {
                   "p": "/character/dto/create-character.dto.ts",
                   "t": "f",
                   "e": [
@@ -139,9 +173,10 @@
                   "p": "/character/entities/manipulation-technique.entity.ts",
                   "t": "f",
                   "e": [
-                    "ManipulationTechnique"
+                    "TechniqueExecution",
+                    "UserManipulationProfile"
                   ],
-                  "d": "Сущность манипулятивной техники"
+                  "d": "Сущности для хранения выполненных техник и профилей восприимчивости пользователей"
                 },
                 {
                   "p": "/character/entities/need.entity.ts",
@@ -463,7 +498,7 @@
                           "e": [
                             "TechniqueHistoryService"
                           ],
-                          "d": "Сервис для отслеживания истории применения техник"
+                          "d": "Улучшенный сервис для управления историей техник влияния с полной персистентностью, аналитикой и рекомендациями"
                         },
                         {
                           "p": "/character/services/technique/technique-strategy.service.ts",
@@ -525,7 +560,7 @@
                           "e": [
                             "EmotionalStateService"
                           ],
-                          "d": "Сервис для управления эмоциональным состоянием"
+                          "d": "Расширенный сервис для управления эмоциональным состоянием персонажа с поддержкой сложных эмоциональных переходов, эмоциональной памяти, профилей, регуляции эмоций, анализа паттернов, предсказания реакций и каскадных эффектов"
                         },
                         {
                           "p": "/character/services/core/message-processing-coordinator.service.ts",
@@ -539,17 +574,23 @@
                           "p": "/character/services/core/specialization.service.ts",
                           "t": "f",
                           "e": [
-                            "SpecializationService"
+                            "SpecializationService",
+                            "KnowledgeDomain",
+                            "CompetenceLevel",
+                            "SpecializationType",
+                            "LearningStyle",
+                            "SpecializationCombination",
+                            "DynamicSpecialization",
+                            "SpecializationEvolution",
+                            "LearningProgress",
+                            "AdaptationTrigger",
+                            "SpecializationProfile",
+                            "CompetenceCheck",
+                            "SpecializationRecommendation",
+                            "SpecializationCompatibility",
+                            "SpecializationImprovementSuggestion"
                           ],
-                          "d": "Сервис для управления специализацией и знаниями персонажа"
-                        },
-                        {
-                          "p": "/character/services/core/story.service.ts",
-                          "t": "f",
-                          "e": [
-                            "StoryService"
-                          ],
-                          "d": "Сервис для управления сюжетом"
+                          "d": "Расширенный сервис для управления специализацией персонажей с поддержкой 44 доменов знаний, 10 типов специализации, 8 стилей обучения, динамической адаптации, анализа совместимости, системы рекомендаций и аналитики эффективности"
                         },
                         {
                           "p": "/character/services/core/character-scheduler.service.ts",
@@ -1952,34 +1993,44 @@
                   "t": "d",
                   "c": [
                     {
-                      "p": "/test/character/services/action-lifecycle.service.test.ts",
+                      "p": "/test/character/services/action-executor.service.test.ts",
                       "t": "f",
-                      "d": "Тесты для сервиса жизненного цикла действий"
+                      "d": "Тесты для ActionExecutorService"
                     },
                     {
-                      "p": "/test/character/services/action-scheduler.service.test.ts",
+                      "p": "/test/character/services/action-generator.service.test.ts",
                       "t": "f",
-                      "d": "Тесты для планировщика действий"
+                      "d": "Тесты для ActionGeneratorService"
                     },
                     {
-                      "p": "/test/character/services/behavior-pattern.service.test.ts",
+                      "p": "/test/character/services/action-resource.service.test.ts",
                       "t": "f",
-                      "d": "Тесты для сервиса поведенческих паттернов"
+                      "d": "Тесты для ActionResourceService"
                     },
                     {
-                      "p": "/test/character/services/character-monitoring.service.test.ts",
+                      "p": "/test/character/services/character-behavior.service.test.ts",
                       "t": "f",
-                      "d": "Тесты для сервиса мониторинга персонажа"
+                      "d": "Тесты для CharacterBehaviorService"
                     },
                     {
-                      "p": "/test/character/services/emotional-behavior.service.test.ts",
+                      "p": "/test/character/services/message-analysis.service.test.ts",
                       "t": "f",
-                      "d": "Тесты для сервиса эмоционального поведения"
+                      "d": "Тесты для MessageAnalysisService"
                     },
                     {
-                      "p": "/test/character/services/frustration-management.service.test.ts",
+                      "p": "/test/character/services/message-processing-coordinator.service.test.ts",
                       "t": "f",
-                      "d": "Тесты для сервиса управления фрустрацией"
+                      "d": "Тесты для MessageProcessingCoordinatorService"
+                    },
+                    {
+                      "p": "/test/character/services/specialization.service.test.ts",
+                      "t": "f",
+                      "d": "Тесты для SpecializationService"
+                    },
+                    {
+                      "p": "/test/character/services/technique-executor.service.test.ts",
+                      "t": "f",
+                      "d": "Тесты для TechniqueExecutorService"
                     }
                   ]
                 }
@@ -2018,6 +2069,32 @@
                       "p": "/test/common/base/base.service.test.ts",
                       "t": "f",
                       "d": "Тесты для базового сервиса"
+                    }
+                  ]
+                },
+                {
+                  "p": "/test/common/utils",
+                  "t": "d",
+                  "c": [
+                    {
+                      "p": "/test/common/utils/error-handling.service.test.ts",
+                      "t": "f",
+                      "d": "Тесты для ErrorHandlingService"
+                    },
+                    {
+                      "p": "/test/common/utils/error.utils.test.ts",
+                      "t": "f",
+                      "d": "Тесты для error.utils"
+                    },
+                    {
+                      "p": "/test/common/utils/header-sanitizer.util.test.ts",
+                      "t": "f",
+                      "d": "Тесты для header-sanitizer.util"
+                    },
+                    {
+                      "p": "/test/common/utils/port-validator.util.test.ts",
+                      "t": "f",
+                      "d": "Тесты для port-validator.util"
                     }
                   ]
                 }
@@ -2191,9 +2268,29 @@
               "t": "d",
               "c": [
                 {
+                  "p": "/test/llm/llama-provider.service.test.ts",
+                  "t": "f",
+                  "d": "Тесты для LlamaProviderService"
+                },
+                {
+                  "p": "/test/llm/llm-provider-manager.service.test.ts",
+                  "t": "f",
+                  "d": "Тесты для LlmProviderManagerService"
+                },
+                {
                   "p": "/test/llm/llm.service.test.ts",
                   "t": "f",
-                  "d": "Тесты для LLM сервиса"
+                  "d": "Тесты для LlmService"
+                },
+                {
+                  "p": "/test/llm/openai-core.service.test.ts",
+                  "t": "f",
+                  "d": "Тесты для OpenAiCoreService"
+                },
+                {
+                  "p": "/test/llm/openai-provider.service.test.ts",
+                  "t": "f",
+                  "d": "Тесты для OpenAiProviderService"
                 }
               ]
             },
@@ -2240,14 +2337,9 @@
               "t": "d",
               "c": [
                 {
-                  "p": "/test/prompt-template/prompt-template.service.integration.test.ts",
-                  "t": "f",
-                  "d": "Интеграционные тесты для сервиса шаблонов промптов"
-                },
-                {
                   "p": "/test/prompt-template/prompt-template.service.test.ts",
                   "t": "f",
-                  "d": "Модульные тесты для сервиса шаблонов промптов"
+                  "d": "Тесты для PromptTemplateService"
                 }
               ]
             },
@@ -2255,6 +2347,48 @@
               "p": "/test/telegram",
               "t": "d",
               "c": [
+                {
+                  "p": "/test/telegram/handlers",
+                  "t": "d",
+                  "c": [
+                    {
+                      "p": "/test/telegram/handlers/callback.handler.test.ts",
+                      "t": "f",
+                      "d": "Тесты для CallbackHandler"
+                    },
+                    {
+                      "p": "/test/telegram/handlers/command.handler.test.ts",
+                      "t": "f",
+                      "d": "Тесты для CommandHandler"
+                    },
+                    {
+                      "p": "/test/telegram/handlers/message.handler.test.ts",
+                      "t": "f",
+                      "d": "Тесты для MessageHandler"
+                    }
+                  ]
+                },
+                {
+                  "p": "/test/telegram/services",
+                  "t": "d",
+                  "c": [
+                    {
+                      "p": "/test/telegram/services/access-control.service.test.ts",
+                      "t": "f",
+                      "d": "Тесты для AccessControlService"
+                    },
+                    {
+                      "p": "/test/telegram/services/character-creation.service.test.ts",
+                      "t": "f",
+                      "d": "Тесты для CharacterCreationService"
+                    }
+                  ]
+                },
+                {
+                  "p": "/test/telegram/message.service.test.ts",
+                  "t": "f",
+                  "d": "Тесты для сервиса сообщений"
+                },
                 {
                   "p": "/test/telegram/telegram-core.service.integration.test.ts",
                   "t": "f",
@@ -2264,6 +2398,11 @@
                   "p": "/test/telegram/telegram.service.test.ts",
                   "t": "f",
                   "d": "Модульные тесты для Telegram сервиса"
+                },
+                {
+                  "p": "/test/telegram/telegram-user.service.test.ts",
+                  "t": "f",
+                  "d": "Тесты для сервиса пользователей Telegram"
                 }
               ]
             },
@@ -2334,6 +2473,16 @@
                   "d": "Модульные тесты для сервиса валидации"
                 }
               ]
+            },
+            {
+              "p": "/test/character/services/emotional-state.service.test.ts",
+              "t": "f",
+              "d": "Тесты для EmotionalStateService с полным покрытием эмоциональной системы"
+            },
+            {
+              "p": "/test/character/controllers/emotional-state.controller.test.ts",
+              "t": "f",
+              "d": "Тесты для EmotionalStateController API"
             }
           ]
         }
@@ -2414,9 +2563,68 @@
     {
       "n": "ManipulationService",
       "p": "/src/character/services/manipulation.service.ts",
-      "d": "⚠️ ЧАСТИЧНО РАБОТАЕТ: Реализует логику выбора и применения манипулятивных техник. 3 теста не проходят.",
+      "d": "✅ ИСПРАВЛЕН: Реализует логику выбора и применения манипулятивных техник. Все тесты проходят.",
       "u": [
         "CharacterBehaviorService"
+      ]
+    },
+    {
+      "n": "ErrorHandlingService",
+      "p": "/src/common/utils/error-handling/error-handling.service.ts",
+      "d": "✅ ИСПРАВЛЕН: Централизованная обработка ошибок с логированием и мониторингом. Все тесты проходят.",
+      "u": [
+        "Все сервисы для обработки ошибок"
+      ]
+    },
+    {
+      "n": "AccessControlService",
+      "p": "/src/telegram/services/access-control.service.ts",
+      "d": "✅ ИСПРАВЛЕН: Управляет доступом пользователей к функциям бота. Все тесты проходят.",
+      "u": [
+        "TelegramHandlers"
+      ]
+    },
+    {
+      "n": "CharacterCreationService",
+      "p": "/src/telegram/services/character-creation.service.ts",
+      "d": "✅ ИСПРАВЛЕН: Создает персонажей с различными архетипами. Все тесты проходят.",
+      "u": [
+        "TelegramHandlers"
+      ]
+    },
+    {
+      "n": "ActionExecutorService",
+      "p": "/src/character/services/action/action-executor.service.ts",
+      "d": "✅ ПОКРЫТ ТЕСТАМИ: Выполняет действия персонажей. Имеет полное покрытие тестами.",
+      "u": [
+        "CharacterBehaviorService"
+      ]
+    },
+    {
+      "n": "PromptTemplateService",
+      "p": "/src/prompt-template/prompt-template.service.ts",
+      "d": "✅ ПОКРЫТ ТЕСТАМИ: Управляет шаблонами промптов для LLM. Имеет полное покрытие тестами.",
+      "u": [
+        "LlmService",
+        "CharacterBehaviorService"
+      ]
+    },
+    {
+      "n": "EmotionalStateService",
+      "p": "/src/character/services/core/emotional-state.service.ts",
+      "d": "✅ ПОЛНОСТЬЮ РЕАЛИЗОВАН: Комплексная система управления эмоциональным состоянием персонажей с памятью, регуляцией, предсказаниями и аналитикой. Включает 25+ методов для работы с эмоциями, переходами, паттернами и совместимостью.",
+      "u": [
+        "CharacterBehaviorService",
+        "MessageProcessingCoordinator",
+        "EmotionalStateController"
+      ]
+    },
+    {
+      "n": "EmotionalStateController",
+      "p": "/src/character/controllers/emotional-state.controller.ts",
+      "d": "✅ ПОЛНОСТЬЮ РЕАЛИЗОВАН: REST API для управления эмоциональным состоянием персонажей. Предоставляет 15+ эндпоинтов для работы с эмоциями, памятью, регуляцией, предсказаниями и оптимизацией состояний.",
+      "u": [
+        "EmotionalStateService"
       ]
     }
   ],
@@ -2526,7 +2734,10 @@
       ],
       "c": [
         "CharacterController",
-        "StoryController"
+        "EmotionalStateController",
+        "SpecializationController",
+        "StoryController",
+        "TechniqueAnalyticsController"
       ],
       "s": [
         "ActionExecutorService",
@@ -2556,6 +2767,7 @@
         "NeedsService",
         "SpecializationService",
         "StoryService",
+        "StoryAutomationService",
         "TechniqueAdapterService",
         "TechniqueAnalyzerService",
         "TechniqueExecutorService",
@@ -2838,7 +3050,10 @@
         "optimizeTestDatabase",
         "convertId",
         "createMockDataSource",
-        "TestModuleBuilder"
+        "TestModuleBuilder",
+        "DbCleanupUtil",
+        "DbCompatibilityUtil",
+        "DbOptimizationUtil"
       ],
       "cfg": [
         "DialogTestConfig",
@@ -2867,6 +3082,38 @@
         "mockTelegrafProvider",
         "MockTelegramService",
         "MockUserService"
+      ],
+      "tests": [
+        "ActionExecutorService",
+        "ActionGeneratorService",
+        "ActionResourceService",
+        "CharacterBehaviorService",
+        "MessageAnalysisService",
+        "MessageProcessingCoordinatorService",
+        "SpecializationService",
+        "TechniqueExecutorService",
+        "TechniqueHistoryService",
+        "ErrorHandlingService",
+        "AccessControlService",
+        "CharacterCreationService",
+        "CallbackHandler",
+        "CommandHandler",
+        "MessageHandler",
+        "PromptTemplateService",
+        "LlmService",
+        "LlmProviderManagerService",
+        "EmotionalStateService",
+        "EmotionalStateController",
+        "CharacterMonitoringService",
+        "CharacterManagementService",
+        "ActionLifecycleService",
+        "ActionSchedulerService",
+        "BehaviorPatternService",
+        "EmotionalBehaviorService",
+        "FrustrationManagementService",
+        "StoryService",
+        "StoryAutomationService",
+        "StorySystemUnit"
       ]
     }
   }

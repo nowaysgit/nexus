@@ -3,6 +3,7 @@ import { CharacterResponseService } from '../../src/character/services/core/char
 import { LLMService } from '../../src/llm/services/llm.service';
 import { PromptTemplateService } from '../../src/prompt-template/prompt-template.service';
 import { NeedsService } from '../../src/character/services/core/needs.service';
+import { EmotionalStateService } from '../../src/character/services/core/emotional-state.service';
 import { LogService } from '../../src/logging/log.service';
 import { Character } from '../../src/character/entities/character.entity';
 import { EmotionalState } from '../../src/character/entities/emotional-state';
@@ -13,6 +14,10 @@ createTestSuite('CharacterResponseService Unit Tests', () => {
   const mockLlmService = { generateText: jest.fn() };
   const mockPromptTemplateService = { createCharacterSystemPrompt: jest.fn() };
   const mockNeedsService = { getActiveNeeds: jest.fn() };
+  const mockEmotionalStateService = {
+    getEmotionalMemories: jest.fn(),
+    getEmotionalTransitions: jest.fn(),
+  };
   const mockLogService = {
     setContext: jest.fn().mockReturnValue({
       debug: jest.fn(),
@@ -29,11 +34,15 @@ createTestSuite('CharacterResponseService Unit Tests', () => {
     { provide: LLMService, useValue: mockLlmService },
     { provide: PromptTemplateService, useValue: mockPromptTemplateService },
     { provide: NeedsService, useValue: mockNeedsService },
+    { provide: EmotionalStateService, useValue: mockEmotionalStateService },
     { provide: LogService, useValue: mockLogService },
   ];
 
   beforeEach(() => {
     jest.clearAllMocks();
+    // Настраиваем мок для EmotionalStateService
+    mockEmotionalStateService.getEmotionalMemories.mockResolvedValue([]);
+    mockEmotionalStateService.getEmotionalTransitions.mockResolvedValue([]);
   });
   createTest(
     {

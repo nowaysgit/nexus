@@ -13,25 +13,64 @@ export enum StoryEventType {
   PERSONAL_GROWTH = 'personal_growth', // Личностный рост персонажа
   WORLD_EVENT = 'world_event', // Внешние события мира
   USER_INTERACTION = 'user_interaction', // Прямое взаимодействие с пользователем
+  EMOTIONAL = 'emotional', // Эмоциональные события
+  NEED_FULFILLMENT = 'need_fulfillment', // События удовлетворения потребностей
 }
 
-// JSON-структура для триггеров
+// Расширенная JSON-структура для триггеров
 export interface IStoryEventTrigger {
   relationshipStage?: { min?: number; max?: number };
   needValue?: { need: string; min?: number; max?: number };
   specificKeyword?: string[];
-  // ... другие возможные триггеры
+  timeSinceLastInteraction?: number; // в минутах
+  conversationLength?: number; // количество сообщений в текущем диалоге
+  emotionalState?: {
+    required?: string[]; // требуемые эмоциональные состояния пользователя
+    excluded?: string[]; // исключенные эмоциональные состояния
+  };
+  trustLevel?: { min?: number; max?: number };
+  affectionLevel?: { min?: number; max?: number };
+  energyLevel?: { min?: number; max?: number };
+  timeOfDay?: string[]; // время суток ['morning', 'afternoon', 'evening', 'night']
+  dayOfWeek?: string[]; // дни недели
+  characterArchetype?: string[]; // архетипы персонажей
+  userBehaviorPattern?: string; // паттерн поведения пользователя
 }
 
-// JSON-структура для эффектов
+// Расширенная JSON-структура для эффектов
 export interface IStoryEventEffect {
   personalityChange?: {
     addTrait?: string[];
     removeTrait?: string[];
+    modifyTrait?: { trait: string; intensity: number }[];
   };
   needChange?: { need: string; value: number }[];
   relationshipChange?: number;
-  // ... другие возможные эффекты
+  affectionChange?: number;
+  energyChange?: number;
+  relationshipStageChange?: number; // изменение на количество уровней
+  addMemory?: string; // текст важного воспоминания
+  triggerAction?: {
+    type: string;
+    parameters?: Record<string, any>;
+  };
+  scheduleEvent?: {
+    eventId: string;
+    delayMinutes: number;
+  };
+  modifyBehavior?: {
+    temporaryTraits?: string[];
+    duration?: number; // в минутах
+  };
+  sendMessage?: {
+    text: string;
+    delay?: number; // задержка в секундах
+  };
+  unlockFeature?: string[]; // разблокировка новых возможностей
+  grantReward?: {
+    type: string;
+    amount: number;
+  };
 }
 
 @Entity('story_events')
@@ -63,6 +102,18 @@ export class StoryEvent {
 
   @Column({ default: false })
   isRepeatable: boolean;
+
+  @Column({ default: 1 })
+  priority: number; // приоритет события (чем больше, тем выше)
+
+  @Column({ nullable: true })
+  cooldownMinutes: number; // время охлаждения между активациями
+
+  @Column({ type: 'jsonb', nullable: true })
+  conditions: Record<string, any>; // дополнительные условия
+
+  @Column({ type: 'jsonb', nullable: true })
+  metadata: Record<string, any>; // метаданные события
 
   @OneToMany(() => CharacterStoryProgress, progress => progress.storyEvent)
   characterProgress: CharacterStoryProgress[];

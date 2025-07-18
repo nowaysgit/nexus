@@ -391,7 +391,7 @@ export class CharacterBehaviorService extends BaseService {
       }
 
       // Модифицируем поведение на основе фрустрации
-      if (frustrationLevel !== FrustrationLevel.NONE && frustrationPatterns.length > 0) {
+      if (frustrationLevel !== 'none' && frustrationPatterns && frustrationPatterns.length > 0) {
         const pattern = frustrationPatterns[0];
         const aggressionIncrease = pattern.behaviorModifiers.aggressionIncrease;
         const withdrawalTendency = pattern.behaviorModifiers.withdrawalTendency;

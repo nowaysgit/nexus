@@ -15,7 +15,7 @@ interface RequestInfo {
   method: string;
   url: string;
   headers: Record<string, string>;
-  body: Record<string, unknown>;
+  body: unknown;
   query: Record<string, unknown>;
   params: Record<string, unknown>;
 }

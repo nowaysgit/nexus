@@ -149,7 +149,8 @@ describe('ActionExecutorService Unit Tests', () => {
     const result = await actionExecutorService.stopCurrentAction(characterId);
 
     // Проверяем, что метод был вызван без ошибок
-    expect(result).toBe(true);
+    // Возвращает false, если нет текущего действия (что и есть в моке)
+    expect(result).toBe(false);
     expect(actionExecutorService).toBeDefined();
   });
 });

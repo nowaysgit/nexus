@@ -74,6 +74,7 @@ export class CallbackHandler extends BaseService {
         default:
           await ctx.answerCbQuery('❌ Неизвестное действие');
           this.logWarning('Неизвестное callback действие', { action: callbackData.action });
+          return;
       }
 
       await ctx.answerCbQuery();
@@ -95,24 +96,70 @@ export class CallbackHandler extends BaseService {
     try {
       const parts = data.split('_');
 
-      return {
-        action: parts[0],
-        subAction: parts[1],
-        entityId: parts[2],
-        params: parts.slice(3).reduce(
-          (acc, part, index) => {
-            acc[`param${index}`] = part;
-            return acc;
-          },
-          {} as Record<string, any>,
-        ),
-      };
+      // Для простых действий (main_menu, help, etc.)
+      if (parts.length === 1) {
+        return {
+          action: parts[0],
+          params: {},
+        };
+      }
+
+      // Для двухчастных действий (main_menu, my_characters, create_character)
+      if (parts.length === 2) {
+        // Проверяем, является ли это комбинированным действием
+        const combinedAction = data;
+        if (['main_menu', 'my_characters', 'create_character', 'help'].includes(combinedAction)) {
+          return {
+            action: combinedAction,
+            params: {},
+          };
+        }
+        
+        // Иначе это action + subAction
+        return {
+          action: parts[0],
+          subAction: parts[1],
+          params: {},
+        };
+      }
+
+      // Для действий с параметрами (3+ частей)
+      if (parts.length >= 3) {
+        const result: ParsedCallback = {
+          action: parts[0],
+          params: {},
+        };
+
+        // Проверяем, является ли второй параметр числом (entityId)
+        if (/^\d+$/.test(parts[1])) {
+          result.entityId = parts[1];
+          result.subAction = parts[2];
+        } else {
+          result.subAction = parts[1];
+          if (parts.length >= 3 && /^\d+$/.test(parts[2])) {
+            result.entityId = parts[2];
+          }
+        }
+
+        // Обрабатываем параметры с равенством (param1=value1)
+        const paramParts = parts.slice(result.entityId ? 3 : 2);
+        for (const part of paramParts) {
+          if (part.includes('=')) {
+            const [key, value] = part.split('=');
+            result.params![key] = value;
+          }
+        }
+
+        return result;
+      }
+
+      return { action: parts[0], params: {} };
     } catch (error) {
       this.logWarning('Ошибка парсинга callback данных', {
         data,
         error: getErrorMessage(error),
       });
-      return { action: 'unknown' };
+      return { action: 'unknown', params: {} };
     }
   }
 

@@ -355,7 +355,24 @@ export class ActionExecutorService extends BaseService implements OnModuleInit {
    * Останавливает текущее действие
    */
   async stopCurrentAction(characterId: string): Promise<boolean> {
-    return this.lifecycleService.stopCurrentAction(characterId);
+    const currentAction = this.lifecycleService.getCurrentAction(characterId);
+    if (!currentAction) {
+      return false;
+    }
+
+    const character = await this.repository.findOne({ where: { id: parseInt(characterId) } });
+    if (!character) {
+      return false;
+    }
+
+    const context: ActionContext = {
+      character,
+      action: currentAction,
+      metadata: { characterId: parseInt(characterId) },
+    };
+
+    await this.interrupt(context);
+    return true;
   }
 
   /**

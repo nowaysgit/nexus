@@ -12,6 +12,7 @@ interface MockWinstonLogger {
   error: jest.Mock<void, [message: string, meta?: Record<string, any>]>;
   debug: jest.Mock<void, [message: string, meta?: Record<string, any>]>;
   verbose: jest.Mock<void, [message: string, meta?: Record<string, any>]>;
+  log: jest.Mock<void, [message: string, meta?: Record<string, any>]>;
 }
 
 /**
@@ -27,9 +28,16 @@ interface MockWinstonLogger {
  */
 @Injectable()
 export class MockLogService implements LoggerService {
-  private context?: string;
+  protected context?: string;
   public readonly sendToRollbar: boolean = false;
   public readonly logLevel: LogLevel = LogLevel.DEBUG;
+
+  /**
+   * Мок ConfigService для совместимости с оригинальным LogService
+   */
+  public readonly configService: any = {
+    get: jest.fn().mockReturnValue(true),
+  };
 
   /**
    * Мок Winston логгера с методами jest.Mock для отслеживания вызовов
@@ -48,6 +56,7 @@ export class MockLogService implements LoggerService {
       error: jest.fn<void, [message: string, meta?: Record<string, any>]>(),
       debug: jest.fn<void, [message: string, meta?: Record<string, any>]>(),
       verbose: jest.fn<void, [message: string, meta?: Record<string, any>]>(),
+      log: jest.fn<void, [message: string, meta?: Record<string, any>]>(),
     };
     this.rollbarService = new MockRollbarService();
   }
@@ -96,9 +105,9 @@ export class MockLogService implements LoggerService {
   log(message: string, context?: string | Record<string, any>): void {
     // Заглушка
     console.log(`[MOCK LOG] ${this.context || 'global'}: ${message}`);
-    this.winstonLogger.info(
+    this.winstonLogger.log(
       this.formatMessage(message),
-      typeof context === 'object' ? context : { context },
+      typeof context === 'object' && context !== null ? context : context ? { context } : undefined,
     );
   }
 
@@ -205,6 +214,16 @@ export class MockLogService implements LoggerService {
 
     // Имитируем вызов rollbarService.critical
     this.rollbarService.critical(error, enrichedMeta);
+  }
+
+  /**
+   * Проверка, следует ли логировать сообщение данного уровня
+   * @param level Уровень логирования
+   * @returns true, если сообщение должно быть записано
+   */
+  private shouldLog(level: LogLevel): boolean {
+    // В тестах всегда логируем все уровни
+    return true;
   }
 
   /**

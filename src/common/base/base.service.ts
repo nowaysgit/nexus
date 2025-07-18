@@ -83,8 +83,8 @@ export abstract class BaseService {
    * @param meta Дополнительные метаданные
    */
   protected logInfo(message: string, meta?: Record<string, any>): void {
-    if (this.logService && typeof this.logService.log === 'function') {
-      this.logService.log(message, meta);
+    if (this.logService && typeof this.logService.info === 'function') {
+      this.logService.info(message, meta);
     }
   }
 

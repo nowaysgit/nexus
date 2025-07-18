@@ -189,7 +189,7 @@ createTestSuite('BaseService Tests', () => {
     },
     async context => {
       const logService = context.get(LogService);
-      const logSpy = jest.spyOn(logService, 'log');
+      const infoSpy = jest.spyOn(logService, 'info');
       const warnSpy = jest.spyOn(logService, 'warn');
       const errorSpy = jest.spyOn(logService, 'error');
       const debugSpy = jest.spyOn(logService, 'debug');
@@ -197,7 +197,7 @@ createTestSuite('BaseService Tests', () => {
       const testService = new TestService(logService as unknown as LogService);
       testService.testLogMethods();
 
-      expect(logSpy).toHaveBeenCalledWith('Test info message', undefined);
+      expect(infoSpy).toHaveBeenCalledWith('Test info message', undefined);
       expect(warnSpy).toHaveBeenCalledWith('Test warning message', undefined);
       expect(errorSpy).toHaveBeenCalledWith('Test error message', undefined);
       expect(debugSpy).toHaveBeenCalledWith('Test debug message', undefined);

@@ -7,6 +7,7 @@ import { NeedsService } from '../core/needs.service';
 import { LogService } from '../../../logging/log.service';
 import { PromptTemplateService } from '../../../prompt-template/prompt-template.service';
 import { BaseService } from '../../../common/base/base.service';
+import { EmotionalStateService } from './emotional-state.service';
 
 /**
  * Сервис для генерации ответов персонажей
@@ -17,6 +18,7 @@ export class CharacterResponseService extends BaseService {
     private readonly llmService: LLMService,
     private readonly promptTemplateService: PromptTemplateService,
     private readonly needsService: NeedsService,
+    private readonly emotionalStateService: EmotionalStateService,
     logService: LogService,
   ) {
     super(logService);
@@ -37,6 +39,32 @@ export class CharacterResponseService extends BaseService {
       const historyContext = this.formatDialogHistory(dialogHistory);
       const motivations = await this.getCharacterMotivations(character.id);
 
+      // Получаем эмоциональные воспоминания, связанные с текущим состоянием
+      const emotionalMemories = await this.emotionalStateService.getEmotionalMemories(
+        character.id,
+        {
+          emotions: [emotionalState.primary],
+          significance: { min: 40, max: 100 },
+        },
+        5,
+      );
+
+      // Получаем недавние эмоциональные переходы для понимания динамики
+      const recentTransitions = await this.emotionalStateService.getEmotionalTransitions(
+        character.id,
+        {
+          from: new Date(Date.now() - 24 * 60 * 60 * 1000), // последние 24 часа
+          to: new Date(),
+        },
+        3,
+      );
+
+      // Формируем контекст эмоциональной памяти
+      const emotionalMemoryContext = this.formatEmotionalMemoryContext(
+        emotionalMemories,
+        recentTransitions,
+      );
+
       // Создаем сообщения для LLM
       const messages = [
         {
@@ -45,7 +73,7 @@ export class CharacterResponseService extends BaseService {
             character,
             emotionalState,
             motivations,
-            `История диалога:\n${historyContext}\n\n${additionalContext}`,
+            `История диалога:\n${historyContext}\n\n${emotionalMemoryContext}\n\n${additionalContext}`,
           ),
         },
         {
@@ -71,6 +99,31 @@ export class CharacterResponseService extends BaseService {
       // Возвращаем fallback ответ на основе эмоционального состояния
       return this.getFallbackResponse(character, emotionalState);
     }
+  }
+
+  /**
+   * Форматирует контекст эмоциональной памяти для включения в промпт
+   */
+  private formatEmotionalMemoryContext(memories: any[], transitions: any[]): string {
+    let context = '';
+
+    if (memories.length > 0) {
+      context += 'Эмоциональные воспоминания:\n';
+      memories.forEach((memory, index) => {
+        context += `${index + 1}. ${memory.trigger} (${memory.emotionalState.primary}, значимость: ${memory.significance})\n`;
+      });
+      context += '\n';
+    }
+
+    if (transitions.length > 0) {
+      context += 'Недавние эмоциональные переходы:\n';
+      transitions.forEach((transition, index) => {
+        context += `${index + 1}. ${transition.fromState.primary} → ${transition.toState.primary} (${transition.trigger})\n`;
+      });
+      context += '\n';
+    }
+
+    return context;
   }
 
   /**

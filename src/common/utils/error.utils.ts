@@ -26,7 +26,10 @@ export function createNotFoundError(entityName: string, id: string | number): Er
  * Проверяет, является ли строка пустой или состоит только из пробелов
  */
 export function isEmptyString(value: unknown): boolean {
-  return !value || (typeof value === 'string' && value.trim() === '');
+  if (typeof value !== 'string') {
+    return true; // Не-строковые значения считаются "пустыми" в контексте проверки строк
+  }
+  return value.trim() === '';
 }
 
 /**
@@ -182,8 +185,16 @@ export function validateEnum<T>(
 
   if (value !== null && value !== undefined) {
     const validValues = Object.values(enumObject);
-    if (!validValues.includes(value as T)) {
-      throw new Error(`${paramName} должен быть одним из: ${validValues.join(', ')}`);
+    // Для числовых enum'ов Object.values возвращает и ключи, и значения
+    // Фильтруем только числовые значения для числовых enum'ов
+    const numericValues = validValues.filter(v => typeof v === 'number');
+    const stringValues = validValues.filter(v => typeof v === 'string');
+
+    // Используем только числовые значения если они есть, иначе строковые
+    const targetValues = numericValues.length > 0 ? numericValues : stringValues;
+
+    if (!targetValues.includes(value as T)) {
+      throw new Error(`${paramName} должен быть одним из: ${targetValues.join(', ')}`);
     }
     return value as T;
   }
