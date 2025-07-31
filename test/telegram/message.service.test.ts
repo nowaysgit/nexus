@@ -17,13 +17,13 @@ import { CharacterArchetype } from '../../src/character/enums/character-archetyp
 
 describe('MessageService', () => {
   let service: MessageService;
-  let configService: jest.Mocked<ConfigService>;
+  let _configService: jest.Mocked<ConfigService>;
   let messageFormatter: jest.Mocked<MessageFormatterService>;
   let keyboardFormatter: jest.Mocked<KeyboardFormatterService>;
-  let errorHandlingService: jest.Mocked<ErrorHandlingService>;
+  let _errorHandlingService: jest.Mocked<ErrorHandlingService>;
   let characterManagementService: jest.Mocked<CharacterManagementService>;
   let telegramService: jest.Mocked<TelegramService>;
-  let logService: jest.Mocked<LogService>;
+  let _logService: jest.Mocked<LogService>;
 
   const mockCharacter: Character = {
     id: 1,
@@ -125,13 +125,13 @@ describe('MessageService', () => {
     }).compile();
 
     service = module.get<MessageService>(MessageService);
-    configService = module.get(ConfigService);
+    _configService = module.get(ConfigService);
     messageFormatter = module.get(MessageFormatterService);
     keyboardFormatter = module.get(KeyboardFormatterService);
-    errorHandlingService = module.get(ErrorHandlingService);
+    _errorHandlingService = module.get(ErrorHandlingService);
     characterManagementService = module.get(CharacterManagementService);
     telegramService = module.get(TelegramService);
-    logService = module.get(LogService);
+    _logService = module.get(LogService);
   });
 
   afterEach(() => {

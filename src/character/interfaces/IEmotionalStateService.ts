@@ -5,7 +5,6 @@ import {
   EmotionalTransition,
   EmotionalProfile,
   EmotionalContext,
-  EmotionalImpact,
   EmotionalEvent,
   EmotionalPattern,
   EmotionalRegulationStrategy,
@@ -188,7 +187,7 @@ export interface IEmotionalStateService {
   createEmotionalEvent(
     characterId: number,
     type: EmotionalEvent['type'],
-    data: any,
+    data: Record<string, unknown>,
     context: EmotionalContext,
     significance: number,
   ): Promise<EmotionalEvent>;
@@ -294,7 +293,7 @@ export interface IEmotionalStateService {
    */
   restoreFromSnapshot(
     characterId: number,
-    snapshot: any,
+    snapshot: Record<string, unknown>,
   ): Promise<{
     success: boolean;
     restoredState: EmotionalState;

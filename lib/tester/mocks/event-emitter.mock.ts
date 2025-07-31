@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { Injectable } from '@nestjs/common';
 
 /**
@@ -45,9 +46,7 @@ export class MockEventEmitter {
   off(event: string | symbol, listener: (...args: any[]) => void): this {
     const eventName = event.toString();
     if (this.eventListeners[eventName]) {
-      this.eventListeners[eventName] = this.eventListeners[eventName].filter(
-        (l) => l !== listener
-      );
+      this.eventListeners[eventName] = this.eventListeners[eventName].filter(l => l !== listener);
     }
     return this;
   }
@@ -78,7 +77,7 @@ export class MockEventEmitter {
     if (!this.eventListeners[eventName]) {
       return false;
     }
-    
+
     for (const listener of this.eventListeners[eventName]) {
       try {
         listener(...args);
@@ -86,7 +85,7 @@ export class MockEventEmitter {
         console.error(`Ошибка в слушателе события ${eventName}:`, error);
       }
     }
-    
+
     return this.eventListeners[eventName].length > 0;
   }
 
@@ -111,18 +110,18 @@ export class MockEventEmitter {
     if (!this.eventListeners[eventName]) {
       return [];
     }
-    
+
     const results = [];
     for (const listener of this.eventListeners[eventName]) {
       try {
-        const result = await listener(...args);
+        const result = listener(...args);
         results.push(result);
       } catch (error) {
         console.error(`Ошибка в асинхронном слушателе события ${eventName}:`, error);
         results.push(null);
       }
     }
-    
+
     return results;
   }
 
@@ -137,4 +136,4 @@ export class MockEventEmitter {
 /**
  * Предварительно созданный экземпляр MockEventEmitter для использования в тестах
  */
-export const mockEventEmitter = new MockEventEmitter(); 
+export const mockEventEmitter = new MockEventEmitter();

@@ -87,6 +87,20 @@ export class ErrorHandlingService {
   // ===== ОСНОВНЫЕ МЕТОДЫ ОБРАБОТКИ ОШИБОК =====
 
   /**
+   * Проверяет является ли логгер экземпляром LogService
+   */
+  private static isLogService(logger: Logger | LogService): logger is LogService {
+    return 'info' in logger && 'warn' in logger && 'debug' in logger;
+  }
+
+  /**
+   * Проверяет является ли логгер экземпляром LogService (экземплярный метод)
+   */
+  private isLogService(logger: Logger | LogService): logger is LogService {
+    return ErrorHandlingService.isLogService(logger);
+  }
+
+  /**
    * Логирует ошибку с помощью предоставленного логгера
    */
   logError(
@@ -95,14 +109,15 @@ export class ErrorHandlingService {
     error: unknown,
     meta?: Record<string, unknown>,
   ): void {
-    if (logger instanceof LogService) {
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      logger.error(
-        `Ошибка при ${operation}: ${this.formatErrorMessage(error)}`,
-        errorStack,
-        'ErrorHandlingService',
-      );
+    if (ErrorHandlingService.isLogService(logger)) {
+      // LogService поддерживает мета-данные
+      logger.error(`Ошибка при ${operation}: ${this.formatErrorMessage(error)}`, {
+        operation,
+        context: 'ErrorHandlingService',
+        ...meta,
+      });
     } else {
+      // Стандартный Logger
       logger.error(
         `Ошибка при ${operation}: ${error instanceof Error ? error.message : this.formatErrorMessage(error)}`,
       );
@@ -129,7 +144,8 @@ export class ErrorHandlingService {
       }
     }
 
-    return String(error);
+    // Для всех других типов используем безопасное преобразование
+    return error instanceof Error ? error.message : JSON.stringify(error);
   }
 
   /**
@@ -164,7 +180,7 @@ export class ErrorHandlingService {
     if (!item) {
       const errorMessage = `${entityName} с ID ${id} не найден`;
       if (throwError) {
-        if (logger instanceof LogService) {
+        if (ErrorHandlingService.isLogService(logger)) {
           logger.error(errorMessage, { entityName, id });
         } else {
           logger.error(errorMessage);
@@ -185,7 +201,7 @@ export class ErrorHandlingService {
     logger: Logger | LogService,
   ): T | null {
     if (!service) {
-      if (logger instanceof LogService) {
+      if (ErrorHandlingService.isLogService(logger)) {
         logger.warn(`Сервис ${serviceName} не доступен`);
       } else {
         logger.warn(`Сервис ${serviceName} не доступен`);
@@ -245,7 +261,7 @@ export class ErrorHandlingService {
       const result = await operation();
       const executionTime = Date.now() - startTime;
 
-      if (logger instanceof LogService) {
+      if (ErrorHandlingService.isLogService(logger)) {
         logger.log(`Операция ${operationName} выполнена за ${executionTime}ms`, {
           operationName,
           executionTime,
@@ -258,7 +274,7 @@ export class ErrorHandlingService {
     } catch (error) {
       const executionTime = Date.now() - startTime;
 
-      if (logger instanceof LogService) {
+      if (ErrorHandlingService.isLogService(logger)) {
         logger.error(`Операция ${operationName} завершилась ошибкой за ${executionTime}ms`, {
           operationName,
           executionTime,
@@ -288,11 +304,37 @@ export class ErrorHandlingService {
       };
     }
 
+    if (typeof error === 'string') {
+      return { message: error };
+    }
+
     if (typeof error === 'object' && error !== null) {
       return error as Record<string, unknown>;
     }
 
-    return { message: String(error) };
+    // Для всех других примитивов
+    if (typeof error === 'number') {
+      return { message: error.toString() };
+    }
+
+    if (typeof error === 'boolean') {
+      return { message: error.toString() };
+    }
+
+    if (typeof error === 'symbol') {
+      return { message: error.toString() };
+    }
+
+    if (error === null) {
+      return { message: 'null' };
+    }
+
+    if (error === undefined) {
+      return { message: 'undefined' };
+    }
+
+    // Для всех остальных случаев
+    return { message: 'Unknown error' };
   }
 
   /**
@@ -326,7 +368,7 @@ export class ErrorHandlingService {
     const errorInfo = this.formatError(error);
     const errorMessage = `Ошибка БД при выполнении ${operation}`;
 
-    if (logger instanceof LogService) {
+    if (ErrorHandlingService.isLogService(logger)) {
       logger.error(errorMessage, { ...errorInfo, operation, ...meta });
     } else {
       logger.error(`${errorMessage}: ${this.formatErrorMessage(error)}`);
@@ -345,7 +387,7 @@ export class ErrorHandlingService {
   ): HttpException {
     const errorInfo = this.formatError(error);
 
-    if (logger instanceof LogService) {
+    if (ErrorHandlingService.isLogService(logger)) {
       logger.error('TypeORM ошибка', { ...errorInfo, ...context });
     } else {
       logger.error(`TypeORM ошибка: ${this.formatErrorMessage(error)}`);
@@ -379,7 +421,7 @@ export class ErrorHandlingService {
   ): HttpException {
     const errorInfo = this.formatError(error);
 
-    if (logger instanceof LogService) {
+    if (ErrorHandlingService.isLogService(logger)) {
       logger.error('Ошибка валидации', { ...errorInfo, ...context });
     } else {
       logger.error(`Ошибка валидации: ${this.formatErrorMessage(error)}`);
@@ -466,7 +508,10 @@ export class ErrorHandlingService {
       this.logService.log(`Операция ${operationName} выполнена успешно`);
       return result;
     } catch (error) {
-      this.logService.error(`Ошибка при выполнении операции ${operationName}`, error);
+      this.logService.error(
+        `Ошибка при выполнении операции ${operationName}`,
+        this.formatErrorMessage(error),
+      );
       throw error;
     }
   }
@@ -539,10 +584,11 @@ export class ErrorHandlingService {
     return (target: unknown, propertyKey: string, descriptor: PropertyDescriptor) => {
       const originalMethod = descriptor.value as (...args: unknown[]) => unknown;
 
-      descriptor.value = async function (this: unknown, ...args: unknown[]) {
+      descriptor.value = async function (this: unknown, ...args: unknown[]): Promise<unknown> {
         try {
-          const result = originalMethod.apply(this, args);
-          return result;
+          const result = originalMethod.apply(this, args) as Promise<unknown>;
+          // Если результат - Promise, ждем его выполнения
+          return result instanceof Promise ? await result : result;
         } catch (error) {
           if (options.logError !== false && this && typeof this === 'object' && 'logger' in this) {
             const logger = this.logger as Logger;
@@ -584,7 +630,7 @@ export class ErrorHandlingService {
     try {
       return await operation();
     } catch (error) {
-      if (logger instanceof LogService) {
+      if (ErrorHandlingService.isLogService(logger)) {
         const errorMsg =
           error instanceof Error
             ? error.message
@@ -626,10 +672,10 @@ export class ErrorHandlingService {
         }
       }
 
-      return String(error);
+      return error instanceof Error ? error.message : JSON.stringify(error);
     };
 
-    if (logger instanceof LogService) {
+    if (ErrorHandlingService.isLogService(logger)) {
       const errorMsg =
         error instanceof Error
           ? error.message
@@ -667,7 +713,7 @@ export class ErrorHandlingService {
         }
       }
 
-      return String(error);
+      return error instanceof Error ? error.message : JSON.stringify(error);
     };
 
     const startTime = Date.now();
@@ -676,7 +722,7 @@ export class ErrorHandlingService {
       const result = await operation();
       const executionTime = Date.now() - startTime;
 
-      if (logger instanceof LogService) {
+      if (ErrorHandlingService.isLogService(logger)) {
         logger.log(`Операция ${operationName} выполнена за ${executionTime}ms`, {
           operationName,
           executionTime,
@@ -689,7 +735,7 @@ export class ErrorHandlingService {
     } catch (error) {
       const executionTime = Date.now() - startTime;
 
-      if (logger instanceof LogService) {
+      if (ErrorHandlingService.isLogService(logger)) {
         logger.error(`Ошибка при выполнении операции ${operationName}`, {
           executionTime: `${executionTime.toFixed(2)}ms`,
           error: error instanceof Error ? error.message : formatErrorMessage(error),

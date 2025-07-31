@@ -71,11 +71,11 @@ describe('ActionSchedulerService', () => {
 
   describe('getScheduledActions', () => {
     it('должен возвращать запланированные действия персонажа', () => {
-      const character1Actions = [
+      const _character1Actions = [
         service.scheduleAction(createTestAction(ActionType.SEND_MESSAGE, 1), 5000),
         service.scheduleAction(createTestAction(ActionType.EXPRESS_EMOTION, 1), 10000),
       ];
-      const character2Action = service.scheduleAction(createTestAction(ActionType.JOKE, 2), 7000);
+      const _character2Action = service.scheduleAction(createTestAction(ActionType.JOKE, 2), 7000);
 
       const character1Scheduled = service.getScheduledActions('1');
       const character2Scheduled = service.getScheduledActions('2');
@@ -174,11 +174,11 @@ describe('ActionSchedulerService', () => {
 
   describe('getCronJobs', () => {
     it('должен возвращать cron-задачи персонажа', () => {
-      const character1Jobs = [
+      const _character1Jobs = [
         service.createCronJob(createTestAction(ActionType.SEND_MESSAGE, 1), '0 0 * * *'),
         service.createCronJob(createTestAction(ActionType.EXPRESS_EMOTION, 1), '*/30 * * * *'),
       ];
-      const character2Job = service.createCronJob(
+      const _character2Job = service.createCronJob(
         createTestAction(ActionType.JOKE, 2),
         '0 12 * * *',
       );
@@ -212,7 +212,7 @@ describe('ActionSchedulerService', () => {
     it('должен очищать выполненные и отмененные действия', () => {
       const action1 = service.scheduleAction(createTestAction(ActionType.SEND_MESSAGE, 1), 1000);
       const action2 = service.scheduleAction(createTestAction(ActionType.EXPRESS_EMOTION, 1), 2000);
-      const action3 = service.scheduleAction(createTestAction(ActionType.JOKE, 1), 3000);
+      const _action3 = service.scheduleAction(createTestAction(ActionType.JOKE, 1), 3000);
 
       service.markAsExecuted(action1.id);
       service.cancelScheduledAction(action2.id);

@@ -3,7 +3,6 @@ import {
   Get,
   Post,
   Put,
-  Delete,
   Body,
   Param,
   Query,
@@ -24,9 +23,41 @@ import {
   EmotionalEvent,
   EmotionalPattern,
   EmotionalRegulationStrategy,
+  EmotionalContext,
 } from '../entities/emotional-state';
 import { BaseService } from '../../common/base/base.service';
 import { LogService } from '../../logging/log.service';
+
+/**
+ * Интерфейс для фильтрации эмоциональных воспоминаний
+ */
+interface EmotionalMemoryFilters {
+  emotions?: string[];
+  timeRange?: {
+    from: Date;
+    to: Date;
+  };
+  significance?: {
+    min: number;
+    max: number;
+  };
+  tags?: string[];
+}
+
+/**
+ * Интерфейс для фильтрации эмоциональных событий
+ */
+interface EmotionalEventFilters {
+  types?: ('state_change' | 'transition' | 'regulation' | 'cascade' | 'interaction')[];
+  timeRange?: {
+    from: Date;
+    to: Date;
+  };
+  significance?: {
+    min: number;
+    max: number;
+  };
+}
 
 /**
  * DTO для создания эмоционального обновления
@@ -44,7 +75,7 @@ export class CreateEmotionalMemoryDto {
   emotionalState: EmotionalState;
   trigger: string;
   significance: number;
-  context?: any;
+  context?: EmotionalContext;
 }
 
 /**
@@ -53,7 +84,7 @@ export class CreateEmotionalMemoryDto {
 export class ApplyEmotionalRegulationDto {
   strategy: EmotionalRegulationStrategy;
   intensity: number;
-  context?: any;
+  context?: EmotionalContext;
 }
 
 /**
@@ -61,7 +92,7 @@ export class ApplyEmotionalRegulationDto {
  */
 export class PredictEmotionalReactionDto {
   trigger: string;
-  context?: any;
+  context?: EmotionalContext;
 }
 
 /**
@@ -69,7 +100,7 @@ export class PredictEmotionalReactionDto {
  */
 export class SimulateEmotionalCascadeDto {
   initialEmotion: string;
-  context?: any;
+  context?: EmotionalContext;
   maxDepth?: number;
 }
 
@@ -78,7 +109,7 @@ export class SimulateEmotionalCascadeDto {
  */
 export class AnalyzeEmotionalCompatibilityDto {
   characterId2: number;
-  context?: any;
+  context?: EmotionalContext;
 }
 
 /**
@@ -87,7 +118,7 @@ export class AnalyzeEmotionalCompatibilityDto {
 export class OptimizeEmotionalStateDto {
   goal: string;
   constraints: string[];
-  context?: any;
+  context?: EmotionalContext;
 }
 
 /**
@@ -197,7 +228,7 @@ export class EmotionalStateController extends BaseService {
     @Query('limit') limit?: number,
   ): Promise<EmotionalMemory[]> {
     return this.withErrorHandling('получении эмоциональных воспоминаний', async () => {
-      const filters: any = {};
+      const filters: EmotionalMemoryFilters = {};
 
       if (emotions) {
         filters.emotions = emotions.split(',').map(e => e.trim());
@@ -247,7 +278,7 @@ export class EmotionalStateController extends BaseService {
         characterId,
         memoryDto.emotionalState,
         memoryDto.trigger,
-        memoryDto.context || context,
+        memoryDto.context ?? context,
         memoryDto.significance,
       );
     });
@@ -309,10 +340,16 @@ export class EmotionalStateController extends BaseService {
     @Query('limit') limit?: number,
   ): Promise<EmotionalEvent[]> {
     return this.withErrorHandling('получении эмоциональных событий', async () => {
-      const filters: any = {};
+      const filters: EmotionalEventFilters = {};
 
       if (types) {
-        filters.types = types.split(',').map(t => t.trim());
+        filters.types = types.split(',').map(t => t.trim()) as (
+          | 'state_change'
+          | 'transition'
+          | 'regulation'
+          | 'cascade'
+          | 'interaction'
+        )[];
       }
 
       if (fromDate && toDate) {
@@ -354,8 +391,8 @@ export class EmotionalStateController extends BaseService {
     sideEffects: string[];
   }> {
     return this.withErrorHandling('применении эмоциональной регуляции', async () => {
-      const context =
-        regulationDto.context ||
+      const context: EmotionalContext =
+        regulationDto.context ??
         (await this.emotionalStateService.createEmotionalContext(characterId));
 
       return await this.emotionalStateService.applyEmotionalRegulation(
@@ -412,8 +449,8 @@ export class EmotionalStateController extends BaseService {
     factors: string[];
   }> {
     return this.withErrorHandling('предсказании эмоциональной реакции', async () => {
-      const context =
-        predictionDto.context ||
+      const context: EmotionalContext =
+        predictionDto.context ??
         (await this.emotionalStateService.createEmotionalContext(characterId));
 
       return await this.emotionalStateService.predictEmotionalReaction(
@@ -441,8 +478,8 @@ export class EmotionalStateController extends BaseService {
     probability: number;
   }> {
     return this.withErrorHandling('симуляции эмоционального каскада', async () => {
-      const context =
-        cascadeDto.context ||
+      const context: EmotionalContext =
+        cascadeDto.context ??
         (await this.emotionalStateService.createEmotionalContext(characterId));
 
       return await this.emotionalStateService.simulateEmotionalCascade(
@@ -473,8 +510,8 @@ export class EmotionalStateController extends BaseService {
     conflicts: string[];
   }> {
     return this.withErrorHandling('анализе эмоциональной совместимости', async () => {
-      const context =
-        compatibilityDto.context ||
+      const context: EmotionalContext =
+        compatibilityDto.context ??
         (await this.emotionalStateService.createEmotionalContext(characterId));
 
       return await this.emotionalStateService.analyzeEmotionalCompatibility(
@@ -503,8 +540,8 @@ export class EmotionalStateController extends BaseService {
     successProbability: number;
   }> {
     return this.withErrorHandling('оптимизации эмоционального состояния', async () => {
-      const context =
-        optimizationDto.context ||
+      const context: EmotionalContext =
+        optimizationDto.context ??
         (await this.emotionalStateService.createEmotionalContext(characterId));
 
       return await this.emotionalStateService.optimizeEmotionalState(
@@ -529,7 +566,7 @@ export class EmotionalStateController extends BaseService {
     profile: EmotionalProfile;
     recentMemories: EmotionalMemory[];
     activePatterns: EmotionalPattern[];
-    context: any;
+    context: EmotionalContext;
     metadata: Record<string, any>;
   }> {
     return this.withErrorHandling('создании снимка эмоционального состояния', async () => {
@@ -546,7 +583,12 @@ export class EmotionalStateController extends BaseService {
   @ApiResponse({ status: 200, description: 'Результат восстановления состояния' })
   async restoreFromSnapshot(
     @Param('characterId', ParseIntPipe) characterId: number,
-    @Body() snapshot: any,
+    @Body()
+    snapshot: {
+      state: EmotionalState;
+      profile: EmotionalProfile;
+      context: EmotionalContext;
+    },
   ): Promise<{
     success: boolean;
     restoredState: EmotionalState;

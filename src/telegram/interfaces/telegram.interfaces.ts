@@ -13,7 +13,7 @@ export interface TelegramSendOptions {
   /** Отключение предпросмотра ссылок */
   disable_web_page_preview?: boolean;
   /** Дополнительные метаданные */
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /**

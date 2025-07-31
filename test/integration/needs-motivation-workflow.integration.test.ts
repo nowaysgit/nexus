@@ -8,8 +8,8 @@ import { Need } from '../../src/character/entities/need.entity';
 import { Action } from '../../src/character/entities/action.entity';
 import { CharacterArchetype } from '../../src/character/enums/character-archetype.enum';
 import { ActionType } from '../../src/character/enums/action-type.enum';
+import { CharacterNeedType } from '../../src/character/enums/character-need-type.enum';
 import { NeedsService } from '../../src/character/services/core/needs.service';
-import { MotivationService } from '../../src/character/services/core/motivation.service';
 import { createTestSuite, createTest } from '../../lib/tester/test-suite';
 import { FixtureManager } from '../../lib/tester/fixtures/fixture-manager';
 import { createEnhancedMockDataSource } from '../../lib/tester/utils/data-source';
@@ -41,7 +41,7 @@ createTestSuite('Needs and Motivation Workflow Integration Tests', () => {
       ActionExecutorService,
     ];
 
-    const providers = TestConfigurations.requiredMocksAdder(imports, baseProviders) as any;
+    const providers = TestConfigurations.requiredMocksAdder(imports, baseProviders);
 
     moduleRef = await Test.createTestingModule({
       imports,
@@ -69,7 +69,7 @@ createTestSuite('Needs and Motivation Workflow Integration Tests', () => {
     {
       name: 'should create character and initialize needs',
       requiresDatabase: false,
-      skip: true, // Пропускаем из-за проблем с типизацией
+      // skip: true, // Активируем тест - проблемы с типизацией должны быть исправлены
     },
     async () => {
       const user = await fixtureManager.createUser({ email: 'anna@example.com' });
@@ -98,16 +98,37 @@ createTestSuite('Needs and Motivation Workflow Integration Tests', () => {
 
       // Для NeedsService требуется числовой ID, поэтому присваиваем числовой ID
       const numericId = 1;
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      (character as any).id = numericId;
+      const characterWithId = character as Character & { id: number };
+      characterWithId.id = numericId;
 
       // Мокаем CharacterRepository для корректного поиска персонажа
       jest.spyOn(_characterRepository, 'findOne').mockResolvedValue(character);
 
-      // Мокаем NeedRepository для сохранения потребностей
-      jest
-        .spyOn(_needRepository, 'save')
-        .mockImplementation(jest.fn().mockResolvedValue({ id: Math.random() }));
+      // Проверим и добавим create метод для NeedRepository если нужно
+      if (!_needRepository.create) {
+        // Если create не существует, добавим его как мок
+        _needRepository.create = jest.fn().mockImplementation((entityLike: any) => {
+          const id = Math.random();
+          return { id, ...entityLike } as Need;
+        });
+      }
+
+      // Мокаем NeedRepository для правильной работы с потребностями
+      const mockNeedData = {
+        characterId: numericId,
+        type: CharacterNeedType.SOCIAL_CONNECTION,
+        currentValue: 50,
+        maxValue: 100,
+        priority: 5,
+      };
+
+      // create метод должен работать теперь
+      const createdNeed = _needRepository.create(mockNeedData);
+      expect(createdNeed).toBeDefined();
+
+      // Настроим save для возврата созданной потребности
+      const savedNeed = { id: Math.random(), ...mockNeedData } as Need;
+      jest.spyOn(_needRepository, 'save').mockResolvedValue(savedNeed);
       jest.spyOn(_needRepository, 'find').mockResolvedValue([]);
 
       await needsService.createDefaultNeeds(numericId);
@@ -148,15 +169,15 @@ createTestSuite('Needs and Motivation Workflow Integration Tests', () => {
 
       // Для ActionService требуется числовой ID, поэтому присваиваем числовой ID
       const numericId2 = 2;
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      (character as any).id = numericId2;
+      const characterWithId2 = character as Character & { id: number };
+      characterWithId2.id = numericId2;
 
       // Мокаем ActionRepository для сохранения действий
       jest
         .spyOn(_actionRepository, 'save')
         .mockImplementation(jest.fn().mockResolvedValue({ id: Math.random() }));
 
-      const action = await actionService.createActionWithResources(numericId2, ActionType.WORK, {
+      const action = actionService.createActionWithResources(numericId2, ActionType.WORK, {
         resourceCost: 10,
         successProbability: 0.8,
         potentialReward: { communication: 30 },
@@ -200,15 +221,15 @@ createTestSuite('Needs and Motivation Workflow Integration Tests', () => {
 
       // Для ActionService нужно числовое ID
       const numericId3 = 3;
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      (character as any).id = numericId3;
+      const characterWithId3 = character as Character & { id: number };
+      characterWithId3.id = numericId3;
 
       // Мокаем ActionRepository для сохранения действий
       jest
         .spyOn(_actionRepository, 'save')
         .mockImplementation(jest.fn().mockResolvedValue({ id: Math.random() }));
 
-      const action = await actionService.createActionWithResources(numericId3, ActionType.WORK, {
+      const action = actionService.createActionWithResources(numericId3, ActionType.WORK, {
         resourceCost: 10,
         successProbability: 0.8,
         potentialReward: { communication: 30 },

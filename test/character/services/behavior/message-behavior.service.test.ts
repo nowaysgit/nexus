@@ -204,6 +204,7 @@ describe('MessageBehaviorService', () => {
       expect(messageAnalysisService.analyzeUserMessage).toHaveBeenCalledWith(
         mockCharacter,
         message,
+        [],
       );
       expect(llmService.generateText).toHaveBeenCalled();
       expect(result.text).toBe(expectedResponse);
@@ -239,30 +240,26 @@ describe('MessageBehaviorService', () => {
 
   describe('processUserMessageWithAnalysis', () => {
     it('should process user message with analysis successfully', async () => {
-      memoryService.createMemory.mockResolvedValue(mockMemory);
-      memoryService.limitMemoriesCount.mockResolvedValue(undefined);
-      manipulationService.analyzeSituationAndChooseTechnique.mockResolvedValue('none' as any);
+      memoryRepository.create.mockReturnValue(mockMemory);
+      memoryRepository.save.mockResolvedValue(mockMemory);
 
       await service.processUserMessageWithAnalysis(1, 1, 'Test message', mockMessageAnalysis, 1);
 
-      expect(memoryService.createMemory).toHaveBeenCalled();
-      expect(memoryService.limitMemoriesCount).toHaveBeenCalledWith(1, 500);
-      expect(manipulationService.analyzeSituationAndChooseTechnique).toHaveBeenCalledWith(
-        1,
-        1,
-        'Test message',
-      );
-      expect(eventEmitter.emit).toHaveBeenCalledWith('message.processed', {
+      expect(memoryRepository.create).toHaveBeenCalled();
+      expect(memoryRepository.save).toHaveBeenCalled();
+      expect(eventEmitter.emit).toHaveBeenCalledWith('manipulation.analyze_message', {
         characterId: 1,
         userId: 1,
         messageText: 'Test message',
-        analysis: mockMessageAnalysis,
+        timestamp: expect.any(Date) as Date,
       });
     });
 
     it('should handle memory creation failure gracefully', async () => {
       const error = new Error('Memory creation failed');
-      memoryService.createMemory.mockRejectedValue(error);
+
+      memoryRepository.create.mockReturnValue(mockMemory);
+      memoryRepository.save.mockRejectedValue(error);
 
       await expect(
         service.processUserMessageWithAnalysis(1, 1, 'Test message', mockMessageAnalysis),
@@ -271,10 +268,6 @@ describe('MessageBehaviorService', () => {
   });
 
   describe('service initialization', () => {
-    it('should be defined', () => {
-      expect(service).toBeDefined();
-    });
-
     it('should have all required dependencies', () => {
       expect(characterRepository).toBeDefined();
       expect(memoryRepository).toBeDefined();

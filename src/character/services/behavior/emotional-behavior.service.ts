@@ -7,7 +7,6 @@ import { BaseService } from '../../../common/base/base.service';
 import { Character } from '../../entities/character.entity';
 import { CharacterMemory } from '../../entities/character-memory.entity';
 import { EmotionalState } from '../../entities/emotional-state';
-import { IMotivation } from '../../interfaces/needs.interfaces';
 import { EmotionalStateService } from '../core/emotional-state.service';
 import { NeedsService } from '../core/needs.service';
 import { MemoryService } from '../core/memory.service';

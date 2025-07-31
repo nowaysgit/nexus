@@ -19,9 +19,9 @@ import { CharacterArchetype } from '../../../src/character/enums/character-arche
 createTestSuite('EmotionalStateService Unit Tests', () => {
   let service: EmotionalStateService;
   let characterRepository: jest.Mocked<Repository<Character>>;
-  let logService: jest.Mocked<LogService>;
+  let _logService: jest.Mocked<LogService>;
   let eventEmitter: jest.Mocked<EventEmitter2>;
-  let needsService: jest.Mocked<NeedsService>;
+  let _needsService: jest.Mocked<NeedsService>;
 
   const mockCharacter: Partial<Character> = {
     id: 1,
@@ -113,9 +113,9 @@ createTestSuite('EmotionalStateService Unit Tests', () => {
 
     service = module.get<EmotionalStateService>(EmotionalStateService);
     characterRepository = module.get(getRepositoryToken(Character));
-    logService = module.get(LogService);
+    _logService = module.get(LogService);
     eventEmitter = module.get(EventEmitter2);
-    needsService = module.get(NeedsService);
+    _needsService = module.get(NeedsService);
   });
 
   describe('getEmotionalState', () => {

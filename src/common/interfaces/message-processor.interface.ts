@@ -84,7 +84,7 @@ export interface MessageProcessingResult<T = any> {
  */
 export interface MessageProcessor {
   /** Обработать сообщение */
-  processMessage(context: MessageContext): Promise<any>;
+  processMessage(context: MessageContext): Promise<unknown>;
 
   /** Проверить, может ли обработчик обработать данное сообщение */
   canProcess(context: MessageContext): boolean;

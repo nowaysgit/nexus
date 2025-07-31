@@ -2,8 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { LogService } from '../../../logging/log.service';
 import { BaseService } from '../../../common/base/base.service';
-import { Character } from '../../entities/character.entity';
-import { ActionType } from '../../enums/action-type.enum';
 import { CharacterAction } from '../../interfaces/behavior.interfaces';
 
 export interface ActionTimer {
@@ -72,7 +70,12 @@ export class ActionSchedulerService extends BaseService {
       const delay = executeAt.getTime() - Date.now();
       if (delay > 0) {
         const timeout = setTimeout(() => {
-          this.executeScheduledAction(id);
+          void this.executeScheduledAction(id).catch(error => {
+            this.logError('Ошибка выполнения запланированного действия', {
+              id,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          });
         }, delay);
         this.timeouts.set(id, timeout);
       }
@@ -113,7 +116,11 @@ export class ActionSchedulerService extends BaseService {
   getScheduledActions(characterId: string): ScheduledAction[] {
     return Array.from(this.scheduledActions.values()).filter(scheduled => {
       const actionCharacterId = scheduled.action.metadata?.characterId;
-      return actionCharacterId?.toString() === characterId;
+      return typeof actionCharacterId === 'string'
+        ? actionCharacterId === characterId
+        : typeof actionCharacterId === 'number'
+          ? actionCharacterId.toString() === characterId
+          : false;
     });
   }
 
@@ -212,7 +219,11 @@ export class ActionSchedulerService extends BaseService {
   getCronJobs(characterId: string): CronJob[] {
     return Array.from(this.cronJobs.values()).filter(job => {
       const actionCharacterId = job.action.metadata?.characterId;
-      return actionCharacterId?.toString() === characterId;
+      return typeof actionCharacterId === 'string'
+        ? actionCharacterId === characterId
+        : typeof actionCharacterId === 'number'
+          ? actionCharacterId.toString() === characterId
+          : false;
     });
   }
 
@@ -453,7 +464,12 @@ export class ActionSchedulerService extends BaseService {
     const delay = timer.scheduledFor.getTime() - Date.now();
     if (delay > 0) {
       setTimeout(() => {
-        this.executeScheduledActionTimer(timer.actionId);
+        void this.executeScheduledActionTimer(timer.actionId).catch(error => {
+          this.logError('Ошибка выполнения запланированного таймера действия', {
+            actionId: timer.actionId,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        });
       }, delay);
     }
   }

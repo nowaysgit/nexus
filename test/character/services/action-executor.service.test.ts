@@ -24,8 +24,6 @@ import {
   ActionTriggerContext,
 } from '../../../src/character/interfaces/behavior.interfaces';
 import { ActionContext } from '../../../src/character/services/action/action-lifecycle.service';
-import { INeed } from '../../../src/character/interfaces/needs.interfaces';
-import { MemoryType } from '../../../src/character/interfaces/memory.interfaces';
 
 describe('ActionExecutorService', () => {
   let service: ActionExecutorService;
@@ -89,7 +87,7 @@ describe('ActionExecutorService', () => {
     metadata: { id: 'action-1', prompt: 'Hello' },
   };
 
-  const mockContext: ActionTriggerContext = {
+  const _mockContext: ActionTriggerContext = {
     characterId: 1,
     userId: 'user-1',
     triggerType: 'test',
@@ -632,9 +630,9 @@ describe('ActionExecutorService', () => {
       expect(result).toBe(true);
       expect(interruptSpy).toHaveBeenCalledWith(
         expect.objectContaining({
-          character: expect.objectContaining({ id: 1 }),
+          character: expect.objectContaining({ id: 1 }) as unknown,
           action: mockAction,
-        }),
+        }) as unknown,
       );
     });
 

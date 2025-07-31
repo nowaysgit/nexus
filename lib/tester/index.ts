@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { DynamicModule, ForwardReference, INestApplication, Provider, Type } from '@nestjs/common';
 import { Test, TestingModule, TestingModuleBuilder } from '@nestjs/testing';
 import { DataSource } from 'typeorm';
@@ -7,7 +8,6 @@ import { TestModuleBuilder } from './utils/test-module-builder';
 import { createTestSuite, createTest, createBasicTest } from './utils/test-functions';
 import { createTestDataSource } from './utils/data-source';
 import { checkDatabaseConnection, waitForDatabaseConnection } from './utils/db-connection-checker';
-import { ConfigService } from '@nestjs/config';
 
 // Переопределяем jest.setTimeout
 jest.setTimeout(30000); // 30 секунд
@@ -75,9 +75,9 @@ export interface ITestParams {
   /** Тип конфигурации теста */
   configType?: TestConfigType;
   /** Дополнительные модули для импорта */
-  imports?: any[];
+  imports?: (Type<any> | DynamicModule | Promise<DynamicModule> | ForwardReference<any>)[];
   /** Провайдеры для теста */
-  providers?: any[];
+  providers?: Provider<any>[];
   /** Фикстуры для теста */
   fixtures?: ITestFixtures;
   /** Таймаут теста в мс */
@@ -88,6 +88,8 @@ export interface ITestParams {
   only?: boolean;
   /** Требуется ли подключение к БД */
   requiresDatabase?: boolean;
+  /** Дополнительные параметры */
+  [key: string]: unknown;
   /** Дополнительные сущности для TypeORM (если не нужны все) */
   entities?: any[];
 }
@@ -160,7 +162,7 @@ export class Tester {
   }
 
   // Метод для установки параметров текущего теста
-  public setCurrentTestParams(params: any): void {
+  public setCurrentTestParams(params: Record<string, unknown>): void {
     this.currentTestParams = params;
     // Устанавливаем глобальную переменную для доступа из других модулей
     global.__currentTest = { params };
@@ -174,7 +176,7 @@ export class Tester {
       controllers?: Type<any>[];
     } = {},
   ): Promise<TestingModule> {
-    const config = TestConfigurations[configType];
+    const _config = TestConfigurations[configType];
 
     // Подготавливаем импорты (заменяем LoggingModule, TelegrafModule, добавляем MockTypeOrmModule)
     const preparedImports = TestConfigurations.prepareImportsForTesting(
@@ -183,7 +185,8 @@ export class Tester {
     ) as unknown as (Type<any> | DynamicModule)[];
 
     const importsForMocks: (Type<any> | DynamicModule)[] = preparedImports.filter(
-      (imp): imp is Type<any> | DynamicModule => typeof (imp as any)?.then !== 'function',
+      (imp): imp is Type<any> | DynamicModule =>
+        typeof (imp as unknown as { then?: unknown })?.then !== 'function',
     );
 
     this.builder = Test.createTestingModule({
@@ -223,7 +226,7 @@ export class Tester {
     await this.init(configType, metadata);
 
     // Если текущий тест не требует базы данных, возвращаем null
-    if (this.currentTestParams?.requiresDatabase === false) {
+    if ((this.currentTestParams as Record<string, unknown>)?.requiresDatabase === false) {
       console.log('[Tester] Пропускаем подключение к базе данных, т.к. requiresDatabase: false');
       return null;
     }

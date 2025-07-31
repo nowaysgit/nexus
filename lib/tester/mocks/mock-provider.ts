@@ -31,7 +31,7 @@ export class MockProviderFactory {
             available: true,
             maxTokens: 4096,
             supportedModels: ['test-model'],
-          }
+          },
         ],
         registeredProviders: ['test-provider'],
       }),
@@ -43,7 +43,7 @@ export class MockProviderFactory {
       {
         provide: 'LLMService',
         useValue: mockLLMService,
-      }
+      },
     ];
   }
 
@@ -66,7 +66,7 @@ export class MockProviderFactory {
       command: jest.fn(),
       hears: jest.fn(),
     };
-    
+
     return [
       {
         provide: 'TELEGRAF_TOKEN',
@@ -75,7 +75,7 @@ export class MockProviderFactory {
       {
         provide: 'TelegramBot',
         useValue: mockTelegramBot,
-      }
+      },
     ];
   }
 
@@ -89,7 +89,7 @@ export class MockProviderFactory {
       validateMany: jest.fn().mockResolvedValue({ isValid: true, errors: [] }),
       validateWithFn: jest.fn().mockResolvedValue({ isValid: true, errors: [] }),
       validateRequest: jest.fn().mockResolvedValue({ isValid: true, errors: [] }),
-      sanitizeInput: jest.fn((input) => {
+      sanitizeInput: jest.fn(input => {
         if (typeof input === 'string') {
           return input.replace(/<[^>]*>/g, '');
         }
@@ -104,8 +104,12 @@ export class MockProviderFactory {
     const mockValidationErrorHandlerService = {
       handleValidationResult: jest.fn().mockReturnValue({ isValid: true, errors: [] }),
       handleBatchValidationResults: jest.fn().mockReturnValue({ isValid: true, errors: [] }),
-      handleValidationError: jest.fn().mockReturnValue({ type: 'validation-error', message: 'Test error' }),
-      createCustomValidationError: jest.fn().mockReturnValue({ type: 'custom-error', message: 'Custom error' }),
+      handleValidationError: jest
+        .fn()
+        .mockReturnValue({ type: 'validation-error', message: 'Test error' }),
+      createCustomValidationError: jest
+        .fn()
+        .mockReturnValue({ type: 'custom-error', message: 'Custom error' }),
     };
 
     return [
@@ -116,7 +120,7 @@ export class MockProviderFactory {
       {
         provide: 'ValidationErrorHandlerService',
         useValue: mockValidationErrorHandlerService,
-      }
+      },
     ];
   }
-} 
+}

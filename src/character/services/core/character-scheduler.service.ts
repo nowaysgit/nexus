@@ -4,6 +4,7 @@ import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Character } from '../../entities/character.entity';
+import { EmotionalState, Motivation } from '../../entities/emotional-state';
 import { Dialog } from '../../../dialog/entities/dialog.entity';
 import { LogService } from '../../../logging/log.service';
 import { BaseService } from '../../../common/base/base.service';
@@ -13,7 +14,6 @@ import { EmotionalStateService } from './emotional-state.service';
 import { CharacterBehaviorService } from '../behavior/character-behavior.service';
 import { MessageProcessingCoordinator } from './message-processing-coordinator.service';
 import { CharacterNeedType } from '../../enums/character-need-type.enum';
-import { MotivationStatus } from '../../entities/character-motivation.entity';
 
 /**
  * Сервис планировщика и триггеров для автоматического управления персонажами
@@ -46,26 +46,68 @@ export class CharacterSchedulerService extends BaseService implements OnModuleIn
    * Настройка слушателей событий
    */
   private setupEventListeners(): void {
-    this.eventEmitter.on('need.threshold_reached', this.handleNeedThresholdReached.bind(this));
-    this.eventEmitter.on('emotional_state.changed', this.handleEmotionalStateChanged.bind(this));
-    this.eventEmitter.on('motivation.executed', this.handleMotivationExecuted.bind(this));
-    this.eventEmitter.on('motivation.created', this.handleMotivationCreated.bind(this));
+    this.eventEmitter.on(
+      'need.threshold_reached',
+      (payload: Record<string, unknown>) =>
+        void this.handleNeedThresholdReached(
+          payload as Parameters<typeof this.handleNeedThresholdReached>[0],
+        ),
+    );
+    this.eventEmitter.on(
+      'emotional_state.changed',
+      (payload: Record<string, unknown>) =>
+        void this.handleEmotionalStateChanged(
+          payload as Parameters<typeof this.handleEmotionalStateChanged>[0],
+        ),
+    );
+    this.eventEmitter.on(
+      'motivation.executed',
+      (payload: Record<string, unknown>) =>
+        void this.handleMotivationExecuted(
+          payload as Parameters<typeof this.handleMotivationExecuted>[0],
+        ),
+    );
+    this.eventEmitter.on(
+      'motivation.created',
+      (payload: Record<string, unknown>) =>
+        void this.handleMotivationCreated(
+          payload as Parameters<typeof this.handleMotivationCreated>[0],
+        ),
+    );
     this.eventEmitter.on(
       'motivation.threshold_reached',
-      this.handleMotivationThresholdReached.bind(this),
+      (payload: Record<string, unknown>) =>
+        void this.handleMotivationThresholdReached(
+          payload as Parameters<typeof this.handleMotivationThresholdReached>[0],
+        ),
     );
-    this.eventEmitter.on('motivation.updated', this.handleMotivationUpdated.bind(this));
+    this.eventEmitter.on(
+      'motivation.updated',
+      (payload: Record<string, unknown>) =>
+        void this.handleMotivationUpdated(
+          payload as Parameters<typeof this.handleMotivationUpdated>[0],
+        ),
+    );
     this.eventEmitter.on(
       'character.frustration_increased',
-      this.handleCharacterFrustration.bind(this),
+      (payload: Record<string, unknown>) =>
+        void this.handleCharacterFrustration(
+          payload as Parameters<typeof this.handleCharacterFrustration>[0],
+        ),
     );
     this.eventEmitter.on(
       'behavior.pattern_activation_requested',
-      this.handleBehaviorPatternActivation.bind(this),
+      (payload: Record<string, unknown>) =>
+        void this.handleBehaviorPatternActivation(
+          payload as Parameters<typeof this.handleBehaviorPatternActivation>[0],
+        ),
     );
     this.eventEmitter.on(
       'message.initiative_requested',
-      this.handleInitiativeMessageRequest.bind(this),
+      (payload: Record<string, unknown>) =>
+        void this.handleInitiativeMessageRequest(
+          payload as Parameters<typeof this.handleInitiativeMessageRequest>[0],
+        ),
     );
   }
 
@@ -272,8 +314,8 @@ export class CharacterSchedulerService extends BaseService implements OnModuleIn
   @OnEvent('emotional_state.changed')
   private async handleEmotionalStateChanged(payload: {
     characterId: number;
-    oldState: any;
-    newState: any;
+    oldState: EmotionalState;
+    newState: EmotionalState;
     trigger: string;
   }): Promise<void> {
     try {
@@ -336,12 +378,19 @@ export class CharacterSchedulerService extends BaseService implements OnModuleIn
   ): Promise<void> {
     try {
       const motivations = await this.motivationService.getCharacterMotivations(characterId);
-      const activeMotivaions = motivations.filter(m => m.status === MotivationStatus.ACTIVE);
+      // Фильтруем активные мотивации по статусу
+      const activeMotivations = motivations.filter(motivation => motivation.status === 'active');
 
-      if (activeMotivaions.length > 0) {
-        const topMotivation = activeMotivaions.sort((a, b) => b.priority - a.priority)[0];
+      if (activeMotivations.length > 0) {
+        const topMotivation = activeMotivations.sort(
+          (a, b) => (b.priority || 0) - (a.priority || 0),
+        )[0];
 
-        await this.generateInitiativeMessage(characterId, topMotivation, hoursSinceActivity);
+        await this.generateInitiativeMessage(
+          characterId,
+          topMotivation as unknown as Record<string, unknown>,
+          hoursSinceActivity,
+        );
 
         this.logService.log(
           `Сгенерировано инициативное действие для персонажа ${characterId} на основе мотивации ${topMotivation.id}`,
@@ -418,20 +467,23 @@ export class CharacterSchedulerService extends BaseService implements OnModuleIn
    * Проверка необходимости активации поведенческого паттерна
    */
   private async shouldActivateBehaviorPattern(
-    characterId: number,
-    emotionalState: any,
+    _characterId: number,
+    emotionalState: EmotionalState,
   ): Promise<boolean> {
-    return emotionalState.intensity > 70;
+    return typeof emotionalState.intensity === 'number' && emotionalState.intensity > 70;
   }
 
   /**
    * Активация поведенческого паттерна
    */
-  private async activateBehaviorPattern(characterId: number, emotionalState: any): Promise<void> {
+  private async activateBehaviorPattern(
+    characterId: number,
+    emotionalState: EmotionalState,
+  ): Promise<void> {
     try {
       this.eventEmitter.emit('behavior.pattern_activation_requested', {
         characterId,
-        emotionalState,
+        emotionalState: emotionalState as unknown as Record<string, unknown>,
         timestamp: new Date(),
       });
 
@@ -477,7 +529,7 @@ export class CharacterSchedulerService extends BaseService implements OnModuleIn
    */
   private async generateInitiativeMessage(
     characterId: number,
-    motivation: any,
+    motivation: Record<string, unknown>,
     hoursSinceActivity: number,
   ): Promise<void> {
     try {
@@ -656,10 +708,14 @@ export class CharacterSchedulerService extends BaseService implements OnModuleIn
     patternType?: string;
     trigger?: string;
     intensity?: number;
-    emotionalState?: any;
+    emotionalState?: Record<string, unknown>;
   }): Promise<void> {
     try {
-      const patternType = payload.patternType || payload.emotionalState?.primary || 'активация';
+      const patternType: string =
+        payload.patternType ||
+        (typeof payload.emotionalState?.primary === 'string'
+          ? payload.emotionalState.primary
+          : 'активация');
       this.logService.log(
         `Обработка запроса активации поведенческого паттерна для персонажа ${payload.characterId}: ${patternType}`,
       );
@@ -687,7 +743,7 @@ export class CharacterSchedulerService extends BaseService implements OnModuleIn
     motivationId?: string;
     urgency?: number;
     context?: string;
-    motivation?: any;
+    motivation?: Motivation;
     hoursSinceActivity?: number;
   }): Promise<void> {
     try {

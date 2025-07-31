@@ -6,6 +6,7 @@ import {
 import { Character } from '../entities/character.entity';
 import { User } from '../../user/entities/user.entity';
 import { EmotionalState } from '../entities/emotional-state';
+import { ITechniqueExecution } from '../services/manipulation/manipulation.service';
 
 /**
  * Интерфейс для результата выполнения манипулятивной техники
@@ -51,7 +52,7 @@ export interface ITechniqueContext {
   relationshipLevel: number;
   characterId?: number;
   userId?: number;
-  previousTechniques?: any[];
+  previousTechniques?: ITechniqueExecution[];
   timeOfDay?: string;
   sessionDuration?: number;
   intensity?: TechniqueIntensity;

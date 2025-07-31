@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unused-vars -- Header sanitizer tests require extensive any type usage for testing data structures */
 import {
   sanitizeHeaders,
   sanitizeData,

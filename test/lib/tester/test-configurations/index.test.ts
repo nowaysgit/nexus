@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument -- Test configuration tests require provider introspection */
 import { TestConfigurations } from '../../../../lib/tester/test-configurations';
 
 // Создаем моки модулей для тестов

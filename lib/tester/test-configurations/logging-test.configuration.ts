@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access -- Logging test configuration requires provider introspection */
 import { Provider } from '@nestjs/common';
 import { LogService } from '../../../src/logging/log.service';
 import { RollbarService } from '../../../src/logging/rollbar.service';
@@ -36,37 +37,30 @@ export function getLoggingTestProviders(): Provider[] {
  * @param config Текущая конфигурация тестов
  * @returns Обновленная конфигурация с мокированными сервисами логирования
  */
-export function addLoggingMocks<T extends { providers?: Provider[] }>(
-  config: T
-): T {
+export function addLoggingMocks<T extends { providers?: Provider[] }>(config: T): T {
   const providers = config.providers || [];
-  
+
   // Проверяем, есть ли уже моки для LogService и RollbarService
   const hasLogServiceMock = providers.some(
-    provider => 
-      provider && (
-      (provider as any).provide === LogService ||
+    provider =>
+      provider &&
+      ((provider as any).provide === LogService ||
         (typeof provider === 'function' && provider === LogService) ||
-        ((provider as any).provide && (provider as any).provide.name === 'LogService')
-      )
+        ((provider as any).provide && (provider as any).provide.name === 'LogService')),
   );
-  
+
   const hasRollbarServiceMock = providers.some(
-    provider => 
-      provider && (
-      (provider as any).provide === RollbarService ||
+    provider =>
+      provider &&
+      ((provider as any).provide === RollbarService ||
         (typeof provider === 'function' && provider === RollbarService) ||
-        ((provider as any).provide && (provider as any).provide.name === 'RollbarService')
-      )
+        ((provider as any).provide && (provider as any).provide.name === 'RollbarService')),
   );
-  
+
   const hasWinstonProviderMock = providers.some(
-    provider => 
-      provider && (
-        (provider as any).provide === WINSTON_MODULE_PROVIDER
-      )
+    provider => provider && (provider as any).provide === WINSTON_MODULE_PROVIDER,
   );
-  
+
   // Добавляем моки, если их еще нет
   if (!hasLogServiceMock) {
     providers.push({
@@ -74,14 +68,14 @@ export function addLoggingMocks<T extends { providers?: Provider[] }>(
       useClass: MockLogService,
     });
   }
-  
+
   if (!hasRollbarServiceMock) {
     providers.push({
       provide: RollbarService,
       useClass: MockRollbarService,
     });
   }
-  
+
   if (!hasWinstonProviderMock) {
     providers.push({
       provide: WINSTON_MODULE_PROVIDER,
@@ -94,9 +88,9 @@ export function addLoggingMocks<T extends { providers?: Provider[] }>(
       },
     });
   }
-  
+
   return {
     ...config,
     providers,
   };
-} 
+}

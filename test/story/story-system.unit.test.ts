@@ -535,9 +535,9 @@ describe('Story System Unit Tests', () => {
       expect(mockCharacterRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({
           personality: expect.objectContaining({
-            traits: expect.arrayContaining(['счастливая']),
-          }),
-        }),
+            traits: expect.arrayContaining(['счастливая']) as unknown,
+          }) as unknown,
+        }) as unknown,
       );
     });
 

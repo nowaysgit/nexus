@@ -1,5 +1,6 @@
 import { TestConfigType, ITestParams, TestFunction, Tester, ITestContext } from '.';
 import { DataSource } from 'typeorm';
+import { Type } from '@nestjs/common';
 
 /**
  * Создает набор тестов
@@ -26,8 +27,16 @@ export function createTest(params: ITestParams, testFunction: TestFunction): voi
   } = params;
 
   // Сохраняем параметры текущего теста в глобальной переменной для доступа из MockTypeOrmModule
+  interface GlobalWithCurrentTest {
+    __currentTest?: {
+      params: ITestParams;
+      name: string;
+      description?: string;
+      configType: string;
+    };
+  }
 
-  (global as any).__currentTest = {
+  (global as GlobalWithCurrentTest).__currentTest = {
     params,
     name,
     description,
@@ -50,7 +59,7 @@ export function createTest(params: ITestParams, testFunction: TestFunction): voi
         module: tester.module,
         app: tester.app,
         dataSource,
-        get: <T>(token: any) => tester.get<T>(token),
+        get: <T>(token: Type<T> | string) => tester.get<T>(token),
         clearDatabase: async () => {
           if (dataSource && dataSource.isInitialized) {
             const entities = dataSource.entityMetadatas;
@@ -64,8 +73,7 @@ export function createTest(params: ITestParams, testFunction: TestFunction): voi
       await testFunction(context);
     } finally {
       // Очищаем информацию о текущем тесте после завершения
-
-      (global as any).__currentTest = null;
+      (global as GlobalWithCurrentTest).__currentTest = null;
       await tester.forceCleanup();
     }
   };

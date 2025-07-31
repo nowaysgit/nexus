@@ -5,15 +5,18 @@ import { ArgumentMetadata } from '@nestjs/common';
 
 describe('GlobalValidationPipe', () => {
   let pipe: GlobalValidationPipe;
-  let mockValidationService: jest.Mocked<ValidationService>;
+  let mockValidationService: {
+    sanitizeInput: jest.MockedFunction<ValidationService['sanitizeInput']>;
+    validate: jest.MockedFunction<ValidationService['validate']>;
+  };
 
   beforeEach(() => {
     mockValidationService = {
       sanitizeInput: jest.fn((input: string) => input.replace(/</g, '&lt;').replace(/>/g, '&gt;')),
       validate: jest.fn(),
-    } as any;
+    };
 
-    pipe = new GlobalValidationPipe(mockValidationService);
+    pipe = new GlobalValidationPipe(mockValidationService as unknown as ValidationService);
   });
 
   afterEach(() => {
@@ -72,7 +75,7 @@ describe('GlobalValidationPipe', () => {
         validatedData: value,
       });
 
-      const result = await pipe.transform(value, metadata);
+      const _result = await pipe.transform(value, metadata);
 
       expect(mockValidationService.sanitizeInput).toHaveBeenCalledWith('<script>evil</script>');
       expect(mockValidationService.sanitizeInput).toHaveBeenCalledWith(

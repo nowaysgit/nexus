@@ -5,32 +5,22 @@ import {
   Put,
   Body,
   Param,
-  Delete,
-  Query,
   HttpException,
   HttpStatus,
-  Logger,
-  Inject,
   UseFilters,
   ValidationPipe,
   UsePipes,
   BadRequestException,
-  UseGuards,
 } from '@nestjs/common';
 import { Character } from '../entities/character.entity';
 import { CreateCharacterDto } from '../dto/create-character.dto';
-import { UpdateCharacterDto } from '../dto/update-character.dto';
 import { UpdateNeedDto } from '../dto/update-needs.dto';
-import { CharacterService } from '../services/core/character.service';
 import { LogService } from '../../logging/log.service';
-import { CHARACTER_SERVICE } from '../../common/constants/injection-tokens';
 import {
   CharacterManagementService,
   ICharacterAnalysis,
 } from '../services/core/character-management.service';
 import { GlobalExceptionFilter } from '../../logging/global-exception.filter';
-import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
-import { User } from '../../auth/user.decorator';
 
 /**
  * Упрощенный контроллер персонажей

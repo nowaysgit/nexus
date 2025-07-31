@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-base-to-string -- Dynamic module introspection requires any type access and string conversion */
 import { Provider, Type, DynamicModule } from '@nestjs/common';
 import { MockProviderFactory } from '../mocks';
 import { MockTelegramModule } from '../mocks/mock-telegram.module';

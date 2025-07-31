@@ -13,7 +13,7 @@ import { LogService } from '../../src/logging/log.service';
 import { CacheService } from '../../src/cache/cache.service';
 import { NotFoundException } from '@nestjs/common';
 
-describe('UserService Unit Tests', () => {
+describe('UserService Optimized Tests', () => {
   let userService: UserService;
   let mockUserRepository: {
     findOne: jest.Mock;

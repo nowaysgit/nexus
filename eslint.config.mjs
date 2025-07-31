@@ -6,7 +6,16 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['eslint.config.mjs', '.progress_task.md'],
+    ignores: [
+      'eslint.config.mjs',
+      '.progress_task.md',
+      'coverage/**/*',
+      'dist/**/*',
+      'node_modules/**/*',
+      '*.js',
+      '*.mjs',
+      'logs/**/*'
+    ],
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,

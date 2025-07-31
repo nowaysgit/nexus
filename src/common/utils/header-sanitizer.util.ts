@@ -63,7 +63,10 @@ export function sanitizeHeaders(
  * @param visited Множество для отслеживания уже обработанных объектов (защита от циклических ссылок)
  * @returns Очищенные данные
  */
-export function sanitizeData(data: unknown, visited: WeakSet<object> = new WeakSet()): unknown {
+export function sanitizeData(
+  data: unknown,
+  visited: WeakSet<object> = new WeakSet(),
+): Record<string, unknown> | unknown[] | { value: unknown } | { '[ЦИКЛИЧЕСКАЯ_ССЫЛКА]': boolean } {
   if (!data) return {};
   if (typeof data !== 'object' || data === null) return { value: data };
 
@@ -76,9 +79,9 @@ export function sanitizeData(data: unknown, visited: WeakSet<object> = new WeakS
   // Обработка массивов
   if (Array.isArray(data)) {
     return data.map(item => {
-      // Если элемент массива - примитивное значение, возвращаем его как есть
+      // Если элемент массива - примитивное значение, возвращаем его с правильной типизацией
       if (typeof item !== 'object' || item === null) {
-        return item;
+        return item as string | number | boolean | null;
       }
       // Если элемент массива - объект, рекурсивно обрабатываем его
       return sanitizeData(item, visited);
@@ -93,9 +96,9 @@ export function sanitizeData(data: unknown, visited: WeakSet<object> = new WeakS
       sanitized[key] = '[РЕДАКТИРОВАНО]';
     } else if (Array.isArray(value)) {
       sanitized[key] = value.map(item => {
-        // Если элемент массива - примитивное значение, возвращаем его как есть
+        // Если элемент массива - примитивное значение, возвращаем его с правильной типизацией
         if (typeof item !== 'object' || item === null) {
-          return item;
+          return item as string | number | boolean | null;
         }
         // Если элемент массива - объект, рекурсивно обрабатываем его
         return sanitizeData(item, visited);

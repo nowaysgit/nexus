@@ -1,1 +1,1 @@
-export { FixtureManager, ITestData, IFixtureOptions } from './fixture-manager'; 
+export { FixtureManager, ITestData, IFixtureOptions } from './fixture-manager';

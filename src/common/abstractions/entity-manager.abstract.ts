@@ -1,6 +1,7 @@
 import { Repository } from 'typeorm';
 import { BaseService } from '../base/base.service';
 import { getErrorMessage } from '../utils/error.utils';
+import { LogService } from '../../logging/log.service';
 
 /**
  * Абстрактный менеджер сущностей для унификации CRUD операций
@@ -9,7 +10,7 @@ export abstract class EntityManager<T extends { id: string | number }> extends B
   protected constructor(
     protected readonly repository: Repository<T>,
     protected readonly entityName: string,
-    logService: any,
+    logService: LogService,
   ) {
     super(logService);
   }
@@ -19,7 +20,10 @@ export abstract class EntityManager<T extends { id: string | number }> extends B
    */
   protected async findEntityOrFail(id: string | number): Promise<T> {
     return this.withErrorHandling(`поиске ${this.entityName}`, async () => {
-      const entity = await this.repository.findOne({ where: { id } as any });
+      // TypeORM findOneBy требует точной типизации, используем type assertion для совместимости
+      const entity = await this.repository.findOneBy({
+        id,
+      } as unknown as Parameters<Repository<T>['findOneBy']>[0]);
       if (!entity) {
         throw new Error(`${this.entityName} с ID ${id} не найден`);
       }
@@ -32,7 +36,10 @@ export abstract class EntityManager<T extends { id: string | number }> extends B
    */
   protected async findEntityById(id: string | number): Promise<T | null> {
     return this.withErrorHandling(`поиске ${this.entityName}`, async () => {
-      return await this.repository.findOne({ where: { id } as any });
+      // TypeORM findOneBy требует точной типизации, используем type assertion для совместимости
+      return await this.repository.findOneBy({
+        id,
+      } as unknown as Parameters<Repository<T>['findOneBy']>[0]);
     });
   }
 
@@ -42,7 +49,10 @@ export abstract class EntityManager<T extends { id: string | number }> extends B
   protected async findEntities(conditions?: Partial<T>): Promise<T[]> {
     return this.withErrorHandling(`поиске всех ${this.entityName}`, async () => {
       if (conditions) {
-        return await this.repository.find({ where: conditions as any });
+        // TypeORM findBy требует точной типизации
+        return await this.repository.findBy(
+          conditions as unknown as Parameters<Repository<T>['findBy']>[0],
+        );
       }
       return await this.repository.find();
     });
@@ -52,10 +62,11 @@ export abstract class EntityManager<T extends { id: string | number }> extends B
    * Создает новую сущность
    */
   protected async createEntity(data: Partial<T>): Promise<T> {
-    return this.withErrorHandling(`создании ${this.entityName}`, async () => {
-      const entity = this.repository.create(data as any);
+    return this.withErrorHandling(`создании ${this.entityName}`, async (): Promise<T> => {
+      // TypeORM create принимает DeepPartial<T>, используем type assertion для совместимости
+      const entity = this.repository.create(data as Parameters<Repository<T>['create']>[0]);
       const savedEntity = await this.repository.save(entity);
-      return Array.isArray(savedEntity) ? savedEntity[0] : savedEntity;
+      return (Array.isArray(savedEntity) ? savedEntity[0] : savedEntity) as T;
     });
   }
 
@@ -85,7 +96,10 @@ export abstract class EntityManager<T extends { id: string | number }> extends B
    */
   protected async entityExists(id: string | number): Promise<boolean> {
     return this.withErrorHandling(`проверке существования ${this.entityName}`, async () => {
-      const count = await this.repository.count({ where: { id } as any });
+      // TypeORM countBy требует точной типизации
+      const count = await this.repository.countBy({
+        id,
+      } as unknown as Parameters<Repository<T>['countBy']>[0]);
       return count > 0;
     });
   }
@@ -114,7 +128,11 @@ export abstract class EntityManager<T extends { id: string | number }> extends B
   /**
    * Логирует операцию с сущностью
    */
-  protected logEntityOperation(operation: string, entityId?: string | number, details?: any): void {
+  protected logEntityOperation(
+    operation: string,
+    entityId?: string | number,
+    details?: Record<string, unknown>,
+  ): void {
     const message = entityId
       ? `${operation} ${this.entityName} с ID ${entityId}`
       : `${operation} ${this.entityName}`;

@@ -85,10 +85,15 @@ describe('PromptTemplateService', () => {
     // Настраиваем моки fs и path
     mockedPath.join.mockImplementation((...args) => args.join('/'));
     mockedFs.existsSync.mockReturnValue(true);
-    mockedFs.readdirSync.mockReturnValue([
-      'character-system-v1.1.0.hbs',
-      'message-analysis-v2.1.0.hbs',
-    ] as any);
+    // fs.readdirSync в данном случае используется без дополнительных опций
+    // что возвращает string[], настраиваем мок с правильной типизацией
+    jest
+      .spyOn(fs, 'readdirSync')
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+      .mockImplementation(((_path: fs.PathLike) => [
+        'character-system-v1.1.0.hbs',
+        'message-analysis-v2.1.0.hbs',
+      ]) as any);
     mockedFs.readFileSync.mockImplementation((filePath: string) => {
       if (filePath.includes('character-system-v1.1.0.hbs')) {
         return `Ты - {{characterName}}, персонаж со следующими характеристиками:
@@ -131,10 +136,6 @@ describe('PromptTemplateService', () => {
   });
 
   describe('constructor', () => {
-    it('should be defined', () => {
-      expect(service).toBeDefined();
-    });
-
     it('should initialize default templates', () => {
       expect(mockedFs.readdirSync).toHaveBeenCalled();
       expect(mockedFs.readFileSync).toHaveBeenCalled();

@@ -153,22 +153,6 @@ export class CharacterCreationService {
           ...basePresets,
         };
 
-      case CharacterArchetype.CAREGIVER:
-        return {
-          name: `Заботливая`,
-          archetype,
-          biography: 'Материнская фигура, которая заботится о других и поддерживает их.',
-          personality: {
-            ...basePresets.personality,
-            traits: ['заботливая', 'материнская', 'поддерживающая'],
-            hobbies: ['кулинария', 'рукоделие'],
-            values: ['семья', 'забота'],
-            strengths: ['забота', 'поддержка'],
-            weaknesses: ['чрезмерная опека'],
-          },
-          ...basePresets,
-        };
-
       case CharacterArchetype.REBEL:
         return {
           name: `Бунтарка`,

@@ -337,7 +337,7 @@ export interface EmotionalManifestation {
     responseStyle: string; // Стиль ответов
     topicPreferences: string[]; // Предпочтения в темах
     socialBehavior: string; // Социальное поведение
-    
+
     // Расширенные поведенческие изменения
     communicationStyle: string; // Стиль коммуникации
     decisionMaking: string; // Влияние на принятие решений
@@ -350,7 +350,7 @@ export interface EmotionalManifestation {
     attentionFocus: string; // Фокус внимания
     memoryBias: string; // Искажение памяти
     decisionMaking: string; // Влияние на принятие решений
-    
+
     // Расширенные когнитивные эффекты
     perceptionBias: string; // Искажение восприятия
     judgmentBias: string; // Искажение суждений
@@ -367,7 +367,7 @@ export interface EmotionalManifestation {
     cooperation: string; // Склонность к сотрудничеству
     conflict: string; // Поведение в конфликтах
   };
-  
+
   motivationalEffects: {
     goalPursuit: string; // Влияние на достижение целей
     persistence: string; // Настойчивость
@@ -444,7 +444,7 @@ export interface EmotionalEvent {
   characterId: number; // ID персонажа
   type: 'state_change' | 'transition' | 'regulation' | 'cascade' | 'interaction';
   timestamp: Date; // Время события
-  data: any; // Данные события
+  data: Record<string, unknown>; // Данные события
   significance: number; // Значимость события (0-100)
   participants: number[]; // Участники события (другие персонажи)
   context: EmotionalContext; // Контекст события

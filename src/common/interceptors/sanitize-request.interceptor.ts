@@ -12,11 +12,11 @@ import { ParamsDictionary } from 'express-serve-static-core';
 export class SanitizeRequestInterceptor implements NestInterceptor {
   constructor(private readonly validationService: ValidationService) {}
 
-  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+  intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const request = context.switchToHttp().getRequest<Request>();
 
     if (request.body && typeof request.body === 'object') {
-      request.body = this.sanitizeObject(request.body);
+      request.body = this.sanitizeObject(request.body as Record<string, unknown>);
     }
 
     if (request.query && typeof request.query === 'object') {
@@ -61,7 +61,7 @@ export class SanitizeRequestInterceptor implements NestInterceptor {
       } else if (Array.isArray(value)) {
         result[key] = value.map(item =>
           typeof item === 'string' ? this.validationService.sanitizeInput(item) : item,
-        );
+        ) as string[] | ParsedQs[];
       } else if (typeof value === 'object' && value !== null) {
         result[key] = this.sanitizeQueryObject(value);
       } else {

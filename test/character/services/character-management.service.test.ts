@@ -1,10 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import {
-  CharacterManagementService,
-  ICharacterAnalysis,
-} from '../../../src/character/services/core/character-management.service';
+import { CharacterManagementService } from '../../../src/character/services/core/character-management.service';
 import { Character, PersonalityData } from '../../../src/character/entities/character.entity';
 import {
   CharacterMemory,
@@ -26,12 +23,12 @@ import { ActionType } from '../../../src/character/enums/action-type.enum';
 describe('CharacterManagementService', () => {
   let service: CharacterManagementService;
   let characterRepository: jest.Mocked<Repository<Character>>;
-  let memoryRepository: jest.Mocked<Repository<CharacterMemory>>;
+  let _memoryRepository: jest.Mocked<Repository<CharacterMemory>>;
   let needRepository: jest.Mocked<Repository<Need>>;
-  let actionRepository: jest.Mocked<Repository<Action>>;
+  let _actionRepository: jest.Mocked<Repository<Action>>;
   let storyEventRepository: jest.Mocked<Repository<StoryEvent>>;
   let cacheService: jest.Mocked<CacheService>;
-  let logService: jest.Mocked<LogService>;
+  let _logService: jest.Mocked<LogService>;
 
   // Упрощенные тестовые данные
   const mockPersonality: PersonalityData = {
@@ -248,12 +245,12 @@ describe('CharacterManagementService', () => {
 
     service = module.get<CharacterManagementService>(CharacterManagementService);
     characterRepository = module.get(getRepositoryToken(Character));
-    memoryRepository = module.get(getRepositoryToken(CharacterMemory));
+    _memoryRepository = module.get(getRepositoryToken(CharacterMemory));
     needRepository = module.get(getRepositoryToken(Need));
-    actionRepository = module.get(getRepositoryToken(Action));
+    _actionRepository = module.get(getRepositoryToken(Action));
     storyEventRepository = module.get(getRepositoryToken(StoryEvent));
     cacheService = module.get(CacheService);
-    logService = module.get(LogService);
+    _logService = module.get(LogService);
   });
 
   afterEach(() => {
@@ -277,7 +274,7 @@ describe('CharacterManagementService', () => {
         ...mockCreateCharacterDto,
         userId: '123',
         isActive: true,
-        createdAt: expect.any(Date),
+        createdAt: expect.any(Date) as Date,
       });
       expect(characterRepository.save).toHaveBeenCalledWith(expectedCharacter);
       expect(needRepository.create).toHaveBeenCalledTimes(4); // 4 базовые потребности
@@ -468,7 +465,7 @@ describe('CharacterManagementService', () => {
           activityLevel: 'LOW',
         },
         overallState: 'POOR',
-        createdAt: expect.any(Date),
+        createdAt: expect.any(Date) as Date,
       });
     });
 

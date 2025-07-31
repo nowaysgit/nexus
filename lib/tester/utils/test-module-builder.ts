@@ -1,4 +1,5 @@
-import { Type, DynamicModule, Provider } from '@nestjs/common';
+/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call -- Test module builder requires extensive provider and module introspection */
+import { DynamicModule, Provider, Type } from '@nestjs/common';
 import { Test, TestingModule, TestingModuleBuilder } from '@nestjs/testing';
 import {
   TestConfigurations,

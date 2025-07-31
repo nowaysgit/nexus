@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-function-type */
 import { PipeTransform, Injectable, ArgumentMetadata, BadRequestException } from '@nestjs/common';
 import { ValidationService } from '../services/validation.service';
 
@@ -6,7 +5,7 @@ import { ValidationService } from '../services/validation.service';
  * Глобальный пайп для валидации входящих данных с использованием DTO
  */
 @Injectable()
-export class GlobalValidationPipe implements PipeTransform<any> {
+export class GlobalValidationPipe implements PipeTransform<unknown> {
   constructor(private readonly validationService: ValidationService) {}
 
   async transform(value: unknown, { metatype }: ArgumentMetadata) {
@@ -61,8 +60,8 @@ export class GlobalValidationPipe implements PipeTransform<any> {
     return result;
   }
 
-  private toValidate(metatype: Function): boolean {
-    const types: Function[] = [String, Boolean, Number, Array, Object];
+  private toValidate(metatype: new (...args: unknown[]) => unknown): boolean {
+    const types: (new (...args: unknown[]) => unknown)[] = [String, Boolean, Number, Array, Object];
     return !types.includes(metatype);
   }
 }

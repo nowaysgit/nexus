@@ -13,7 +13,10 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery, ApiBody } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
-import { SpecializationService } from '../services/core/specialization.service';
+import {
+  SpecializationService,
+  SpecializationEvolution,
+} from '../services/core/specialization.service';
 import {
   SpecializationProfile,
   SpecializationCombination,
@@ -23,7 +26,6 @@ import {
   CompetenceLevel,
   SpecializationType,
   LearningStyle,
-  KnowledgeContext,
 } from '../services/core/specialization.service';
 
 /**
@@ -602,7 +604,7 @@ export class SpecializationController {
 
   private analyzeDomainProgress(
     dynamic: DynamicSpecialization,
-    period: string,
+    _period: string,
   ): Record<string, any> {
     const domainAnalysis: Record<string, any> = {};
 
@@ -625,7 +627,7 @@ export class SpecializationController {
 
   private calculateLearningTrends(
     dynamic: DynamicSpecialization,
-    period: string,
+    _period: string,
   ): Record<string, 'improving' | 'stable' | 'declining'> {
     const trends: Record<string, 'improving' | 'stable' | 'declining'> = {};
 
@@ -645,7 +647,10 @@ export class SpecializationController {
     return trends;
   }
 
-  private getRecentAdaptations(dynamic: DynamicSpecialization, period: string): any[] {
+  private getRecentAdaptations(
+    dynamic: DynamicSpecialization,
+    period: string,
+  ): SpecializationEvolution[] {
     const periodDays = {
       week: 7,
       month: 30,

@@ -2,13 +2,13 @@ import { Retry } from '../../../src/common/decorators/retry.decorator';
 import { LogService } from '../../../src/logging/log.service';
 
 describe('Retry Decorator', () => {
-  let mockLogService: jest.Mocked<LogService>;
+  let mockLogService: Partial<LogService>;
 
   beforeEach(() => {
     mockLogService = {
       warn: jest.fn(),
       error: jest.fn(),
-    } as any;
+    };
   });
 
   afterEach(() => {
@@ -20,10 +20,10 @@ describe('Retry Decorator', () => {
     callCount = 0;
 
     constructor(logService?: LogService) {
-      this.logService = logService || mockLogService;
+      this.logService = logService || (mockLogService as LogService);
     }
 
-    @Retry({ maxRetries: 3, delay: 100 })
+    @Retry({ maxRetries: 3, delay: 1 })
     async methodThatFails() {
       this.callCount++;
       if (this.callCount < 3) {
@@ -32,13 +32,13 @@ describe('Retry Decorator', () => {
       return 'success';
     }
 
-    @Retry({ maxRetries: 2, delay: 50 })
+    @Retry({ maxRetries: 2, delay: 1 })
     async methodThatAlwaysFails() {
       this.callCount++;
       throw new Error(`Always fails - attempt ${this.callCount}`);
     }
 
-    @Retry({ maxRetries: 3, delays: [100, 200, 300] })
+    @Retry({ maxRetries: 3, delays: [1, 2, 3] })
     async methodWithCustomDelays() {
       this.callCount++;
       if (this.callCount < 2) {
@@ -49,9 +49,9 @@ describe('Retry Decorator', () => {
 
     @Retry({
       maxRetries: 3,
-      delay: 100,
+      delay: 1,
       retryableErrors: [TypeError],
-      retryCondition: error => error.message.includes('retryable'),
+      retryCondition: (error: Error) => error.message.includes('retryable'),
     })
     async methodWithConditions() {
       this.callCount++;
@@ -66,7 +66,7 @@ describe('Retry Decorator', () => {
 
     @Retry({
       maxRetries: 2,
-      delay: 50,
+      delay: 1,
       onRetry: (error, attempt) => {
         mockLogService.warn(`Retry callback: ${error.message}, attempt: ${attempt}`);
       },
@@ -133,7 +133,9 @@ describe('Retry Decorator', () => {
 
   describe('edge cases', () => {
     it('should work without logger', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument -- Testing edge case with null logger
       const testInstance = new TestClass(null as any);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- Testing edge case with null service
       testInstance.logService = null as any;
 
       const result = await testInstance.methodThatFails();
@@ -146,8 +148,8 @@ describe('Retry Decorator', () => {
       const testInstance = new TestClass();
 
       // Override the method to have a failing callback
-      const originalMethod = testInstance.methodWithCallback;
-      testInstance.methodWithCallback = async function () {
+      const _originalMethod = testInstance.methodWithCallback;
+      testInstance.methodWithCallback = async function (this: TestClass) {
         this.callCount++;
         if (this.callCount < 2) {
           throw new Error('callback test error');

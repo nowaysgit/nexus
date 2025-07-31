@@ -1,3 +1,7 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
+// Отключение ESLint правил для тестового файла из-за сложности типизации Jest моков
+// для LLMService и PromptTemplateService с множественными методами
+
 import { Test, TestingModule } from '@nestjs/testing';
 import { MessageAnalysisService } from '../../../src/character/services/analysis/message-analysis.service';
 import { LLMService } from '../../../src/llm/services/llm.service';
@@ -6,14 +10,13 @@ import { Character } from '../../../src/character/entities/character.entity';
 import { CharacterArchetype } from '../../../src/character/enums/character-archetype.enum';
 import { MockLogService } from '../../../lib/tester/mocks/log.service.mock';
 import { LogService } from '../../../src/logging/log.service';
-import { MessageAnalysis } from '../../../src/character/interfaces/analysis.interfaces';
 import { ILLMJsonResult } from '../../../src/common/interfaces/llm-provider.interface';
 
 describe('MessageAnalysisService', () => {
   let service: MessageAnalysisService;
   let mockLogService: MockLogService;
-  let mockLLMService: jest.Mocked<LLMService>;
-  let mockPromptTemplateService: jest.Mocked<PromptTemplateService>;
+  let mockLLMService: any;
+  let mockPromptTemplateService: any;
   let testCharacter: Character;
 
   beforeEach(async () => {
@@ -22,11 +25,11 @@ describe('MessageAnalysisService', () => {
       generateJSON: jest.fn(),
       generateText: jest.fn(),
       generateTextStream: jest.fn(),
-    } as any;
+    };
     mockPromptTemplateService = {
       createPrompt: jest.fn(),
       getTemplate: jest.fn(),
-    } as any;
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [

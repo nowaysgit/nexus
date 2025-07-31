@@ -58,7 +58,7 @@ export class TechniqueAnalyticsController {
   async getTechniqueRecommendations(
     @Param('characterId', ParseIntPipe) characterId: number,
     @Param('userId', ParseIntPipe) userId: number,
-    @Body() context?: any,
+    @Body() context?: Record<string, unknown>,
   ) {
     return this.historyService.getTechniqueRecommendations(characterId, userId, context);
   }
@@ -122,7 +122,7 @@ export class TechniqueAnalyticsController {
       effectiveness?: number;
       ethicalScore?: number;
       sideEffects?: string[];
-      executionContext?: any;
+      executionContext?: Record<string, unknown>;
     },
   ) {
     await this.historyService.recordTechniqueExecution({

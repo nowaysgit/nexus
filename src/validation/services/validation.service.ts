@@ -401,8 +401,10 @@ export class ValidationService implements IValidationService {
         warnings,
       };
     } catch (error) {
-      this.logService.error(`Ошибка валидации конфигурации: ${getErrorMessage(error)}`, {
-        stack: error.stack,
+      const errorMessage = getErrorMessage(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logService.error(`Ошибка валидации конфигурации: ${errorMessage}`, {
+        stack: errorStack,
       });
       return {
         isValid: false,
@@ -539,8 +541,13 @@ export class ValidationService implements IValidationService {
   /**
    * Проверяет, является ли переданный объект классом DTO
    */
-  private isDtoClass(obj: unknown): boolean {
-    return typeof obj === 'function' && obj.prototype && obj.prototype.constructor === obj;
+  private isDtoClass(obj: unknown): obj is new (...args: unknown[]) => object {
+    if (typeof obj !== 'function') return false;
+    if (!obj.prototype) return false;
+
+    // Безопасная проверка конструктора
+    const prototype = obj.prototype as Record<string, unknown>;
+    return prototype.constructor === obj;
   }
 
   /**

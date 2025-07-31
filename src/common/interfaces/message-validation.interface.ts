@@ -14,7 +14,7 @@ export interface ValidationError {
   code?: string;
 
   /** Дополнительные данные */
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 /**

@@ -15,19 +15,6 @@ import {
   EmotionalEvent,
   EmotionalPattern,
   EmotionalRegulationStrategy,
-  EmotionalRegulation,
-  EmotionalComplexity,
-  EmotionalOrigin,
-  EmotionalCausality,
-  EmotionalBlend,
-  EmotionalCascade,
-  EmotionalInteraction,
-  EmotionalRange,
-  EmotionalRegulationCapacity,
-  EmotionalVulnerability,
-  EmotionalStrength,
-  EmotionalPathway,
-  EmotionalMilestone,
 } from '../../entities/emotional-state';
 import { BaseService } from '../../../common/base/base.service';
 import { LogService } from '../../../logging/log.service';
@@ -329,7 +316,9 @@ export class EmotionalStateService extends BaseService implements IEmotionalStat
   private getNeedEmotionConfig(
     needType: CharacterNeedType,
   ): { emotions: Record<string, number>; duration: number } | null {
-    const config = {
+    const config: Partial<
+      Record<CharacterNeedType, { emotions: Record<string, number>; duration: number }>
+    > = {
       [CharacterNeedType.AFFECTION]: { emotions: { грустная: 0.9, одинокая: 0.7 }, duration: 60 },
       [CharacterNeedType.ATTENTION]: {
         emotions: { беспокойная: 0.8, требующая: 0.6 },
@@ -1075,7 +1064,10 @@ export class EmotionalStateService extends BaseService implements IEmotionalStat
   /**
    * Создает базовый эмоциональный профиль для персонажа
    */
-  private createDefaultEmotionalProfile(characterId: number, character: any): EmotionalProfile {
+  private createDefaultEmotionalProfile(
+    characterId: number,
+    _character: Character,
+  ): EmotionalProfile {
     return {
       characterId,
       baselineEmotions: {
@@ -1178,7 +1170,7 @@ export class EmotionalStateService extends BaseService implements IEmotionalStat
   async createEmotionalEvent(
     characterId: number,
     type: EmotionalEvent['type'],
-    data: any,
+    data: Record<string, unknown>,
     context: EmotionalContext,
     significance: number,
   ): Promise<EmotionalEvent> {
@@ -1581,7 +1573,11 @@ export class EmotionalStateService extends BaseService implements IEmotionalStat
    */
   async restoreFromSnapshot(
     characterId: number,
-    snapshot: any,
+    snapshot: {
+      state: EmotionalState;
+      profile: EmotionalProfile;
+      context: EmotionalContext;
+    },
   ): Promise<{
     success: boolean;
     restoredState: EmotionalState;
@@ -1608,7 +1604,10 @@ export class EmotionalStateService extends BaseService implements IEmotionalStat
           differences,
         };
       } catch (error) {
-        this.logError('Ошибка восстановления из снимка', { error, characterId });
+        this.logError('Ошибка восстановления из снимка', {
+          error: error instanceof Error ? error.message : String(error),
+          characterId,
+        });
         return {
           success: false,
           restoredState: await this.getEmotionalState(characterId),
@@ -1628,7 +1627,7 @@ export class EmotionalStateService extends BaseService implements IEmotionalStat
     fromState: EmotionalState,
     toState: EmotionalState,
     trigger: string,
-    context: EmotionalContext,
+    _context: EmotionalContext,
   ): Promise<EmotionalTransition> {
     return this.withErrorHandling('создании эмоционального перехода', async () => {
       const transition: EmotionalTransition = {
@@ -1689,7 +1688,7 @@ export class EmotionalStateService extends BaseService implements IEmotionalStat
     characterId: number,
     strategy: EmotionalRegulationStrategy,
     intensity: number,
-    context: EmotionalContext,
+    _context: EmotionalContext,
   ): Promise<{
     success: boolean;
     newState: EmotionalState;
@@ -1723,7 +1722,7 @@ export class EmotionalStateService extends BaseService implements IEmotionalStat
    */
   async analyzeEmotionalPatterns(
     characterId: number,
-    timeRange: { from: Date; to: Date },
+    _timeRange: { from: Date; to: Date },
   ): Promise<EmotionalPattern[]> {
     return this.withErrorHandling('анализе эмоциональных паттернов', async () => {
       // Базовая заглушка - возвращаем сохраненные паттерны
@@ -1737,7 +1736,7 @@ export class EmotionalStateService extends BaseService implements IEmotionalStat
   async predictEmotionalReaction(
     characterId: number,
     trigger: string,
-    context: EmotionalContext,
+    _context: EmotionalContext,
   ): Promise<{
     predictedState: EmotionalState;
     confidence: number;
@@ -1769,8 +1768,8 @@ export class EmotionalStateService extends BaseService implements IEmotionalStat
   async simulateEmotionalCascade(
     characterId: number,
     initialEmotion: string,
-    context: EmotionalContext,
-    maxDepth: number = 3,
+    _context: EmotionalContext,
+    _maxDepth: number = 3,
   ): Promise<{
     cascadeSteps: EmotionalState[];
     finalState: EmotionalState;
@@ -1804,7 +1803,7 @@ export class EmotionalStateService extends BaseService implements IEmotionalStat
   async analyzeEmotionalCompatibility(
     characterId1: number,
     characterId2: number,
-    context: EmotionalContext,
+    _context: EmotionalContext,
   ): Promise<{
     overallCompatibility: number;
     strengths: string[];
@@ -1837,8 +1836,8 @@ export class EmotionalStateService extends BaseService implements IEmotionalStat
   async optimizeEmotionalState(
     characterId: number,
     goal: string,
-    constraints: string[],
-    context: EmotionalContext,
+    _constraints: string[],
+    _context: EmotionalContext,
   ): Promise<{
     targetState: EmotionalState;
     strategy: EmotionalRegulationStrategy;

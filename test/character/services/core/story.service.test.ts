@@ -28,8 +28,8 @@ describe('StoryService', () => {
   let storyPlanRepository: jest.Mocked<Repository<StoryPlan>>;
   let storyMilestoneRepository: jest.Mocked<Repository<StoryMilestone>>;
   let characterService: jest.Mocked<CharacterService>;
-  let dialogService: jest.Mocked<DialogService>;
-  let logService: MockLogService;
+  let _dialogService: jest.Mocked<DialogService>;
+  let _logService: MockLogService;
 
   const mockStoryEvent: StoryEvent = {
     id: 1,
@@ -169,8 +169,12 @@ describe('StoryService', () => {
     storyPlanRepository = module.get(getRepositoryToken(StoryPlan));
     storyMilestoneRepository = module.get(getRepositoryToken(StoryMilestone));
     characterService = module.get(CharacterService);
-    dialogService = module.get(DialogService);
-    logService = module.get(LogService);
+    _dialogService = module.get(DialogService);
+    _logService = module.get(LogService);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
   describe('createStoryEvent', () => {
@@ -181,7 +185,7 @@ describe('StoryService', () => {
         description: 'Test description',
       };
 
-      characterService.findOne.mockResolvedValue({} as any);
+      characterService.findOne.mockResolvedValue({} as Character);
       storyEventRepository.create.mockReturnValue(mockStoryEvent);
       storyEventRepository.save.mockResolvedValue(mockStoryEvent);
 
@@ -237,23 +241,23 @@ describe('StoryService', () => {
   describe('completeEvent', () => {
     it('should complete an event successfully', async () => {
       const completedEvent = { ...mockStoryEvent, status: EventStatus.COMPLETED };
-      storyEventRepository.findOneBy.mockResolvedValue(mockStoryEvent);
+      storyEventRepository.findOne.mockResolvedValue(mockStoryEvent);
       storyEventRepository.save.mockResolvedValue(completedEvent);
 
       const result = await service.completeEvent(1);
 
-      expect(storyEventRepository.findOneBy).toHaveBeenCalledWith({ id: 1 });
+      expect(storyEventRepository.findOne).toHaveBeenCalledWith({ where: { id: 1 } });
       expect(storyEventRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({
           status: EventStatus.COMPLETED,
-          completedAt: expect.any(Date),
+          completedAt: expect.any(Date) as Date,
         }),
       );
       expect(result.status).toBe(EventStatus.COMPLETED);
     });
 
     it('should throw error if event not found', async () => {
-      storyEventRepository.findOneBy.mockResolvedValue(null);
+      storyEventRepository.findOne.mockResolvedValue(null);
 
       await expect(service.completeEvent(1)).rejects.toThrow('Событие с ID 1 не найдено');
     });
@@ -262,12 +266,12 @@ describe('StoryService', () => {
   describe('skipEvent', () => {
     it('should skip an event successfully', async () => {
       const skippedEvent = { ...mockStoryEvent, status: EventStatus.SKIPPED };
-      storyEventRepository.findOneBy.mockResolvedValue(mockStoryEvent);
+      storyEventRepository.findOne.mockResolvedValue(mockStoryEvent);
       storyEventRepository.save.mockResolvedValue(skippedEvent);
 
       const result = await service.skipEvent(1);
 
-      expect(storyEventRepository.findOneBy).toHaveBeenCalledWith({ id: 1 });
+      expect(storyEventRepository.findOne).toHaveBeenCalledWith({ where: { id: 1 } });
       expect(storyEventRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({
           status: EventStatus.SKIPPED,
@@ -280,12 +284,12 @@ describe('StoryService', () => {
   describe('updateEventStatus', () => {
     it('should update event status successfully', async () => {
       const updatedEvent = { ...mockStoryEvent, status: EventStatus.TRIGGERED };
-      storyEventRepository.findOneBy.mockResolvedValue(mockStoryEvent);
+      storyEventRepository.findOne.mockResolvedValue(mockStoryEvent);
       storyEventRepository.save.mockResolvedValue(updatedEvent);
 
       const result = await service.updateEventStatus(1, EventStatus.TRIGGERED);
 
-      expect(storyEventRepository.findOneBy).toHaveBeenCalledWith({ id: 1 });
+      expect(storyEventRepository.findOne).toHaveBeenCalledWith({ where: { id: 1 } });
       expect(storyEventRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({
           status: EventStatus.TRIGGERED,
@@ -297,7 +301,7 @@ describe('StoryService', () => {
 
   describe('deleteEvent', () => {
     it('should delete an event successfully', async () => {
-      storyEventRepository.delete.mockResolvedValue({ affected: 1 } as any);
+      storyEventRepository.delete.mockResolvedValue({ affected: 1, raw: {} });
 
       await service.deleteEvent(1);
 
@@ -357,7 +361,7 @@ describe('StoryService', () => {
         description: 'Test plan description',
       };
 
-      characterService.findOne.mockResolvedValue({} as any);
+      characterService.findOne.mockResolvedValue({} as Character);
       storyPlanRepository.create.mockReturnValue(mockStoryPlan);
       storyPlanRepository.save.mockResolvedValue(mockStoryPlan);
       storyMilestoneRepository.create.mockReturnValue(mockStoryMilestone);
@@ -369,8 +373,8 @@ describe('StoryService', () => {
       expect(storyPlanRepository.create).toHaveBeenCalledWith({
         ...planData,
         characterId: 1,
-        startDate: expect.any(Date),
-        endDate: expect.any(Date),
+        startDate: expect.any(Date) as Date,
+        endDate: expect.any(Date) as Date,
       });
       expect(storyPlanRepository.save).toHaveBeenCalledWith(mockStoryPlan);
       expect(result).toEqual(mockStoryPlan);
@@ -449,7 +453,7 @@ describe('StoryService', () => {
       const triggeredMilestone = { ...mockStoryMilestone, status: MilestoneStatus.IN_PROGRESS };
       storyMilestoneRepository.findOne.mockResolvedValue(mockStoryMilestone);
       storyMilestoneRepository.save.mockResolvedValue(triggeredMilestone);
-      characterService.findOne.mockResolvedValue({} as any);
+      characterService.findOne.mockResolvedValue({} as Character);
 
       const result = await service.triggerMilestone(1);
 

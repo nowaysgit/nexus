@@ -300,7 +300,7 @@ export class CacheService implements OnModuleDestroy {
   /**
    * Проверяет, истек ли срок действия элемента
    */
-  private isExpired(item: CacheItem<any>): boolean {
+  private isExpired(item: CacheItem<unknown>): boolean {
     return Date.now() > item.expiresAt;
   }
 

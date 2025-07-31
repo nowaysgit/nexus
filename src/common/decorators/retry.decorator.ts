@@ -16,11 +16,11 @@ export interface RetryOptions {
   /** Максимальная задержка в миллисекундах */
   maxDelay?: number;
   /** Типы ошибок, для которых нужно выполнять повторные попытки */
-  retryableErrors?: Array<new (...args: any[]) => Error>;
+  retryableErrors?: Array<new (...args: unknown[]) => Error>;
   /** Функция условия для повторной попытки */
-  retryCondition?: (error: any) => boolean;
+  retryCondition?: (error: Error) => boolean;
   /** Callback-функция, вызываемая при повторной попытке */
-  onRetry?: (error: any, attempt: number) => void;
+  onRetry?: (error: Error, attempt: number) => void;
 }
 
 /**
@@ -56,25 +56,26 @@ export function Retry(options: RetryOptions = {}) {
         try {
           return (await originalMethod.apply(this, args)) as unknown;
         } catch (error) {
-          const errorMessage = getErrorMessage(error);
-          const errorStack = error instanceof Error ? error.stack : undefined;
+          const errorInstance = error instanceof Error ? error : new Error(String(error));
+          const errorMessage = getErrorMessage(errorInstance);
+          const errorStack = errorInstance.stack;
 
           // Проверяем, нужно ли повторить попытку для данного типа ошибки
           let shouldRetry = true;
 
           // Проверка по типу ошибки
           if (retryableErrors && retryableErrors.length > 0) {
-            shouldRetry = retryableErrors.some(errorType => error instanceof errorType);
+            shouldRetry = retryableErrors.some(errorType => errorInstance instanceof errorType);
           }
 
           // Дополнительная проверка по условию
           if (shouldRetry && retryCondition) {
-            shouldRetry = retryCondition(error);
+            shouldRetry = retryCondition(errorInstance);
           }
 
           if (!shouldRetry || retries >= maxRetries) {
             // Если это последняя попытка или ошибка не подлежит повтору, выбрасываем её
-            throw error;
+            throw errorInstance;
           }
 
           retries++;
@@ -106,7 +107,7 @@ export function Retry(options: RetryOptions = {}) {
           // Вызываем callback-функцию, если она предоставлена
           if (onRetry) {
             try {
-              onRetry(error, retries);
+              onRetry(errorInstance, retries);
             } catch (callbackError) {
               // Игнорируем ошибки в callback, чтобы не прерывать процесс повторных попыток
               if (logger) {

@@ -1,5 +1,5 @@
 import { Sanitize, TrimAndSanitize } from '../../../src/common/decorators/sanitize.decorator';
-import { plainToClass, Transform } from 'class-transformer';
+import { plainToClass } from 'class-transformer';
 
 describe('Sanitize Decorators', () => {
   describe('Sanitize decorator', () => {
@@ -199,7 +199,7 @@ describe('Sanitize Decorators', () => {
     }
 
     it('should handle strings with only special characters', () => {
-      const input = { field: '<>&"\'\`\\' };
+      const input = { field: '<>&"\'`\\' };
       const result = plainToClass(EdgeCaseClass, input);
 
       expect(result.field).toBe('&lt;&gt;&&quot;&#39;&#96;\\\\');

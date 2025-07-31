@@ -1,6 +1,7 @@
 /**
  * Конфигурация для тестирования DialogService с автоматическим добавлением мока UserService
  */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-base-to-string -- Dialog test configuration requires dynamic module and provider introspection */
 import { mockUserService } from '../mocks/user-service.mock';
 import { TestConfigType } from '../index';
 import { Provider, Type, DynamicModule } from '@nestjs/common';

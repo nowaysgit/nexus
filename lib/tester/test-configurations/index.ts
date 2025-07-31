@@ -13,12 +13,12 @@ import { TechniqueExecutorService } from '../../../src/character/services/techni
  * Центральный экспорт тестовых конфигураций и утилит
  */
 
-import { Provider, Type, DynamicModule } from '@nestjs/common';
+import { Type, DynamicModule, Provider } from '@nestjs/common';
 import {
   getDialogTestConfig,
   addMockUserServiceToProviders,
   containsDialogModule,
-  addDialogServiceMocks
+  addDialogServiceMocks,
 } from './dialog-test.configuration';
 import { mockUserService } from '../mocks/user-service.mock';
 import {
@@ -99,7 +99,7 @@ export function requiredMocksAdder(
   }
 
   // Всегда добавляем TelegrafTokenProvider — упрощает настройку тестов и устраняет ошибки
-    updatedProviders = addTelegrafTokenToProviders(updatedProviders);
+  updatedProviders = addTelegrafTokenToProviders(updatedProviders);
 
   // Если в импортах есть TelegrafModule, добавляем TelegrafTokenProvider
   if (containsTelegrafModule(imports)) {
@@ -124,7 +124,7 @@ export function requiredMocksAdder(
   );
 
   if (!hasConfigModule) {
-  updatedProviders = addConfigServiceProvider(updatedProviders);
+    updatedProviders = addConfigServiceProvider(updatedProviders);
   }
 
   // Добавляем CacheService, если он ещё не добавлен
@@ -227,7 +227,12 @@ export function requiredMocksAdder(
     ({ TelegramUpdate } = require('../../../src/telegram/telegram.update'));
   } catch {}
 
-  const handlerClasses: any[] = [MessageHandler, CommandHandler, CallbackHandler, TelegramUpdate].filter(Boolean);
+  const handlerClasses: any[] = [
+    MessageHandler,
+    CommandHandler,
+    CallbackHandler,
+    TelegramUpdate,
+  ].filter(Boolean);
 
   handlerClasses.forEach(handlerClass => {
     if (!updatedProviders.some(p => p === handlerClass || (p as any)?.provide === handlerClass)) {
@@ -256,31 +261,31 @@ export function requiredMocksAdder(
         isPerformingAction: jest.fn().mockReturnValue(false),
         getCurrentAction: jest.fn().mockReturnValue(null),
         interruptAction: jest.fn().mockResolvedValue(undefined),
-        canExecute: jest.fn().mockImplementation(async (context) => {
+        canExecute: jest.fn().mockImplementation(async context => {
           // Имитируем логику проверки возможности выполнения действия
           const resourceCost = context.action.metadata?.resourceCost || 25;
           const actionType = context.action.type;
-          
+
           // Если стоимость отрицательная или нулевая (восстанавливающие действия)
           if (resourceCost <= 0) {
             return true;
           }
-          
+
           // Упрощенная логика для тестов - для действий WORK с высокой стоимостью возвращаем false
           let currentEnergy = 80; // дефолтное значение
-          
+
           // Специальная логика для тестирования - если WORK и resourceCost >= 50, считаем что энергии недостаточно
           if (actionType === 'WORK' && resourceCost >= 50) {
             currentEnergy = 20; // Имитируем низкую энергию
           }
-          
+
           const minEnergyRequired = Math.max(resourceCost, 10);
-          
+
           // Проверяем достаточность энергии
           if (currentEnergy < minEnergyRequired) {
             return false;
           }
-          
+
           // Специальные проверки для конкретных типов действий
           switch (actionType) {
             case 'WORK':
@@ -308,23 +313,34 @@ export function requiredMocksAdder(
           success: true,
           message: 'Триггер обработан успешно',
         }),
-        getSupportedActionTypes: jest.fn().mockReturnValue(['SEND_MESSAGE', 'WORK', 'REST', 'EXPRESS_EMOTION', 'SHARE_EMOTION', 'EMOTIONAL_RESPONSE']),
+        getSupportedActionTypes: jest
+          .fn()
+          .mockReturnValue([
+            'SEND_MESSAGE',
+            'WORK',
+            'REST',
+            'EXPRESS_EMOTION',
+            'SHARE_EMOTION',
+            'EMOTIONAL_RESPONSE',
+          ]),
         interrupt: jest.fn().mockResolvedValue(undefined),
-        createActionWithResources: jest.fn().mockImplementation((characterId, actionType, options = {}) => ({
-          type: actionType,
-          status: 'pending',
-          startTime: new Date(),
-          duration: 300,
-          description: options.description || `Действие типа ${actionType}`,
-          metadata: {
-            id: `action_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            characterId,
-            resourceCost: options.resourceCost || 25,
-            successProbability: options.successProbability || 75,
-            potentialReward: options.potentialReward || { general_satisfaction: 15 },
-            timestamp: new Date(),
-          },
-        })),
+        createActionWithResources: jest
+          .fn()
+          .mockImplementation((characterId, actionType, options = {}) => ({
+            type: actionType,
+            status: 'pending',
+            startTime: new Date(),
+            duration: 300,
+            description: options.description || `Действие типа ${actionType}`,
+            metadata: {
+              id: `action_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              characterId,
+              resourceCost: options.resourceCost || 25,
+              successProbability: options.successProbability || 75,
+              potentialReward: options.potentialReward || { general_satisfaction: 15 },
+              timestamp: new Date(),
+            },
+          })),
       },
     });
   }
@@ -424,19 +440,19 @@ export function requiredMocksAdder(
     updatedProviders.push({
       provide: ActionResourceService,
       useValue: {
-        checkResourceAvailability: jest.fn().mockImplementation(async (context) => {
+        checkResourceAvailability: jest.fn().mockImplementation(async context => {
           // Имитируем логику проверки ресурсов на основе реального ActionResourceService
           const resourceCost = context.action.metadata?.resourceCost || 25;
           const actionType = context.action.type;
-          
+
           // Если стоимость отрицательная или нулевая (восстанавливающие действия)
           if (resourceCost <= 0) {
             return true;
           }
-          
+
           // Получаем реальный уровень энергии из контекста или используем дефолтное значение
           let currentEnergy = 80; // дефолтное значение
-          
+
           // Пытаемся получить реальные данные о потребностях из контекста
           if (context.character && context.character.id) {
             try {
@@ -454,14 +470,14 @@ export function requiredMocksAdder(
               currentEnergy = 80;
             }
           }
-          
+
           const minEnergyRequired = Math.max(resourceCost, 10);
-          
+
           // Проверяем достаточность энергии
           if (currentEnergy < minEnergyRequired) {
             return false;
           }
-          
+
           // Специальные проверки для конкретных типов действий
           switch (actionType) {
             case 'WORK':
@@ -482,23 +498,25 @@ export function requiredMocksAdder(
         }),
         executeActionWithResources: jest.fn().mockResolvedValue({
           success: true,
-          message: 'Действие выполнено успешно'
+          message: 'Действие выполнено успешно',
         }),
-        createActionWithResources: jest.fn().mockImplementation((characterId, actionType, options = {}) => ({
-          type: actionType,
-          status: 'pending',
-          startTime: new Date(),
-          duration: 300,
-          description: options.description || `Действие типа ${actionType}`,
-          metadata: {
-            id: `action_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            characterId,
-            resourceCost: options.resourceCost || 25,
-            successProbability: options.successProbability || 75,
-            potentialReward: options.potentialReward || { general_satisfaction: 15 },
-            timestamp: new Date(),
-          },
-        })),
+        createActionWithResources: jest
+          .fn()
+          .mockImplementation((characterId, actionType, options = {}) => ({
+            type: actionType,
+            status: 'pending',
+            startTime: new Date(),
+            duration: 300,
+            description: options.description || `Действие типа ${actionType}`,
+            metadata: {
+              id: `action_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              characterId,
+              resourceCost: options.resourceCost || 25,
+              successProbability: options.successProbability || 75,
+              potentialReward: options.potentialReward || { general_satisfaction: 15 },
+              timestamp: new Date(),
+            },
+          })),
       },
     });
   }
@@ -511,9 +529,7 @@ export function requiredMocksAdder(
   ];
 
   for (const { service, name } of techniqueServices) {
-    const hasService = updatedProviders.some(
-      (p: any) => p === service || p?.provide === service,
-    );
+    const hasService = updatedProviders.some((p: any) => p === service || p?.provide === service);
 
     if (!hasService) {
       updatedProviders.push({
@@ -577,28 +593,37 @@ export function prepareImportsForTesting(
   // Заменяем TypeOrmModule на MockTypeOrmModule только для unit тестов, НЕ для интеграционных
   if (configType !== TestConfigType.INTEGRATION) {
     console.log('[prepareImportsForTesting] Обрабатываем импорты для configType:', configType);
-    console.log('[prepareImportsForTesting] Импорты до обработки:', updatedImports.map(imp => (imp as any)?.module?.name || (imp as any)?.name || imp));
-    
+    console.log(
+      '[prepareImportsForTesting] Импорты до обработки:',
+      updatedImports.map(imp => (imp as any)?.module?.name || (imp as any)?.name || imp),
+    );
+
     updatedImports = updatedImports.map(mod => {
-      console.log('[prepareImportsForTesting] Обрабатываем модуль:', (mod as any)?.module?.name || (mod as any)?.name || mod);
+      console.log(
+        '[prepareImportsForTesting] Обрабатываем модуль:',
+        (mod as any)?.module?.name || (mod as any)?.name || mod,
+      );
       console.log('[prepareImportsForTesting] Модуль полностью:', mod);
       console.log('[prepareImportsForTesting] Тип модуля:', typeof mod);
-      console.log('[prepareImportsForTesting] Это MockTypeOrmModule?:', (mod as any)?.module?.name === 'MockTypeOrmModule');
-      
+      console.log(
+        '[prepareImportsForTesting] Это MockTypeOrmModule?:',
+        (mod as any)?.module?.name === 'MockTypeOrmModule',
+      );
+
       // Заменяем TypeOrmModule.forFeature() на MockTypeOrmModule.forFeature()
       if ((mod as any)?.module === TypeOrmModule && (mod as any)?.providers?.length > 0) {
         const { MockTypeOrmModule } = require('../mocks/mock-typeorm.module');
-        
+
         // Если это forRoot - заменяем на MockTypeOrmModule.forRoot()
         if ((mod as any)?.global === true) {
           return MockTypeOrmModule.forRoot();
         }
-        
+
         // Иначе это forFeature - заменяем на MockTypeOrmModule.forFeature()
         // Извлекаем entities из провайдеров
         const entities = [];
         const providers = (mod as any).providers || [];
-        
+
         for (const provider of providers) {
           if (provider && provider.provide && typeof provider.provide === 'string') {
             const match = provider.provide.match(/^(.+)Repository$/);
@@ -613,28 +638,30 @@ export function prepareImportsForTesting(
             }
           }
         }
-        
+
         return MockTypeOrmModule.forFeature(entities);
       }
-      
+
       // Заменяем прямые ссылки на TypeOrmModule
       if (mod === TypeOrmModule) {
         const { MockTypeOrmModule } = require('../mocks/mock-typeorm.module');
         return MockTypeOrmModule.forRoot();
       }
-      
+
       return mod;
     });
 
     // Добавляем MockTypeOrmModule.forRoot() если его еще нет
-    const hasMockTypeOrm = updatedImports.some(imp =>
-      (imp as any)?.module?.name === 'MockTypeOrmModule' || 
-      (imp as any)?.name === 'MockTypeOrmModule'
+    const hasMockTypeOrm = updatedImports.some(
+      imp =>
+        (imp as any)?.module?.name === 'MockTypeOrmModule' ||
+        (imp as any)?.name === 'MockTypeOrmModule',
     );
 
-    if (!hasMockTypeOrm && !updatedImports.some(imp =>
-      (imp as any)?.module === TypeOrmModule || imp === TypeOrmModule
-    )) {
+    if (
+      !hasMockTypeOrm &&
+      !updatedImports.some(imp => (imp as any)?.module === TypeOrmModule || imp === TypeOrmModule)
+    ) {
       const { MockTypeOrmModule } = require('../mocks/mock-typeorm.module');
       updatedImports.push(MockTypeOrmModule.forRoot());
     }
@@ -645,33 +672,39 @@ export function prepareImportsForTesting(
     updatedImports.push(
       ConfigModule.forRoot({
         isGlobal: true,
-        load: [() => ({
-          security: {
-            apiKey: 'test-api-key',
-          },
-          telegram: {
-            token: 'test-telegram-token',
-          },
-          logging: {
-            rollbar: {
-              enabled: false,
-              accessToken: '',
-              environment: 'test',
-              captureUncaught: false,
-              captureUnhandledRejections: false,
+        load: [
+          () => ({
+            security: {
+              apiKey: 'test-api-key',
             },
-          },
-          llm: {
-            providers: [],
-          },
-        })],
+            telegram: {
+              token: 'test-telegram-token',
+            },
+            logging: {
+              rollbar: {
+                enabled: false,
+                accessToken: '',
+                environment: 'test',
+                captureUncaught: false,
+                captureUnhandledRejections: false,
+              },
+            },
+            llm: {
+              providers: [],
+            },
+          }),
+        ],
       }) as unknown as DynamicModule,
     );
   }
 
   // Ensure TelegrafTokenMockModule is imported to предоставлять TELEGRAF_TOKEN глобально
   const { TelegrafTokenMockModule } = require('../mocks/telegraf-token.module');
-  if (!updatedImports.some(mod => (mod as any)?.module === TelegrafTokenMockModule || mod === TelegrafTokenMockModule)) {
+  if (
+    !updatedImports.some(
+      mod => (mod as any)?.module === TelegrafTokenMockModule || mod === TelegrafTokenMockModule,
+    )
+  ) {
     updatedImports.push(TelegrafTokenMockModule);
   }
 
@@ -686,39 +719,46 @@ export function prepareImportsForTesting(
 
   // Для интеграционных тестов добавляем настоящий TypeOrmModule.forRoot() если его нет
   if (configType === TestConfigType.INTEGRATION) {
-    const hasTypeOrmModule = updatedImports.some(imp =>
-      (imp as any)?.module === TypeOrmModule || imp === TypeOrmModule
+    const hasTypeOrmModule = updatedImports.some(
+      imp => (imp as any)?.module === TypeOrmModule || imp === TypeOrmModule,
     );
 
     if (!hasTypeOrmModule) {
       // Добавляем настоящий TypeOrmModule.forRoot() для интеграционных тестов
-      updatedImports.push(TypeOrmModule.forRoot({
-        type: 'postgres',
-        host: process.env.TEST_DB_HOST || 'localhost',
-        port: parseInt(process.env.TEST_DB_PORT || '5433', 10),
-        username: process.env.TEST_DB_USERNAME || 'test_user',
-        password: process.env.TEST_DB_PASSWORD || 'test_password',
-        database: process.env.TEST_DB_NAME || 'nexus_test',
-        synchronize: true,
-        dropSchema: true,
-        logging: false,
-        entities: ['src/**/*.entity{.ts,.js}'],
-        retryAttempts: 3,
-        retryDelay: 2000,
-        extra: {
-          max: 1,
-          min: 1,
-          connectionTimeoutMillis: 5000,
-          idleTimeoutMillis: 10000,
-          acquireTimeoutMillis: 5000,
-        },
-      }));
+      updatedImports.push(
+        TypeOrmModule.forRoot({
+          type: 'postgres',
+          host: process.env.TEST_DB_HOST || 'localhost',
+          port: parseInt(process.env.TEST_DB_PORT || '5433', 10),
+          username: process.env.TEST_DB_USERNAME || 'test_user',
+          password: process.env.TEST_DB_PASSWORD || 'test_password',
+          database: process.env.TEST_DB_NAME || 'nexus_test',
+          synchronize: true,
+          dropSchema: true,
+          logging: false,
+          entities: ['src/**/*.entity{.ts,.js}'],
+          retryAttempts: 3,
+          retryDelay: 2000,
+          extra: {
+            max: 1,
+            min: 1,
+            connectionTimeoutMillis: 5000,
+            idleTimeoutMillis: 10000,
+            acquireTimeoutMillis: 5000,
+          },
+        }),
+      );
     }
   }
 
   // Ensure MockDialogRepositoryModule imported to satisfy DialogRepository DI только для НЕ интеграционных тестов
-  if (configType !== TestConfigType.INTEGRATION && 
-      !updatedImports.some(mod => (mod as any)?.module === MockDialogRepositoryModule || mod === MockDialogRepositoryModule)) {
+  if (
+    configType !== TestConfigType.INTEGRATION &&
+    !updatedImports.some(
+      mod =>
+        (mod as any)?.module === MockDialogRepositoryModule || mod === MockDialogRepositoryModule,
+    )
+  ) {
     updatedImports.push(MockDialogRepositoryModule);
   }
 
@@ -780,7 +820,9 @@ export function addTelegrafTokenProvider(providers: any[] = []): any[] {
 
   // Добавляем ActionExecutorService, если его еще нет
   const hasActionExecutorService = updatedProviders.some(
-    (p: any) => p?.provide === ActionExecutorService || (p as any)?.constructor?.name === "ActionExecutorService",
+    (p: any) =>
+      p?.provide === ActionExecutorService ||
+      (p as any)?.constructor?.name === 'ActionExecutorService',
   );
 
   if (!hasActionExecutorService) {
@@ -833,7 +875,7 @@ export function addDataSourceProvider(providers: any[] = []): any[] {
         const { createTestDataSource } = require('../utils/data-source');
         const dataSource = await createTestDataSource();
         if (!dataSource.isInitialized) {
-        await dataSource.initialize();
+          await dataSource.initialize();
         }
         return dataSource;
       },

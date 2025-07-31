@@ -493,7 +493,7 @@ export class FixtureManager {
           .query(`TRUNCATE TABLE "${tableName}" RESTART IDENTITY CASCADE;`)
           .catch(() => {
             // Fallback к DELETE если TRUNCATE не работает
-            this.dataSource.query(`DELETE FROM "${tableName}";`);
+            void this.dataSource.query(`DELETE FROM "${tableName}";`);
           });
       }
 

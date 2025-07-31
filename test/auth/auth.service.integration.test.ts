@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { AuthService } from '../../src/auth/services/auth.service';
@@ -9,21 +10,46 @@ import { LoginDto } from '../../src/auth/dto/login.dto';
 import { RegisterDto } from '../../src/auth/dto/register.dto';
 import { LogService } from '../../src/logging/log.service';
 
+// Утилитарная функция для создания объекта User
+const createMockUser = (overrides: Partial<User> = {}): User => ({
+  id: 'user-1',
+  telegramId: '123456789',
+  username: 'testuser',
+  email: 'test@example.com',
+  password: 'hashed_password',
+  roles: ['user'],
+  firstName: 'Test',
+  lastName: 'User',
+  language: 'ru',
+  isAdmin: false,
+  isActive: true,
+  hasCompletedTest: false,
+  hasActivatedKey: false,
+  messagesCount: 0,
+  testCompletedAt: null,
+  preferences: {},
+  communicationStyle: {},
+  characters: [],
+  dialogs: [],
+  psychologicalTests: [],
+  accessKeys: [],
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  lastActivity: new Date(),
+  ...overrides,
+});
+
 describe('AuthService Integration Tests', () => {
   let authService: AuthService;
-  let mockUserRepository: {
-    findOne: jest.Mock;
-    save: jest.Mock;
-    create: jest.Mock;
-  };
+  let mockUserRepository: Partial<jest.Mocked<Repository<User>>>;
   let mockLogService: Partial<LogService>;
 
   beforeEach(async () => {
     // Создаем моки для репозитория пользователей
     mockUserRepository = {
       findOne: jest.fn(),
-      save: jest.fn(user => Promise.resolve(user)),
-      create: jest.fn(userData => userData),
+      save: jest.fn() as jest.MockedFunction<Repository<User>['save']>,
+      create: jest.fn() as jest.MockedFunction<Repository<User>['create']>,
     };
 
     mockLogService = {
@@ -74,25 +100,25 @@ describe('AuthService Integration Tests', () => {
     mockUserRepository.findOne.mockResolvedValue(null);
 
     // Мокаем bcrypt.hash
-    jest.spyOn(bcrypt, 'hash').mockImplementation(() => Promise.resolve('hashed_password'));
+    jest.spyOn(bcrypt, 'hash').mockResolvedValue('hashed_password' as never);
 
     // Настраиваем мок для создания пользователя
-    mockUserRepository.create.mockReturnValue({
-      id: 'user-1',
-      username: registerDto.username,
-      email: registerDto.email,
-      password: 'hashed_password',
-      roles: ['user'],
-    });
+    mockUserRepository.create.mockReturnValue(
+      createMockUser({
+        username: registerDto.username,
+        email: registerDto.email,
+        password: 'hashed_password',
+      }),
+    );
 
     // Настраиваем мок для сохранения пользователя
-    mockUserRepository.save.mockResolvedValue({
-      id: 'user-1',
-      username: registerDto.username,
-      email: registerDto.email,
-      password: 'hashed_password',
-      roles: ['user'],
-    });
+    mockUserRepository.save.mockResolvedValue(
+      createMockUser({
+        username: registerDto.username,
+        email: registerDto.email,
+        password: 'hashed_password',
+      }),
+    );
 
     const result = await authService.register(registerDto);
 
@@ -106,11 +132,12 @@ describe('AuthService Integration Tests', () => {
 
   it('должен выбросить ошибку при регистрации с существующим username', async () => {
     // Настраиваем мок для проверки существующего пользователя
-    mockUserRepository.findOne.mockResolvedValue({
-      id: 'user-1',
-      username: 'duplicateuser',
-      email: 'first@example.com',
-    });
+    mockUserRepository.findOne.mockResolvedValue(
+      createMockUser({
+        username: 'duplicateuser',
+        email: 'first@example.com',
+      }),
+    );
 
     // Пытаемся зарегистрировать пользователя с существующим username
     const duplicateUser: RegisterDto = {
@@ -127,11 +154,12 @@ describe('AuthService Integration Tests', () => {
 
   it('должен выбросить ошибку при регистрации с существующим email', async () => {
     // Настраиваем мок для проверки существующего пользователя
-    mockUserRepository.findOne.mockResolvedValue({
-      id: 'user-1',
-      username: 'firstuser',
-      email: 'duplicate@example.com',
-    });
+    mockUserRepository.findOne.mockResolvedValue(
+      createMockUser({
+        username: 'firstuser',
+        email: 'duplicate@example.com',
+      }),
+    );
 
     // Пытаемся зарегистрировать пользователя с существующим email
     const duplicateUser: RegisterDto = {
@@ -145,16 +173,16 @@ describe('AuthService Integration Tests', () => {
 
   it('должен успешно авторизовать пользователя по username', async () => {
     // Настраиваем мок для проверки пользователя
-    mockUserRepository.findOne.mockResolvedValue({
-      id: 'user-1',
-      username: 'loginuser',
-      email: 'login@example.com',
-      password: 'hashed_password',
-      roles: ['user'],
-    });
+    mockUserRepository.findOne.mockResolvedValue(
+      createMockUser({
+        username: 'loginuser',
+        email: 'login@example.com',
+        password: 'hashed_password',
+      }),
+    );
 
     // Мокаем bcrypt.compare для успешного сравнения
-    jest.spyOn(bcrypt, 'compare').mockImplementation(() => Promise.resolve(true));
+    jest.spyOn(bcrypt, 'compare').mockResolvedValue(true as never);
 
     // Пытаемся войти
     const loginDto: LoginDto = {
@@ -174,16 +202,16 @@ describe('AuthService Integration Tests', () => {
 
   it('должен успешно авторизовать пользователя по email', async () => {
     // Настраиваем мок для проверки пользователя по email
-    mockUserRepository.findOne.mockResolvedValue({
-      id: 'user-1',
-      username: 'emailuser',
-      email: 'email@example.com',
-      password: 'hashed_password',
-      roles: ['user'],
-    });
+    mockUserRepository.findOne.mockResolvedValue(
+      createMockUser({
+        username: 'emailuser',
+        email: 'email@example.com',
+        password: 'hashed_password',
+      }),
+    );
 
     // Мокаем bcrypt.compare для успешного сравнения
-    jest.spyOn(bcrypt, 'compare').mockImplementation(() => Promise.resolve(true));
+    jest.spyOn(bcrypt, 'compare').mockResolvedValue(true as never);
 
     // Пытаемся войти по email
     const loginDto: LoginDto = {
@@ -201,15 +229,16 @@ describe('AuthService Integration Tests', () => {
 
   it('должен выбросить ошибку при неверном пароле', async () => {
     // Настраиваем мок для проверки пользователя
-    mockUserRepository.findOne.mockResolvedValue({
-      id: 'user-1',
-      username: 'wrongpassuser',
-      email: 'wrongpass@example.com',
-      password: 'hashed_password',
-    });
+    mockUserRepository.findOne.mockResolvedValue(
+      createMockUser({
+        username: 'wrongpassuser',
+        email: 'wrongpass@example.com',
+        password: 'hashed_password',
+      }),
+    );
 
     // Мокаем bcrypt.compare для неверного пароля
-    jest.spyOn(bcrypt, 'compare').mockImplementation(() => Promise.resolve(false));
+    jest.spyOn(bcrypt, 'compare').mockResolvedValue(false as never);
 
     // Пытаемся войти с неверным паролем
     const loginDto: LoginDto = {
@@ -236,11 +265,12 @@ describe('AuthService Integration Tests', () => {
 
   it('должен валидировать пользователя по ID', async () => {
     // Настраиваем мок для поиска пользователя по ID
-    mockUserRepository.findOne.mockResolvedValue({
-      id: 'user-1',
-      username: 'validateuser',
-      email: 'validate@example.com',
-    });
+    mockUserRepository.findOne.mockResolvedValue(
+      createMockUser({
+        username: 'validateuser',
+        email: 'validate@example.com',
+      }),
+    );
 
     const validatedUser = await authService.validateUserById('user-1');
 

@@ -8,6 +8,7 @@ import { MessageService } from '../../../src/telegram/services/message.service';
 import { ActionExecutorService } from '../../../src/character/services/action/action-executor.service';
 import { CharacterBehaviorService } from '../../../src/character/services/behavior/character-behavior.service';
 import { CharacterManagementService } from '../../../src/character/services/core/character-management.service';
+import { Character } from '../../../src/character/entities/character.entity';
 import { CharacterService } from '../../../src/character/services/core/character.service';
 import { DialogService } from '../../../src/dialog/services/dialog.service';
 import { AccessControlService } from '../../../src/telegram/services/access-control.service';
@@ -16,7 +17,7 @@ import { Context } from '../../../src/telegram/interfaces/context.interface';
 
 describe('CommandHandler', () => {
   let handler: CommandHandler;
-  let mockLogService: jest.Mocked<LogService>;
+  let _mockLogService: jest.Mocked<LogService>;
   let mockConfigService: jest.Mocked<ConfigService>;
   let mockAccessControlService: jest.Mocked<AccessControlService>;
   let mockMessageService: jest.Mocked<MessageService>;
@@ -79,7 +80,7 @@ describe('CommandHandler', () => {
     }).compile();
 
     handler = module.get<CommandHandler>(CommandHandler);
-    mockLogService = module.get(LogService);
+    _mockLogService = module.get(LogService);
     mockConfigService = module.get(ConfigService);
     mockAccessControlService = module.get(AccessControlService);
     mockMessageService = module.get(MessageService);
@@ -136,11 +137,11 @@ describe('CommandHandler', () => {
 
   describe('handleCharacters', () => {
     it('should show characters list for user with characters', async () => {
-      const mockCharacters = [
-        { id: 1, name: 'Character 1' } as any,
-        { id: 2, name: 'Character 2' } as any,
+      const mockCharacters: Partial<Character>[] = [
+        { id: 1, name: 'Character 1' },
+        { id: 2, name: 'Character 2' },
       ];
-      mockCharacterService.findByUserId.mockResolvedValue(mockCharacters);
+      mockCharacterService.findByUserId.mockResolvedValue(mockCharacters as Character[]);
 
       await handler.handleCharacters(mockContext);
 
@@ -153,8 +154,8 @@ describe('CommandHandler', () => {
               [{ text: 'Character 1', callback_data: 'info_1' }],
               [{ text: 'Character 2', callback_data: 'info_2' }],
             ]),
-          }),
-        }),
+          }) as Record<string, unknown>,
+        }) as Record<string, unknown>,
       );
     });
 
@@ -168,8 +169,8 @@ describe('CommandHandler', () => {
         expect.objectContaining({
           reply_markup: expect.objectContaining({
             inline_keyboard: [[{ text: 'Создать персонажа', callback_data: 'create_character' }]],
-          }),
-        }),
+          }) as Record<string, unknown>,
+        }) as Record<string, unknown>,
       );
     });
 

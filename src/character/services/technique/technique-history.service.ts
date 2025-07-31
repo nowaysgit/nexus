@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between } from 'typeorm';
+import { Repository } from 'typeorm';
 import { BaseService } from '../../../common/base/base.service';
 import { LogService } from '../../../logging/log.service';
 import { TechniqueExecution } from '../../entities/manipulation-technique.entity';
@@ -30,7 +30,7 @@ export class TechniqueHistoryService extends BaseService {
     data: ITechniqueResult & {
       characterId: number;
       userId: number;
-      executionContext?: any;
+      executionContext?: Record<string, unknown>;
     },
   ): Promise<void> {
     return this.withErrorHandling('записи выполнения техники', async () => {
@@ -124,7 +124,7 @@ export class TechniqueHistoryService extends BaseService {
     };
   }> {
     return this.withErrorHandling('получения статистики техник', async () => {
-      const whereCondition: any = { characterId: parseInt(characterId) };
+      const whereCondition: Record<string, unknown> = { characterId: parseInt(characterId) };
       if (techniqueType) {
         whereCondition.techniqueType = techniqueType;
       }
@@ -193,7 +193,7 @@ export class TechniqueHistoryService extends BaseService {
   async getTechniqueRecommendations(
     characterId: number,
     userId: number,
-    context?: any,
+    _context?: Record<string, unknown>,
   ): Promise<{
     recommendedTechnique: ManipulativeTechniqueType;
     confidence: number;
@@ -300,7 +300,8 @@ export class TechniqueHistoryService extends BaseService {
 
     // Обновляем рейтинг восприимчивости
     if (result.techniqueType) {
-      profile.susceptibilityRatings = profile.susceptibilityRatings || {} as Record<ManipulativeTechniqueType, number>;
+      profile.susceptibilityRatings =
+        profile.susceptibilityRatings || ({} as Record<ManipulativeTechniqueType, number>);
       profile.susceptibilityRatings[result.techniqueType] = result.effectiveness || 0;
 
       // Обновляем историю эффективности

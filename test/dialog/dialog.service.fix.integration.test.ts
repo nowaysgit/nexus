@@ -65,7 +65,7 @@ const mockCharacterRepository = {
   count: jest.fn(),
 };
 
-createTestSuite('DialogService Integration Tests', () => {
+createTestSuite('DialogService Optimized Tests', () => {
   createTest(
     {
       name: 'должен быть определен',

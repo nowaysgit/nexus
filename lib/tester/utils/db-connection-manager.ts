@@ -43,7 +43,9 @@ export class DbConnectionManager {
     // Проверяем, есть ли уже такое соединение
     if (!connection || !connection.isInitialized) {
       if (DbConnectionManager.debug) {
-        console.log('[DbConnectionManager] Попытка зарегистрировать неинициализированное соединение');
+        console.log(
+          '[DbConnectionManager] Попытка зарегистрировать неинициализированное соединение',
+        );
       }
       return;
     }
@@ -262,10 +264,7 @@ export class DbConnectionManager {
           }
         }
       } catch (error) {
-        console.error(
-          `[DbConnectionManager] Ошибка при проверке соединения #${index + 1}:`,
-          error,
-        );
+        console.error(`[DbConnectionManager] Ошибка при проверке соединения #${index + 1}:`, error);
       }
     });
 
@@ -331,9 +330,7 @@ export class DbConnectionManager {
         }
 
         // Ждем перед следующей попыткой
-        await new Promise(resolve =>
-          setTimeout(resolve, DbConnectionManager.connectionRetryDelay),
-        );
+        await new Promise(resolve => setTimeout(resolve, DbConnectionManager.connectionRetryDelay));
       }
     }
 

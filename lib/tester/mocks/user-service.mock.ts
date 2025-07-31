@@ -37,7 +37,7 @@ export interface MockUserService {
 function createMockUser(id: string | number, telegramId?: string): MockUser {
   const userId = typeof id === 'string' ? id : id.toString();
   const tgId = telegramId || `telegram_${userId}`;
-  
+
   return {
     id: userId,
     telegramId: tgId,
@@ -48,7 +48,7 @@ function createMockUser(id: string | number, telegramId?: string): MockUser {
     language: 'ru',
     isAdmin: false,
     createdAt: new Date(),
-    updatedAt: new Date()
+    updatedAt: new Date(),
   };
 }
 
@@ -57,40 +57,40 @@ function createMockUser(id: string | number, telegramId?: string): MockUser {
  */
 export const mockUserService: MockUserService = {
   getUserIdByTelegramId: jest.fn().mockImplementation((telegramId: string) => {
-    // В тестовом окружении всегда возвращаем фиксированный числовой ID, 
+    // В тестовом окружении всегда возвращаем фиксированный числовой ID,
     // чтобы избежать проблем с преобразованием UUID в число
     return Promise.resolve(999); // Фиксированный числовой userId для тестов
   }),
-  
+
   getUserById: jest.fn().mockImplementation((id: string | number) => {
     return Promise.resolve(createMockUser(id) as User);
   }),
-  
+
   getUserByTelegramId: jest.fn().mockImplementation((telegramId: string) => {
     const match = /telegram_(\d+)/.exec(telegramId);
     const id = match && match[1] ? match[1] : '123';
-    
+
     return Promise.resolve(createMockUser(id, telegramId) as User);
   }),
-  
+
   createUser: jest.fn().mockImplementation((userData: Partial<User>) => {
     const id = userData.id || Math.floor(Math.random() * 1000) + 1;
-    
+
     return Promise.resolve({
       ...createMockUser(id),
-      ...userData
+      ...userData,
     } as User);
   }),
-  
+
   updateUser: jest.fn().mockImplementation((id: string | number, userData: Partial<User>) => {
     return Promise.resolve({
       ...createMockUser(id),
       ...userData,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     } as User);
   }),
-  
+
   deleteUser: jest.fn().mockImplementation((id: string | number) => {
     return Promise.resolve(true);
-  })
-}; 
+  }),
+};

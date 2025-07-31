@@ -40,7 +40,7 @@ describe('OpenAICoreService', () => {
         model: 'gpt-4',
         temperature: 0.7,
         maxTokens: 2048,
-        timeout: 30000,
+        timeout: 5000,
         retries: 3,
       }),
     };
@@ -111,7 +111,7 @@ describe('OpenAICoreService', () => {
         expect.objectContaining({
           model: 'gpt-4',
           hasApiKey: true,
-          timeout: 30000,
+          timeout: 5000,
           retries: 3,
         }),
       );
@@ -185,6 +185,7 @@ describe('OpenAICoreService', () => {
 
       // Мокаем enqueue чтобы он выполнил переданную функцию
       messageQueueService.enqueue.mockImplementation(async (context: any, handler: any) => {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call
         return await handler(context);
       });
 
@@ -262,14 +263,11 @@ describe('OpenAICoreService', () => {
 
       const result = await service.generateText(messages, { temperature: 0.5 });
 
-      expect(result).toEqual({
-        text: mockResponse,
-        requestInfo: expect.objectContaining({
-          requestId: expect.any(String),
-          fromCache: false,
-          executionTime: expect.any(Number),
-        }),
-      });
+      expect(result.text).toBe(mockResponse);
+      expect(result.requestInfo).toBeDefined();
+      expect(typeof result.requestInfo.requestId).toBe('string');
+      expect(result.requestInfo.fromCache).toBe(false);
+      expect(typeof result.requestInfo.executionTime).toBe('number');
     });
   });
 
@@ -288,14 +286,11 @@ describe('OpenAICoreService', () => {
 
       const result = await service.generateJSON(messages, { parseJson: true });
 
-      expect(result).toEqual({
-        data: mockJsonData,
-        requestInfo: expect.objectContaining({
-          requestId: expect.any(String),
-          fromCache: false,
-          executionTime: expect.any(Number),
-        }),
-      });
+      expect(result.data).toEqual(mockJsonData);
+      expect(result.requestInfo).toBeDefined();
+      expect(typeof result.requestInfo.requestId).toBe('string');
+      expect(result.requestInfo.fromCache).toBe(false);
+      expect(typeof result.requestInfo.executionTime).toBe('number');
     });
   });
 

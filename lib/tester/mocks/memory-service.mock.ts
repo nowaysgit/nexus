@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { MemoryType } from '../../../src/character/interfaces/memory.interfaces';
-import { CharacterMemory, MemoryImportance, MemoryImportanceLevel } from '../../../src/character/entities/character-memory.entity';
+import {
+  CharacterMemory,
+  MemoryImportance,
+  MemoryImportanceLevel,
+} from '../../../src/character/entities/character-memory.entity';
 
 /**
  * Интерфейс для создания памяти о сообщении
@@ -59,7 +63,7 @@ export class MockMemoryService {
       recallCount: 0,
       summary: null,
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     } as CharacterMemory;
   }
 
@@ -90,7 +94,10 @@ export class MockMemoryService {
     importance: number = 5,
     metadata: Record<string, unknown> = {},
   ): Promise<CharacterMemory> {
-    const normalizedImportance = Math.min(Math.max(Math.round(importance), 1), 10) as MemoryImportance;
+    const normalizedImportance = Math.min(
+      Math.max(Math.round(importance), 1),
+      10,
+    ) as MemoryImportance;
     return this.createMemory(
       characterId,
       content,
@@ -106,7 +113,7 @@ export class MockMemoryService {
   async createMessageMemory(params: CreateMessageMemoryParams): Promise<CharacterMemory> {
     const { characterId, userId, messageText, importance } = params;
     const memoryImportance = importance
-      ? Math.min(Math.max(Math.round(importance), 1), 10) as MemoryImportance
+      ? (Math.min(Math.max(Math.round(importance), 1), 10) as MemoryImportance)
       : MemoryImportanceLevel.LOW;
 
     const content = params.isFromCharacter
@@ -134,47 +141,54 @@ export class MockMemoryService {
     limit: number = 10,
     type?: MemoryType,
   ): Promise<CharacterMemory[]> {
-    return Array(limit).fill(null).map((_, index) => ({
-      id: index + 1,
-      characterId,
-      character: null,
-      content: `Тестовое воспоминание ${index + 1}`,
-      type: type || MemoryType.EVENT,
-      importance: MemoryImportanceLevel.AVERAGE,
-      metadata: {},
-      memoryDate: new Date(Date.now() - index * 3600000), // Каждое воспоминание на час раньше предыдущего
-      isActive: true,
-      lastRecalled: null,
-      recallCount: 0,
-      summary: null,
-      createdAt: new Date(Date.now() - index * 3600000),
-      updatedAt: new Date(Date.now() - index * 3600000)
-    }) as unknown as CharacterMemory);
+    return Array(limit)
+      .fill(null)
+      .map(
+        (_, index) =>
+          ({
+            id: index + 1,
+            characterId,
+            character: null,
+            content: `Тестовое воспоминание ${index + 1}`,
+            type: type || MemoryType.EVENT,
+            importance: MemoryImportanceLevel.AVERAGE,
+            metadata: {},
+            memoryDate: new Date(Date.now() - index * 3600000), // Каждое воспоминание на час раньше предыдущего
+            isActive: true,
+            lastRecalled: null,
+            recallCount: 0,
+            summary: null,
+            createdAt: new Date(Date.now() - index * 3600000),
+            updatedAt: new Date(Date.now() - index * 3600000),
+          }) as unknown as CharacterMemory,
+      );
   }
 
   /**
    * Получение важных воспоминаний персонажа
    */
-  async getImportantMemories(
-    characterId: number,
-    limit: number = 10,
-  ): Promise<CharacterMemory[]> {
-    return Array(limit).fill(null).map((_, index) => ({
-      id: index + 1,
-      characterId,
-      character: null,
-      content: `Важное воспоминание ${index + 1}`,
-      type: MemoryType.EVENT,
-      importance: MemoryImportanceLevel.HIGH,
-      metadata: {},
-      memoryDate: new Date(Date.now() - index * 3600000),
-      isActive: true,
-      lastRecalled: null,
-      recallCount: 0,
-      summary: null,
-      createdAt: new Date(Date.now() - index * 3600000),
-      updatedAt: new Date(Date.now() - index * 3600000)
-    }) as unknown as CharacterMemory);
+  async getImportantMemories(characterId: number, limit: number = 10): Promise<CharacterMemory[]> {
+    return Array(limit)
+      .fill(null)
+      .map(
+        (_, index) =>
+          ({
+            id: index + 1,
+            characterId,
+            character: null,
+            content: `Важное воспоминание ${index + 1}`,
+            type: MemoryType.EVENT,
+            importance: MemoryImportanceLevel.HIGH,
+            metadata: {},
+            memoryDate: new Date(Date.now() - index * 3600000),
+            isActive: true,
+            lastRecalled: null,
+            recallCount: 0,
+            summary: null,
+            createdAt: new Date(Date.now() - index * 3600000),
+            updatedAt: new Date(Date.now() - index * 3600000),
+          }) as unknown as CharacterMemory,
+      );
   }
 
   /**
@@ -185,31 +199,33 @@ export class MockMemoryService {
     keywords: string[],
     limit: number = 10,
   ): Promise<CharacterMemory[]> {
-    return Array(limit).fill(null).map((_, index) => ({
-      id: index + 1,
-      characterId,
-      character: null,
-      content: `Воспоминание с ключевыми словами: ${keywords.join(', ')}`,
-      type: MemoryType.EVENT,
-      importance: MemoryImportanceLevel.AVERAGE,
-      metadata: { keywords },
-      memoryDate: new Date(Date.now() - index * 3600000),
-      isActive: true,
-      lastRecalled: null,
-      recallCount: 0,
-      summary: null,
-      createdAt: new Date(Date.now() - index * 3600000),
-      updatedAt: new Date(Date.now() - index * 3600000)
-    }) as unknown as CharacterMemory);
+    return Array(limit)
+      .fill(null)
+      .map(
+        (_, index) =>
+          ({
+            id: index + 1,
+            characterId,
+            character: null,
+            content: `Воспоминание с ключевыми словами: ${keywords.join(', ')}`,
+            type: MemoryType.EVENT,
+            importance: MemoryImportanceLevel.AVERAGE,
+            metadata: { keywords },
+            memoryDate: new Date(Date.now() - index * 3600000),
+            isActive: true,
+            lastRecalled: null,
+            recallCount: 0,
+            summary: null,
+            createdAt: new Date(Date.now() - index * 3600000),
+            updatedAt: new Date(Date.now() - index * 3600000),
+          }) as unknown as CharacterMemory,
+      );
   }
 
   /**
    * Ограничение количества воспоминаний
    */
-  async limitMemoriesCount(
-    characterId: number,
-    maxCount: number = 100,
-  ): Promise<void> {
+  async limitMemoriesCount(characterId: number, maxCount: number = 100): Promise<void> {
     // Мок-реализация, ничего не делает
   }
 
@@ -234,7 +250,7 @@ export class MockMemoryService {
       recallCount: 0,
       summary: null,
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     } as unknown as CharacterMemory;
   }
 
@@ -256,7 +272,7 @@ export class MockMemoryService {
       recallCount: 1,
       summary: null,
       createdAt: new Date(Date.now() - 86400000),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     } as unknown as CharacterMemory;
   }
 }
@@ -266,5 +282,5 @@ export class MockMemoryService {
  */
 export const mockMemoryService = {
   provide: 'MemoryService',
-  useClass: MockMemoryService
-}; 
+  useClass: MockMemoryService,
+};

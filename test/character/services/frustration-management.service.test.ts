@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call -- Файл содержит множество мок объектов и приватных свойств для тестирования */
 import { createTestSuite, createTest } from '../../../lib/tester';
 import {
   FrustrationManagementService,

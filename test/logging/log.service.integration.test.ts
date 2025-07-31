@@ -7,7 +7,7 @@ import { MockLogService } from '../../lib/tester/mocks/log.service.mock';
 import { MockRollbarService } from '../../lib/tester/mocks/rollbar.service.mock';
 
 // Вспомогательная функция для ожидания выполнения асинхронных операций
-const flushPromises = () => new Promise(resolve => setTimeout(resolve, 50));
+const flushPromises = () => Promise.resolve();
 
 createTestSuite('LogService', () => {
   // Создаем экземпляры моков для каждого теста
@@ -75,7 +75,7 @@ createTestSuite('LogService', () => {
       name: 'should log info message',
       configType: TestConfigType.BASIC,
       providers: getProviders(),
-      timeout: 5000, // Увеличиваем таймаут для надежности
+      timeout: 1000, // Оптимизировано для производительности
     },
     async context => {
       const logService = context.get<MockLogService>(LogService);
@@ -147,7 +147,7 @@ createTestSuite('LogService', () => {
       name: 'should log error with Error object',
       configType: TestConfigType.BASIC,
       providers: getProviders(),
-      timeout: 5000, // Увеличиваем таймаут для надежности
+      timeout: 1000, // Оптимизировано для производительности
     },
     async context => {
       const logService = context.get<MockLogService>(LogService);
@@ -186,7 +186,7 @@ createTestSuite('LogService', () => {
     {
       name: 'should handle critical errors',
       configType: TestConfigType.BASIC,
-      timeout: 5000, // Увеличиваем таймаут для надежности
+      timeout: 1000, // Оптимизировано для производительности
       providers: getProviders(),
     },
     async context => {
@@ -232,7 +232,7 @@ createTestSuite('LogService', () => {
     {
       name: 'should notify Rollbar on critical errors',
       configType: TestConfigType.BASIC,
-      timeout: 5000, // Увеличиваем таймаут для надежности
+      timeout: 1000, // Оптимизировано для производительности
       providers: getProviders(),
     },
     async context => {

@@ -89,7 +89,21 @@ export function createTest(
       requiresDatabase,
     };
 
-    (global as any).__currentTest = {
+    interface GlobalWithCurrentTest {
+      __currentTest?: {
+        params: {
+          name: string;
+          configType: string;
+          imports?: any[];
+          providers?: any[];
+          requiresDatabase?: boolean;
+        };
+        name: string;
+        configType: string;
+      };
+    }
+
+    (global as GlobalWithCurrentTest).__currentTest = {
       params: testParams,
       name,
       configType,
@@ -112,7 +126,10 @@ export function createTest(
       const module = await tester.init(finalConfigType, { imports, providers });
 
       // Оборачиваем get чтобы сохранить корректный this при деструктуризации
-      const boundGet = <T>(token: any, options?: any): T => module.get<T>(token, options);
+      const boundGet = <T>(
+        token: string | symbol | Type<T>,
+        options?: { strict?: boolean; each?: false },
+      ): T => module.get<T>(token, options);
       const context = Object.assign(Object.create(module), {
         get: boundGet,
       }) as TestingModule & { get: typeof boundGet };
@@ -125,7 +142,7 @@ export function createTest(
       await testFn(context);
     } finally {
       // Очищаем глобальную переменную после завершения теста
-      (global as any).__currentTest = null;
+      (global as GlobalWithCurrentTest).__currentTest = null;
     }
   };
 

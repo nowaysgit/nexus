@@ -13,8 +13,8 @@ describe('MonitoringService Integration Tests', () => {
   beforeEach(async () => {
     // Создаем моки для зависимостей
     mockConfigService = {
-      get: jest.fn().mockImplementation((key: string, defaultValue: any) => {
-        const config = {
+      get: jest.fn().mockImplementation((key: string, defaultValue: unknown) => {
+        const config: Record<string, unknown> = {
           'monitoring.enabled': true,
           'monitoring.detailedLogging': false,
           'monitoring.metrics.prometheus.enabled': false,

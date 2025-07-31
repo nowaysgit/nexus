@@ -1,29 +1,39 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-call -- Mock data source requires extensive any type usage for generic database operations */
 import { DataSource, EntityMetadata, Repository, QueryRunner } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
+
+interface EntityLike {
+  id?: string | number;
+  [key: string]: unknown;
+}
+
+interface SearchCriteria {
+  [key: string]: unknown;
+}
 
 /**
  * In-memory хранилище для мок DataSource
  */
 class MockDatabase {
-  private data = new Map<string, Map<string, any>>();
+  private data = new Map<string, Map<string, EntityLike>>();
   private sequences = new Map<string, number>();
 
-  getTable(tableName: string): Map<string, any> {
+  getTable(tableName: string): Map<string, EntityLike> {
     if (!this.data.has(tableName)) {
       this.data.set(tableName, new Map());
     }
     return this.data.get(tableName);
   }
 
-  insert(tableName: string, entity: any): any {
+  insert(tableName: string, entity: EntityLike): EntityLike {
     const table = this.getTable(tableName);
     const id = entity.id || this.generateId(tableName);
     const savedEntity = { ...entity, id };
-    table.set(id, savedEntity);
+    table.set(String(id), savedEntity);
     return savedEntity;
   }
 
-  findOne(tableName: string, criteria: any): any | null {
+  findOne(tableName: string, criteria: SearchCriteria | string | number): EntityLike | null {
     const table = this.getTable(tableName);
     console.log(`[MOCK FIND ONE] Table: ${tableName}, Criteria:`, criteria);
     console.log(`[MOCK FIND ONE] Table size: ${table.size}, All IDs:`, Array.from(table.keys()));
@@ -37,7 +47,7 @@ class MockDatabase {
 
     // Поиск по условиям
     if (criteria && typeof criteria === 'object') {
-      for (const [id, entity] of table.entries()) {
+      for (const [_id, entity] of table.entries()) {
         let matches = true;
         for (const [key, value] of Object.entries(criteria)) {
           if (entity[key] !== value) {
@@ -56,7 +66,7 @@ class MockDatabase {
     return null;
   }
 
-  find(tableName: string, criteria?: any): any[] {
+  find(tableName: string, criteria?: SearchCriteria): EntityLike[] {
     const table = this.getTable(tableName);
     const entities = Array.from(table.values());
     console.log(`[MOCK FIND] Table: ${tableName}, Criteria:`, criteria);
@@ -81,11 +91,11 @@ class MockDatabase {
     return filtered;
   }
 
-  remove(tableName: string, entity: any): any {
+  remove(tableName: string, entity: EntityLike): EntityLike {
     const table = this.getTable(tableName);
     const id = entity.id;
-    if (id && table.has(id)) {
-      table.delete(id);
+    if (id && table.has(String(id))) {
+      table.delete(String(id));
     }
     return entity;
   }
@@ -115,19 +125,27 @@ class MockDatabase {
 
 const mockDatabase = new MockDatabase();
 
+interface FindOptions {
+  where?: SearchCriteria;
+  relations?: string[];
+  select?: string[];
+}
+
 /**
  * Создает мок Repository с in-memory хранилищем
  */
-function createMockRepository(tableName: string): Repository<any> {
+function createMockRepository(tableName: string): Partial<Repository<EntityLike>> {
   const repository = {
-    save: async (entity: any): Promise<any> => {
+    save: async (entity: EntityLike | EntityLike[]): Promise<EntityLike | EntityLike[]> => {
       if (Array.isArray(entity)) {
         return entity.map(e => mockDatabase.insert(tableName, e));
       }
       return mockDatabase.insert(tableName, entity);
     },
 
-    findOne: async (options?: any): Promise<any> => {
+    findOne: async (
+      options?: FindOptions | SearchCriteria | string | number,
+    ): Promise<EntityLike | null> => {
       console.log(`[MOCK REPOSITORY ${tableName.toUpperCase()}] findOne called with:`, options);
       if (!options) return null;
 
@@ -138,8 +156,8 @@ function createMockRepository(tableName: string): Repository<any> {
         return result;
       }
 
-      if (options.where) {
-        const result = mockDatabase.findOne(tableName, options.where);
+      if (typeof options === 'object' && 'where' in options && options.where) {
+        const result = mockDatabase.findOne(tableName, options.where as SearchCriteria);
         console.log(
           `[MOCK REPOSITORY ${tableName.toUpperCase()}] findOne by where result:`,
           result,
@@ -147,7 +165,7 @@ function createMockRepository(tableName: string): Repository<any> {
         return result;
       }
 
-      const result = mockDatabase.findOne(tableName, options);
+      const result = mockDatabase.findOne(tableName, options as SearchCriteria);
       console.log(
         `[MOCK REPOSITORY ${tableName.toUpperCase()}] findOne by options result:`,
         result,
@@ -233,6 +251,7 @@ function createMockRepository(tableName: string): Repository<any> {
 
     query: async (): Promise<any[]> => [],
     metadata: {} as EntityMetadata,
+    target: tableName, // Add required target property
   } as unknown as Repository<any>;
 
   return repository;
@@ -304,7 +323,7 @@ function createMockQueryRunner(): QueryRunner {
     },
 
     // Добавляем недостающие свойства QueryRunner
-    connection: {} as any,
+    connection: {} as unknown as any, // Mock empty connection object
     isReleased: false,
     isTransactionActive: false,
     data: {},
@@ -393,7 +412,7 @@ export function createEnhancedMockDataSource(): DataSource {
 
     getRepository: (entity: any): Repository<any> => {
       const tableName = (typeof entity === 'function' ? entity.name : String(entity)).toLowerCase();
-      return createMockRepository(tableName);
+      return createMockRepository(tableName) as Repository<any>;
     },
 
     // Метод для очистки данных в тестах

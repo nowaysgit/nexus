@@ -252,7 +252,15 @@ export class Need {
   getRelatedNeeds(): CharacterNeedType[] {
     if (!this.relatedNeeds) return [];
     try {
-      return JSON.parse(this.relatedNeeds);
+      const parsed = JSON.parse(this.relatedNeeds) as unknown;
+      if (Array.isArray(parsed)) {
+        return parsed.filter(
+          (item): item is CharacterNeedType =>
+            typeof item === 'string' &&
+            Object.values(CharacterNeedType).includes(item as CharacterNeedType),
+        );
+      }
+      return [];
     } catch {
       return [];
     }

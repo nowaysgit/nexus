@@ -1,12 +1,12 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
+// Отключение ESLint правил для тестового файла из-за сложности мокирования CharacterMonitoringService
+// с множественными внутренними структурами данных и временными интервалами
+
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import {
-  CharacterMonitoringService,
-  CharacterMetrics,
-  MonitoringEvent,
-} from '../../../src/character/services/core/character-monitoring.service';
+import { CharacterMonitoringService } from '../../../src/character/services/core/character-monitoring.service';
 import { Character } from '../../../src/character/entities/character.entity';
 import { LogService } from '../../../src/logging/log.service';
 import { CharacterArchetype } from '../../../src/character/enums/character-archetype.enum';
@@ -375,9 +375,9 @@ describe('CharacterMonitoringService', () => {
   });
 
   describe('getCharacterMetrics', () => {
-    it('должен возвращать метрики персонажа', () => {
+    it('должен возвращать метрики персонажа', async () => {
       // Сначала создаем активность для персонажа
-      service.handleCharacterActivity({
+      await service.handleCharacterActivity({
         characterId: 1,
         activityType: 'test',
       });

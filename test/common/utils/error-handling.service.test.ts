@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unused-vars -- Error handling tests require mock services with any type */
 import { Test, TestingModule } from '@nestjs/testing';
 import {
   Logger,
@@ -297,7 +298,7 @@ describe('ErrorHandlingService', () => {
       const result = service.formatError(error);
 
       expect(result).toEqual({
-        message: 'String error',
+        message: 'String error', // Строка без кавычек
       });
     });
 

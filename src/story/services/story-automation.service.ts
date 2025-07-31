@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { BaseService } from '../../common/base/base.service';
@@ -11,7 +11,6 @@ import { Dialog } from '../../dialog/entities/dialog.entity';
 import { Message } from '../../dialog/entities/message.entity';
 import { Need } from '../../character/entities/need.entity';
 import {
-  StoryEvent,
   StoryEventType,
   IStoryEventTrigger,
   IStoryEventEffect,
@@ -63,7 +62,7 @@ export class StoryAutomationService extends BaseService {
         } catch (error) {
           this.logError(`Ошибка при обработке персонажа ${character.name}`, {
             characterId: character.id,
-            error: error.message,
+            error: error instanceof Error ? error.message : String(error),
           });
         }
       }
@@ -80,7 +79,7 @@ export class StoryAutomationService extends BaseService {
   async checkCharacterForEvents(character: Character): Promise<number> {
     return this.withErrorHandling(`проверки событий для персонажа ${character.name}`, async () => {
       // Получаем последний диалог и сообщения
-      const lastDialog = await this.getLastDialog(character.id);
+      const _lastDialog = await this.getLastDialog(character.id);
       const recentMessages = await this.getRecentMessages(character.id, 10);
       const timeSinceLastInteraction = await this.getTimeSinceLastInteraction(character.id);
 
@@ -217,7 +216,7 @@ export class StoryAutomationService extends BaseService {
             eventData.isRepeatable,
           );
           this.logInfo(`Создано стандартное событие: ${eventData.name}`);
-        } catch (error) {
+        } catch (_error) {
           this.logWarning(
             `Событие ${eventData.name} уже существует или произошла ошибка при создании`,
           );
@@ -340,7 +339,13 @@ export class StoryAutomationService extends BaseService {
     effects: IStoryEventEffect;
     isRepeatable: boolean;
   }> {
-    const events = [];
+    const events: Array<{
+      name: string;
+      description: string;
+      triggers: IStoryEventTrigger;
+      effects: IStoryEventEffect;
+      isRepeatable: boolean;
+    }> = [];
 
     switch (character.archetype) {
       case CharacterArchetype.COMPANION:

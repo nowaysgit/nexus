@@ -52,7 +52,7 @@ afterEach(async () => {
   const testDuration = Date.now() - (currentTest?.startTime || 0);
 
   // Логируем длительные тесты (более 5 секунд)
-  if (testDuration > 5000) {
+  if (testDuration > 1000) {
     console.log(
       `[SLOW TEST] Интеграционный тест #${currentTest?.index} выполнялся ${testDuration}ms`,
     );
@@ -68,7 +68,7 @@ afterEach(async () => {
       if (connection.isInitialized) {
         try {
           await connection.destroy();
-        } catch (error) {
+        } catch (error: unknown) {
           console.error('Ошибка при закрытии соединения:', error);
         }
       }

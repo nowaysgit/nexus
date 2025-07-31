@@ -973,9 +973,9 @@ export class SpecializationService extends BaseService {
    * Создает комбинацию специализаций на основе личности персонажа
    */
   createSpecializationCombination(character: Character): SpecializationCombination {
-    const personality = character.personality || {};
-    const traits = (personality as any).traits || [];
-    const hobbies = (personality as any).hobbies || [];
+    const personality = (character.personality as unknown as Record<string, unknown>) || {};
+    const traits = (personality.traits as string[]) || [];
+    const hobbies = (personality.hobbies as string[]) || [];
 
     // Определяем основной тип специализации
     let primaryType = SpecializationType.GENERALIST;
@@ -1302,7 +1302,7 @@ export class SpecializationService extends BaseService {
     };
 
     const compatibilityScore = compatibilityMatrix[primary]?.[secondary] || 0.1;
-    
+
     let level: 'excellent' | 'good' | 'fair' | 'poor';
     if (compatibilityScore >= 0.8) level = 'excellent';
     else if (compatibilityScore >= 0.6) level = 'good';
@@ -1326,7 +1326,9 @@ export class SpecializationService extends BaseService {
   /**
    * Создает оптимальную комбинацию специализаций для персонажа
    */
-  async createOptimalSpecializationCombination(characterId: number): Promise<SpecializationCombination> {
+  async createOptimalSpecializationCombination(
+    characterId: number,
+  ): Promise<SpecializationCombination> {
     return this.withErrorHandling('создании оптимальной комбинации специализаций', async () => {
       const character = await this.characterRepository.findOne({
         where: { id: characterId },
@@ -1338,13 +1340,13 @@ export class SpecializationService extends BaseService {
       }
 
       // Анализируем личность персонажа
-      const personality = character.personality || {};
-      const traits = (personality as any).traits || [];
-      const hobbies = (personality as any).hobbies || [];
+      const personality = (character.personality as unknown as Record<string, unknown>) || {};
+      const traits = (personality.traits as string[]) || [];
+      const hobbies = (personality.hobbies as string[]) || [];
 
       // Определяем наиболее подходящий первичный тип
       const primaryType = this.determineBestPrimaryType(traits, hobbies);
-      
+
       // Находим наиболее совместимый вторичный тип
       const secondaryType = this.findBestSecondaryType(primaryType, traits, hobbies);
 
@@ -1423,7 +1425,9 @@ export class SpecializationService extends BaseService {
 
       // Анализируем домены
       const underperformingDomains = Object.entries(dynamic.learningProgress)
-        .filter(([_, progress]) => progress.plateau && progress.currentLevel < CompetenceLevel.ADVANCED)
+        .filter(
+          ([_, progress]) => progress.plateau && progress.currentLevel < CompetenceLevel.ADVANCED,
+        )
         .map(([domain, _]) => domain as KnowledgeDomain);
 
       if (underperformingDomains.length > 0) {
@@ -1517,16 +1521,56 @@ export class SpecializationService extends BaseService {
     secondary: SpecializationType,
   ): KnowledgeDomain[] {
     const domainRecommendations: Record<SpecializationType, KnowledgeDomain[]> = {
-      [SpecializationType.CURIOUS]: [KnowledgeDomain.SCIENCE, KnowledgeDomain.PHILOSOPHY, KnowledgeDomain.CULTURE],
-      [SpecializationType.TECHNICAL]: [KnowledgeDomain.TECHNICAL, KnowledgeDomain.SCIENCE, KnowledgeDomain.GAMING],
-      [SpecializationType.CREATIVE]: [KnowledgeDomain.ARTS, KnowledgeDomain.DESIGN, KnowledgeDomain.MUSIC],
-      [SpecializationType.SOCIAL]: [KnowledgeDomain.RELATIONSHIPS, KnowledgeDomain.PSYCHOLOGY, KnowledgeDomain.SOCIAL_MEDIA],
-      [SpecializationType.PRACTICAL]: [KnowledgeDomain.BUSINESS, KnowledgeDomain.CAREER, KnowledgeDomain.DAILY_LIFE],
-      [SpecializationType.ACADEMIC]: [KnowledgeDomain.SCIENCE, KnowledgeDomain.HISTORY, KnowledgeDomain.LITERATURE],
-      [SpecializationType.BALANCED]: [KnowledgeDomain.GENERAL_CONVERSATION, KnowledgeDomain.CULTURE, KnowledgeDomain.EMOTIONS],
-      [SpecializationType.GENERALIST]: [KnowledgeDomain.GENERAL_CONVERSATION, KnowledgeDomain.DAILY_LIFE, KnowledgeDomain.HOBBIES],
-      [SpecializationType.SPECIALIST]: [KnowledgeDomain.TECHNICAL, KnowledgeDomain.SCIENCE, KnowledgeDomain.MEDICINE],
-      [SpecializationType.EXPERT]: [KnowledgeDomain.SCIENCE, KnowledgeDomain.MEDICINE, KnowledgeDomain.LAW],
+      [SpecializationType.CURIOUS]: [
+        KnowledgeDomain.SCIENCE,
+        KnowledgeDomain.PHILOSOPHY,
+        KnowledgeDomain.CULTURE,
+      ],
+      [SpecializationType.TECHNICAL]: [
+        KnowledgeDomain.TECHNICAL,
+        KnowledgeDomain.SCIENCE,
+        KnowledgeDomain.GAMING,
+      ],
+      [SpecializationType.CREATIVE]: [
+        KnowledgeDomain.ARTS,
+        KnowledgeDomain.DESIGN,
+        KnowledgeDomain.MUSIC,
+      ],
+      [SpecializationType.SOCIAL]: [
+        KnowledgeDomain.RELATIONSHIPS,
+        KnowledgeDomain.PSYCHOLOGY,
+        KnowledgeDomain.SOCIAL_MEDIA,
+      ],
+      [SpecializationType.PRACTICAL]: [
+        KnowledgeDomain.BUSINESS,
+        KnowledgeDomain.CAREER,
+        KnowledgeDomain.DAILY_LIFE,
+      ],
+      [SpecializationType.ACADEMIC]: [
+        KnowledgeDomain.SCIENCE,
+        KnowledgeDomain.HISTORY,
+        KnowledgeDomain.LITERATURE,
+      ],
+      [SpecializationType.BALANCED]: [
+        KnowledgeDomain.GENERAL_CONVERSATION,
+        KnowledgeDomain.CULTURE,
+        KnowledgeDomain.EMOTIONS,
+      ],
+      [SpecializationType.GENERALIST]: [
+        KnowledgeDomain.GENERAL_CONVERSATION,
+        KnowledgeDomain.DAILY_LIFE,
+        KnowledgeDomain.HOBBIES,
+      ],
+      [SpecializationType.SPECIALIST]: [
+        KnowledgeDomain.TECHNICAL,
+        KnowledgeDomain.SCIENCE,
+        KnowledgeDomain.MEDICINE,
+      ],
+      [SpecializationType.EXPERT]: [
+        KnowledgeDomain.SCIENCE,
+        KnowledgeDomain.MEDICINE,
+        KnowledgeDomain.LAW,
+      ],
     };
 
     const primaryDomains = domainRecommendations[primary] || [];
@@ -1586,12 +1630,12 @@ export class SpecializationService extends BaseService {
 
     // Оценка на основе хобби
     const hobbyTypeMap: Record<string, SpecializationType[]> = {
-      'программирование': [SpecializationType.TECHNICAL, SpecializationType.SPECIALIST],
-      'чтение': [SpecializationType.ACADEMIC, SpecializationType.CURIOUS],
-      'искусство': [SpecializationType.CREATIVE],
-      'спорт': [SpecializationType.PRACTICAL, SpecializationType.BALANCED],
-      'музыка': [SpecializationType.CREATIVE, SpecializationType.SPECIALIST],
-      'путешествия': [SpecializationType.CURIOUS, SpecializationType.SOCIAL],
+      программирование: [SpecializationType.TECHNICAL, SpecializationType.SPECIALIST],
+      чтение: [SpecializationType.ACADEMIC, SpecializationType.CURIOUS],
+      искусство: [SpecializationType.CREATIVE],
+      спорт: [SpecializationType.PRACTICAL, SpecializationType.BALANCED],
+      музыка: [SpecializationType.CREATIVE, SpecializationType.SPECIALIST],
+      путешествия: [SpecializationType.CURIOUS, SpecializationType.SOCIAL],
     };
 
     hobbies.forEach(hobby => {
@@ -1610,8 +1654,8 @@ export class SpecializationService extends BaseService {
 
   private findBestSecondaryType(
     primaryType: SpecializationType,
-    traits: string[],
-    hobbies: string[],
+    _traits: string[],
+    _hobbies: string[],
   ): SpecializationType | undefined {
     // Анализируем совместимость всех типов с первичным
     const compatibilityScores = Object.values(SpecializationType)
@@ -1691,29 +1735,35 @@ export class SpecializationService extends BaseService {
     dynamic: DynamicSpecialization,
   ): SpecializationType | null {
     // Анализируем, какой тип лучше подходит на основе фактических данных обучения
-    const typePerformance: Record<SpecializationType, number> = {} as any;
+    const typePerformance: Partial<Record<SpecializationType, number>> = {};
 
     Object.values(SpecializationType).forEach(type => {
       typePerformance[type] = this.calculateTypePerformanceScore(type, dynamic);
     });
 
     const currentScore = typePerformance[combination.primaryType];
-    const bestType = Object.entries(typePerformance).reduce((best, [type, score]) => 
-      score > best.score ? { type: type as SpecializationType, score } : best,
-      { type: combination.primaryType, score: currentScore }
+    const bestType = Object.entries(typePerformance).reduce(
+      (best, [type, score]) =>
+        score > best.score ? { type: type as SpecializationType, score } : best,
+      { type: combination.primaryType, score: currentScore },
     );
 
     // Возвращаем новый тип только если он значительно лучше
     return bestType.score > currentScore * 1.2 ? bestType.type : null;
   }
 
-  private calculateTypePerformanceScore(type: SpecializationType, dynamic: DynamicSpecialization): number {
+  private calculateTypePerformanceScore(
+    type: SpecializationType,
+    dynamic: DynamicSpecialization,
+  ): number {
     // Упрощенная оценка производительности типа на основе данных обучения
     const typeCharacteristics = this.getTypeCharacteristics(type);
     let score = 0;
 
     Object.entries(dynamic.learningProgress).forEach(([domain, progress]) => {
-      const domainWeight = typeCharacteristics.preferredDomains.includes(domain as KnowledgeDomain) ? 2 : 1;
+      const domainWeight = typeCharacteristics.preferredDomains.includes(domain as KnowledgeDomain)
+        ? 2
+        : 1;
       const efficiency = this.calculateDomainEfficiency(progress);
       score += efficiency * domainWeight;
     });
@@ -1721,34 +1771,68 @@ export class SpecializationService extends BaseService {
     return score / Object.keys(dynamic.learningProgress).length;
   }
 
-  private getTypeCharacteristics(type: SpecializationType): { preferredDomains: KnowledgeDomain[] } {
+  private getTypeCharacteristics(type: SpecializationType): {
+    preferredDomains: KnowledgeDomain[];
+  } {
     const characteristics: Record<SpecializationType, { preferredDomains: KnowledgeDomain[] }> = {
       [SpecializationType.CURIOUS]: {
-        preferredDomains: [KnowledgeDomain.SCIENCE, KnowledgeDomain.PHILOSOPHY, KnowledgeDomain.CULTURE],
+        preferredDomains: [
+          KnowledgeDomain.SCIENCE,
+          KnowledgeDomain.PHILOSOPHY,
+          KnowledgeDomain.CULTURE,
+        ],
       },
       [SpecializationType.TECHNICAL]: {
-        preferredDomains: [KnowledgeDomain.TECHNICAL, KnowledgeDomain.SCIENCE, KnowledgeDomain.GAMING],
+        preferredDomains: [
+          KnowledgeDomain.TECHNICAL,
+          KnowledgeDomain.SCIENCE,
+          KnowledgeDomain.GAMING,
+        ],
       },
       [SpecializationType.CREATIVE]: {
         preferredDomains: [KnowledgeDomain.ARTS, KnowledgeDomain.DESIGN, KnowledgeDomain.MUSIC],
       },
       [SpecializationType.SOCIAL]: {
-        preferredDomains: [KnowledgeDomain.RELATIONSHIPS, KnowledgeDomain.PSYCHOLOGY, KnowledgeDomain.SOCIAL_MEDIA],
+        preferredDomains: [
+          KnowledgeDomain.RELATIONSHIPS,
+          KnowledgeDomain.PSYCHOLOGY,
+          KnowledgeDomain.SOCIAL_MEDIA,
+        ],
       },
       [SpecializationType.PRACTICAL]: {
-        preferredDomains: [KnowledgeDomain.BUSINESS, KnowledgeDomain.CAREER, KnowledgeDomain.DAILY_LIFE],
+        preferredDomains: [
+          KnowledgeDomain.BUSINESS,
+          KnowledgeDomain.CAREER,
+          KnowledgeDomain.DAILY_LIFE,
+        ],
       },
       [SpecializationType.ACADEMIC]: {
-        preferredDomains: [KnowledgeDomain.SCIENCE, KnowledgeDomain.HISTORY, KnowledgeDomain.LITERATURE],
+        preferredDomains: [
+          KnowledgeDomain.SCIENCE,
+          KnowledgeDomain.HISTORY,
+          KnowledgeDomain.LITERATURE,
+        ],
       },
       [SpecializationType.BALANCED]: {
-        preferredDomains: [KnowledgeDomain.GENERAL_CONVERSATION, KnowledgeDomain.CULTURE, KnowledgeDomain.EMOTIONS],
+        preferredDomains: [
+          KnowledgeDomain.GENERAL_CONVERSATION,
+          KnowledgeDomain.CULTURE,
+          KnowledgeDomain.EMOTIONS,
+        ],
       },
       [SpecializationType.GENERALIST]: {
-        preferredDomains: [KnowledgeDomain.GENERAL_CONVERSATION, KnowledgeDomain.DAILY_LIFE, KnowledgeDomain.HOBBIES],
+        preferredDomains: [
+          KnowledgeDomain.GENERAL_CONVERSATION,
+          KnowledgeDomain.DAILY_LIFE,
+          KnowledgeDomain.HOBBIES,
+        ],
       },
       [SpecializationType.SPECIALIST]: {
-        preferredDomains: [KnowledgeDomain.TECHNICAL, KnowledgeDomain.SCIENCE, KnowledgeDomain.MEDICINE],
+        preferredDomains: [
+          KnowledgeDomain.TECHNICAL,
+          KnowledgeDomain.SCIENCE,
+          KnowledgeDomain.MEDICINE,
+        ],
       },
       [SpecializationType.EXPERT]: {
         preferredDomains: [KnowledgeDomain.SCIENCE, KnowledgeDomain.MEDICINE, KnowledgeDomain.LAW],
@@ -1768,7 +1852,7 @@ export class SpecializationService extends BaseService {
 
     // Заменяем неэффективные домены на рекомендованные
     const newDominantDomains = combination.dominantDomains.filter(
-      domain => !underperformingDomains.includes(domain)
+      domain => !underperformingDomains.includes(domain),
     );
 
     // Добавляем новые домены из рекомендованных
@@ -1783,12 +1867,11 @@ export class SpecializationService extends BaseService {
 
   private shouldChangeLearnintStyle(dynamic: DynamicSpecialization): boolean {
     // Анализируем, нужно ли менять стиль обучения
-    const recentProgress = Object.values(dynamic.learningProgress)
-      .filter(progress => {
-        const daysSinceLastInteraction = 
-          (Date.now() - progress.lastInteraction.getTime()) / (1000 * 60 * 60 * 24);
-        return daysSinceLastInteraction <= 30; // Последние 30 дней
-      });
+    const recentProgress = Object.values(dynamic.learningProgress).filter(progress => {
+      const daysSinceLastInteraction =
+        (Date.now() - progress.lastInteraction.getTime()) / (1000 * 60 * 60 * 24);
+      return daysSinceLastInteraction <= 30; // Последние 30 дней
+    });
 
     if (recentProgress.length === 0) return false;
 
@@ -1801,30 +1884,30 @@ export class SpecializationService extends BaseService {
   // Вспомогательные методы для создания специализаций
   private extractDominantDomains(hobbies: string[], traits: string[]): KnowledgeDomain[] {
     const domainMapping: Record<string, KnowledgeDomain[]> = {
-      'чтение': [KnowledgeDomain.LITERATURE, KnowledgeDomain.EDUCATION],
-      'музыка': [KnowledgeDomain.MUSIC, KnowledgeDomain.ARTS],
-      'спорт': [KnowledgeDomain.SPORTS, KnowledgeDomain.FITNESS],
-      'путешествия': [KnowledgeDomain.TRAVEL, KnowledgeDomain.CULTURE],
-      'готовка': [KnowledgeDomain.FOOD, KnowledgeDomain.CULTURE],
-      'технологии': [KnowledgeDomain.TECHNICAL, KnowledgeDomain.SCIENCE],
-      'искусство': [KnowledgeDomain.ARTS, KnowledgeDomain.DESIGN],
-      'фотография': [KnowledgeDomain.PHOTOGRAPHY, KnowledgeDomain.ARTS],
-      'игры': [KnowledgeDomain.GAMING, KnowledgeDomain.ENTERTAINMENT],
-      'природа': [KnowledgeDomain.NATURE, KnowledgeDomain.ANIMALS],
-      'здоровье': [KnowledgeDomain.HEALTH, KnowledgeDomain.FITNESS],
-      'медитация': [KnowledgeDomain.MEDITATION, KnowledgeDomain.PHILOSOPHY],
-      'карьера': [KnowledgeDomain.CAREER, KnowledgeDomain.BUSINESS],
+      чтение: [KnowledgeDomain.LITERATURE, KnowledgeDomain.EDUCATION],
+      музыка: [KnowledgeDomain.MUSIC, KnowledgeDomain.ARTS],
+      спорт: [KnowledgeDomain.SPORTS, KnowledgeDomain.FITNESS],
+      путешествия: [KnowledgeDomain.TRAVEL, KnowledgeDomain.CULTURE],
+      готовка: [KnowledgeDomain.FOOD, KnowledgeDomain.CULTURE],
+      технологии: [KnowledgeDomain.TECHNICAL, KnowledgeDomain.SCIENCE],
+      искусство: [KnowledgeDomain.ARTS, KnowledgeDomain.DESIGN],
+      фотография: [KnowledgeDomain.PHOTOGRAPHY, KnowledgeDomain.ARTS],
+      игры: [KnowledgeDomain.GAMING, KnowledgeDomain.ENTERTAINMENT],
+      природа: [KnowledgeDomain.NATURE, KnowledgeDomain.ANIMALS],
+      здоровье: [KnowledgeDomain.HEALTH, KnowledgeDomain.FITNESS],
+      медитация: [KnowledgeDomain.MEDITATION, KnowledgeDomain.PHILOSOPHY],
+      карьера: [KnowledgeDomain.CAREER, KnowledgeDomain.BUSINESS],
       'социальные сети': [KnowledgeDomain.SOCIAL_MEDIA, KnowledgeDomain.MARKETING],
-      'языки': [KnowledgeDomain.LANGUAGES, KnowledgeDomain.CULTURE],
-      'рукоделие': [KnowledgeDomain.CRAFTS, KnowledgeDomain.ARTS],
-      'автомобили': [KnowledgeDomain.AUTOMOTIVE, KnowledgeDomain.TECHNICAL],
-      'недвижимость': [KnowledgeDomain.REAL_ESTATE, KnowledgeDomain.FINANCE],
-      'инвестиции': [KnowledgeDomain.INVESTING, KnowledgeDomain.FINANCE],
-      'криптовалюты': [KnowledgeDomain.CRYPTOCURRENCY, KnowledgeDomain.FINANCE],
+      языки: [KnowledgeDomain.LANGUAGES, KnowledgeDomain.CULTURE],
+      рукоделие: [KnowledgeDomain.CRAFTS, KnowledgeDomain.ARTS],
+      автомобили: [KnowledgeDomain.AUTOMOTIVE, KnowledgeDomain.TECHNICAL],
+      недвижимость: [KnowledgeDomain.REAL_ESTATE, KnowledgeDomain.FINANCE],
+      инвестиции: [KnowledgeDomain.INVESTING, KnowledgeDomain.FINANCE],
+      криптовалюты: [KnowledgeDomain.CRYPTOCURRENCY, KnowledgeDomain.FINANCE],
     };
 
     const dominantDomains: KnowledgeDomain[] = [];
-    
+
     // Анализируем хобби
     hobbies.forEach(hobby => {
       const domains = domainMapping[hobby.toLowerCase()];
@@ -1853,9 +1936,12 @@ export class SpecializationService extends BaseService {
     return uniqueDomains.slice(0, 3);
   }
 
-  private extractSupportingDomains(dominantDomains: KnowledgeDomain[], personality: any): KnowledgeDomain[] {
+  private extractSupportingDomains(
+    dominantDomains: KnowledgeDomain[],
+    _personality: Record<string, unknown>,
+  ): KnowledgeDomain[] {
     const supportingDomains: KnowledgeDomain[] = [];
-    
+
     // Добавляем связанные области для каждой доминирующей
     dominantDomains.forEach(domain => {
       switch (domain) {
@@ -1880,19 +1966,20 @@ export class SpecializationService extends BaseService {
     supportingDomains.push(
       KnowledgeDomain.GENERAL_CONVERSATION,
       KnowledgeDomain.DAILY_LIFE,
-      KnowledgeDomain.ENTERTAINMENT
+      KnowledgeDomain.ENTERTAINMENT,
     );
 
     // Убираем дубликаты и доминирующие области
-    const uniqueDomains = Array.from(new Set(supportingDomains))
-      .filter(domain => !dominantDomains.includes(domain));
-    
+    const uniqueDomains = Array.from(new Set(supportingDomains)).filter(
+      domain => !dominantDomains.includes(domain),
+    );
+
     return uniqueDomains.slice(0, 5);
   }
 
   private determineLearningStyle(traits: string[]): LearningStyle {
     const traitKeywords = traits.join(' ').toLowerCase();
-    
+
     if (traitKeywords.includes('быстрый') || traitKeywords.includes('активный')) {
       return LearningStyle.QUICK_LEARNER;
     } else if (traitKeywords.includes('медленный') || traitKeywords.includes('основательный')) {
@@ -1914,7 +2001,7 @@ export class SpecializationService extends BaseService {
 
   private calculateAdaptabilityScore(traits: string[], primaryType: SpecializationType): number {
     let score = 50; // Базовый уровень
-    
+
     // Анализируем черты характера
     traits.forEach(trait => {
       const lowerTrait = trait.toLowerCase();
@@ -1949,7 +2036,7 @@ export class SpecializationService extends BaseService {
 
   private calculateCuriosityLevel(traits: string[], hobbies: string[]): number {
     let score = 50; // Базовый уровень
-    
+
     // Анализируем черты характера
     traits.forEach(trait => {
       const lowerTrait = trait.toLowerCase();
@@ -1973,14 +2060,22 @@ export class SpecializationService extends BaseService {
   private determineSocialPreference(traits: string[]): 'introvert' | 'extrovert' | 'ambivert' {
     let extrovertScore = 0;
     let introvertScore = 0;
-    
+
     traits.forEach(trait => {
       const lowerTrait = trait.toLowerCase();
-      if (lowerTrait.includes('общительный') || lowerTrait.includes('социальный') || 
-          lowerTrait.includes('экстравертный') || lowerTrait.includes('активный')) {
+      if (
+        lowerTrait.includes('общительный') ||
+        lowerTrait.includes('социальный') ||
+        lowerTrait.includes('экстравертный') ||
+        lowerTrait.includes('активный')
+      ) {
         extrovertScore += 1;
-      } else if (lowerTrait.includes('замкнутый') || lowerTrait.includes('интровертный') || 
-                 lowerTrait.includes('тихий') || lowerTrait.includes('застенчивый')) {
+      } else if (
+        lowerTrait.includes('замкнутый') ||
+        lowerTrait.includes('интровертный') ||
+        lowerTrait.includes('тихий') ||
+        lowerTrait.includes('застенчивый')
+      ) {
         introvertScore += 1;
       }
     });
@@ -1994,14 +2089,17 @@ export class SpecializationService extends BaseService {
     }
   }
 
-  private calculateLearningRate(domain: KnowledgeDomain, combination: SpecializationCombination): number {
+  private calculateLearningRate(
+    domain: KnowledgeDomain,
+    combination: SpecializationCombination,
+  ): number {
     let rate = 0.5; // Базовая скорость
 
     // Если это доминирующая область
     if (combination.dominantDomains.includes(domain)) {
       rate += 0.3;
     }
-    
+
     // Если это поддерживающая область
     if (combination.supportingDomains.includes(domain)) {
       rate += 0.2;
@@ -2095,7 +2193,7 @@ export class SpecializationService extends BaseService {
     };
 
     let newLevel = progress.currentLevel;
-    
+
     Object.entries(thresholds).forEach(([level, threshold]) => {
       if (progress.experiencePoints >= threshold) {
         newLevel = level as CompetenceLevel;
@@ -2111,7 +2209,7 @@ export class SpecializationService extends BaseService {
     context: KnowledgeContext,
   ): Promise<void> {
     const progress = dynamic.learningProgress[domain];
-    
+
     for (const trigger of dynamic.adaptationTriggers) {
       let shouldTrigger = false;
 
@@ -2136,8 +2234,8 @@ export class SpecializationService extends BaseService {
   private async executeAdaptationAction(
     trigger: AdaptationTrigger,
     dynamic: DynamicSpecialization,
-    domain: KnowledgeDomain,
-    context: KnowledgeContext,
+    _domain: KnowledgeDomain,
+    _context: KnowledgeContext,
   ): Promise<void> {
     switch (trigger.action) {
       case 'increase_competence':
@@ -2148,13 +2246,14 @@ export class SpecializationService extends BaseService {
           }
         }
         break;
-      case 'add_domain':
+      case 'add_domain': {
         // Добавляем новую область в поддерживающие
         const newDomain = this.suggestNewDomain(dynamic.currentCombination, dynamic);
         if (newDomain && !dynamic.currentCombination.supportingDomains.includes(newDomain)) {
           dynamic.currentCombination.supportingDomains.push(newDomain);
         }
         break;
+      }
       case 'change_style':
         if (trigger.newValue) {
           dynamic.currentCombination.learningStyle = trigger.newValue as LearningStyle;
@@ -2181,7 +2280,7 @@ export class SpecializationService extends BaseService {
 
   private suggestNewDomain(
     combination: SpecializationCombination,
-    dynamic: DynamicSpecialization,
+    _dynamic: DynamicSpecialization,
   ): KnowledgeDomain | null {
     const allDomains = Object.values(KnowledgeDomain);
     const usedDomains = [...combination.dominantDomains, ...combination.supportingDomains];
@@ -2200,11 +2299,15 @@ export class SpecializationService extends BaseService {
 
   private getRelatedDomains(dominantDomains: KnowledgeDomain[]): KnowledgeDomain[] {
     const related: KnowledgeDomain[] = [];
-    
+
     dominantDomains.forEach(domain => {
       switch (domain) {
         case KnowledgeDomain.ARTS:
-          related.push(KnowledgeDomain.CULTURE, KnowledgeDomain.HISTORY, KnowledgeDomain.PHOTOGRAPHY);
+          related.push(
+            KnowledgeDomain.CULTURE,
+            KnowledgeDomain.HISTORY,
+            KnowledgeDomain.PHOTOGRAPHY,
+          );
           break;
         case KnowledgeDomain.TECHNICAL:
           related.push(KnowledgeDomain.SCIENCE, KnowledgeDomain.BUSINESS, KnowledgeDomain.GAMING);
@@ -2213,7 +2316,11 @@ export class SpecializationService extends BaseService {
           related.push(KnowledgeDomain.FINANCE, KnowledgeDomain.CAREER, KnowledgeDomain.MARKETING);
           break;
         case KnowledgeDomain.HEALTH:
-          related.push(KnowledgeDomain.FITNESS, KnowledgeDomain.MEDITATION, KnowledgeDomain.MEDICINE);
+          related.push(
+            KnowledgeDomain.FITNESS,
+            KnowledgeDomain.MEDITATION,
+            KnowledgeDomain.MEDICINE,
+          );
           break;
         default:
           related.push(KnowledgeDomain.GENERAL_CONVERSATION);
@@ -2271,8 +2378,8 @@ export interface SpecializationCompatibility {
  */
 export interface SpecializationImprovementSuggestion {
   type: 'change_primary_type' | 'add_secondary_type' | 'adjust_domains' | 'change_learning_style';
-  currentValue: any;
-  suggestedValue: any;
+  currentValue: unknown;
+  suggestedValue: unknown;
   reason: string;
   expectedImprovement: number; // 0-1
   priority: 'low' | 'medium' | 'high';

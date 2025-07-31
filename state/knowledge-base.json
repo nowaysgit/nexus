@@ -1,0 +1,409 @@
+{
+    "version": "1.0",
+    "last_updated": "2025-07-31T12:00:00Z",
+    "description": "База знаний автономного агента GitHub Copilot",
+    "knowledge_categories": {
+        "patterns": {
+            "architectural_patterns": [
+                {
+                    "id": "ARCH-001",
+                    "name": "Centralized Services Pattern",
+                    "description": "Паттерн централизованных сервисов для общих задач в проекте",
+                    "use_cases": [
+                        "логирование",
+                        "кэширование",
+                        "обработка ошибок",
+                        "очереди сообщений",
+                        "LLM интеграция"
+                    ],
+                    "implementation": "Единые сервисы LogService, CacheService, ErrorHandlingService, MessageQueueService, LLMService, PromptTemplateService",
+                    "benefits": [
+                        "избежание дублирования",
+                        "единая точка конфигурации",
+                        "легкость тестирования",
+                        "консистентность"
+                    ],
+                    "drawbacks": [
+                        "потенциальная перегрузка сервисов",
+                        "единая точка отказа"
+                    ],
+                    "examples": [
+                        "src/logging/log.service.ts",
+                        "src/cache/cache.service.ts"
+                    ],
+                    "success_rate": 98.0,
+                    "usage_count": 1
+                }
+            ],
+            "code_patterns": [],
+            "testing_patterns": [
+                {
+                    "id": "TEST-001",
+                    "name": "Nexus Testing Framework Pattern",
+                    "description": "Стандартизированный подход к тестированию в проекте Nexus с использованием библиотеки lib/tester",
+                    "use_cases": [
+                        "unit тесты",
+                        "интеграционные тесты",
+                        "e2e тесты"
+                    ],
+                    "implementation": "createTestSuite, createTest, FixtureManager, TestConfigType",
+                    "benefits": [
+                        "единообразие",
+                        "автоматическая настройка окружения",
+                        "легкость написания тестов"
+                    ],
+                    "drawbacks": [
+                        "необходимость изучения API библиотеки"
+                    ],
+                    "examples": [
+                        "test/character/memory.service.test.ts"
+                    ],
+                    "success_rate": 95.0,
+                    "usage_count": 1
+                },
+                {
+                    "id": "TEST-002",
+                    "name": "Database Test Environment Pattern",
+                    "description": "Паттерн использования контейнеризированной PostgreSQL для e2e тестов",
+                    "use_cases": [
+                        "e2e тестирование",
+                        "интеграционное тестирование БД"
+                    ],
+                    "implementation": "docker-compose.test.yml с PostgreSQL контейнером",
+                    "benefits": [
+                        "изоляция тестов",
+                        "предсказуемое окружение",
+                        "быстрая очистка данных"
+                    ],
+                    "drawbacks": [
+                        "требует Docker",
+                        "дополнительные ресурсы"
+                    ],
+                    "examples": [
+                        "docker-compose.test.yml"
+                    ],
+                    "success_rate": 99.0,
+                    "usage_count": 1
+                },
+                {
+                    "id": "TEST-003",
+                    "name": "Test Naming Convention Pattern",
+                    "description": "Систематизированное именование тестовых файлов для автодискавери",
+                    "use_cases": [
+                        "организация тестов",
+                        "автоматическое обнаружение тестов"
+                    ],
+                    "implementation": "*.test.ts для unit, *.integration.test.ts для интеграционных, *.e2e.test.ts для e2e",
+                    "benefits": [
+                        "легкое обнаружение",
+                        "понятная структура",
+                        "простота фильтрации"
+                    ],
+                    "drawbacks": [
+                        "строгие требования к именованию"
+                    ],
+                    "examples": [
+                        "test/character/memory.service.test.ts",
+                        "test/character/needs.service.integration.test.ts"
+                    ],
+                    "success_rate": 100.0,
+                    "usage_count": 1
+                },
+                {
+                    "id": "TEST-004",
+                    "name": "FixtureManager Pattern",
+                    "description": "Централизованное управление тестовыми данными через FixtureManager",
+                    "use_cases": [
+                        "подготовка тестовых данных",
+                        "очистка БД между тестами"
+                    ],
+                    "implementation": "fixtureManager.cleanDatabase() после каждого теста",
+                    "benefits": [
+                        "изоляция тестов",
+                        "предсказуемое состояние",
+                        "повторяемость"
+                    ],
+                    "drawbacks": [
+                        "дополнительное время на очистку"
+                    ],
+                    "examples": [
+                        "lib/tester/fixtures/fixture-manager.ts"
+                    ],
+                    "success_rate": 97.0,
+                    "usage_count": 1
+                }
+            ],
+            "deployment_patterns": []
+        },
+        "solutions": {
+            "common_problems": [
+                {
+                    "id": "PROB-001",
+                    "problem": "Тесты не завершаются корректно или зависают",
+                    "symptoms": [
+                        "процессы остаются активными",
+                        "тесты не завершаются",
+                        "timeouts"
+                    ],
+                    "solutions": [
+                        {
+                            "approach": "Установка явного timeout и forceExit",
+                            "steps": [
+                                "добавить jest.setTimeout(30000)",
+                                "использовать forceExit: true в конфигурации"
+                            ],
+                            "success_rate": 95.0,
+                            "time_estimate": "5-10 минут",
+                            "notes": "Особенно важно для тестов с внешними ресурсами"
+                        }
+                    ],
+                    "prevention": "Всегда устанавливать таймауты и использовать forceExit",
+                    "frequency": 8,
+                    "severity": "medium"
+                },
+                {
+                    "id": "PROB-002",
+                    "problem": "Конфликты данных между тестами",
+                    "symptoms": [
+                        "непредсказуемые результаты тестов",
+                        "тесты проходят/не проходят случайно"
+                    ],
+                    "solutions": [
+                        {
+                            "approach": "Использование cleanDatabase в beforeEach",
+                            "steps": [
+                                "вызывать fixtureManager.cleanDatabase() перед каждым тестом",
+                                "убедиться в изоляции данных"
+                            ],
+                            "success_rate": 99.0,
+                            "time_estimate": "10-15 минут",
+                            "notes": "Критически важно для стабильности тестов"
+                        }
+                    ],
+                    "prevention": "Строгая изоляция данных между тестами",
+                    "frequency": 15,
+                    "severity": "high"
+                }
+            ],
+            "optimization_techniques": [],
+            "debugging_strategies": []
+        },
+        "learning": {
+            "success_patterns": [],
+            "failure_patterns": [],
+            "improvement_suggestions": [],
+            "adaptation_rules": []
+        },
+        "infrastructure_services": {
+            "core_services": [
+                {
+                    "id": "SERV-001",
+                    "name": "LogService",
+                    "description": "Централизованный сервис логирования для всего проекта",
+                    "purpose": "Единая точка для логирования событий, ошибок и отладочной информации",
+                    "location": "src/logging/log.service.ts",
+                    "usage_pattern": "Инъекция зависимости через DI контейнер",
+                    "benefits": [
+                        "консистентное логирование",
+                        "централизованная конфигурация",
+                        "легкость мониторинга"
+                    ],
+                    "anti_patterns": [
+                        "прямое использование console.log",
+                        "создание отдельных логгеров в модулях"
+                    ]
+                },
+                {
+                    "id": "SERV-002",
+                    "name": "CacheService",
+                    "description": "Централизованный сервис кэширования",
+                    "purpose": "Управление кэшированием данных для повышения производительности",
+                    "location": "src/cache/cache.service.ts",
+                    "usage_pattern": "Инъекция зависимости, использование через интерфейс",
+                    "benefits": [
+                        "единообразное кэширование",
+                        "легкость смены стратегии кэширования",
+                        "централизованная конфигурация"
+                    ],
+                    "anti_patterns": [
+                        "локальные переменные для кэширования",
+                        "дублирование логики кэширования"
+                    ]
+                },
+                {
+                    "id": "SERV-003",
+                    "name": "ErrorHandlingService",
+                    "description": "Централизованная обработка ошибок",
+                    "purpose": "Единообразная обработка и логирование ошибок в приложении",
+                    "location": "src/common/error-handling.service.ts",
+                    "usage_pattern": "Глобальные фильтры исключений, инъекция зависимости",
+                    "benefits": [
+                        "консистентная обработка ошибок",
+                        "централизованное логирование",
+                        "стандартизованные ответы"
+                    ],
+                    "anti_patterns": [
+                        "разрозненная обработка ошибок",
+                        "игнорирование ошибок",
+                        "inconsistent error formats"
+                    ]
+                },
+                {
+                    "id": "SERV-004",
+                    "name": "MessageQueueService",
+                    "description": "Управление очередями сообщений для асинхронных операций",
+                    "purpose": "Обеспечение асинхронной обработки задач и межсервисного взаимодействия",
+                    "location": "src/message-queue/message-queue.service.ts",
+                    "usage_pattern": "Публикация/подписка на события, job processing",
+                    "benefits": [
+                        "масштабируемость",
+                        "надежность доставки",
+                        "разделение ответственности"
+                    ],
+                    "anti_patterns": [
+                        "синхронная обработка долгих операций",
+                        "прямые вызовы между сервисами для фоновых задач"
+                    ]
+                },
+                {
+                    "id": "SERV-005",
+                    "name": "LLMService",
+                    "description": "Единый интерфейс для работы с LLM-моделями",
+                    "purpose": "Стандартизация интеграции с различными языковыми моделями",
+                    "location": "src/llm/llm.service.ts",
+                    "usage_pattern": "Абстракция над различными провайдерами LLM",
+                    "benefits": [
+                        "единообразный API",
+                        "легкость смены провайдера",
+                        "централизованная конфигурация"
+                    ],
+                    "anti_patterns": [
+                        "прямое обращение к API провайдеров",
+                        "дублирование логики LLM вызовов"
+                    ]
+                },
+                {
+                    "id": "SERV-006",
+                    "name": "PromptTemplateService",
+                    "description": "Управление шаблонами промптов и AI-контентом",
+                    "purpose": "Централизованное хранение и управление промптами для LLM",
+                    "location": "src/prompt-template/prompt-template.service.ts",
+                    "usage_pattern": "Загрузка и параметризация шаблонов промптов",
+                    "benefits": [
+                        "версионирование промптов",
+                        "повторное использование",
+                        "A/B тестирование промптов"
+                    ],
+                    "anti_patterns": [
+                        "хардкод промптов в коде",
+                        "дублирование промптов",
+                        "отсутствие версионирования"
+                    ]
+                }
+            ],
+            "integration_rules": [
+                "Все новые модули должны использовать существующие централизованные сервисы",
+                "Запрещено дублировать функциональность централизованных сервисов",
+                "При необходимости расширения функциональности - расширять существующий сервис, а не создавать новый",
+                "Использовать инъекцию зависимостей для доступа к сервисам",
+                "Мокать централизованные сервисы в тестах через специализированные моки"
+            ]
+        }
+    },
+    "statistics": {
+        "total_tasks_completed": 0,
+        "average_success_rate": 0,
+        "most_effective_patterns": [
+            "Nexus Testing Framework Pattern",
+            "FixtureManager Pattern",
+            "Centralized Services Pattern"
+        ],
+        "common_failure_causes": [
+            "missing test isolation",
+            "unconfigured timeouts",
+            "service duplication"
+        ],
+        "learning_velocity": 0
+    },
+    "testing_guidelines": {
+        "mandatory_rules": [
+            "Все e2e тесты ДОЛЖНЫ использовать контейнеризированный PostgreSQL из docker-compose.test.yml",
+            "FixtureManager ОБЯЗАТЕЛЕН для подготовки и очистки данных (fixtureManager.cleanDatabase() после каждого теста)",
+            "Структура файлов: *.test.ts для unit, *.integration.test.ts для интеграционных, *.e2e.test.ts для e2e в каталоге test/",
+            "Все тесты должны иметь заданные таймауты и явно вызывать forceExit",
+            "ЗАПРЕЩЕНО использование skip/ignore/disabled директив - все тесты должны быть активными",
+            "Для каждого функционального изменения ДОЛЖЕН быть соответствующий тест"
+        ],
+        "best_practices": [
+            "Использовать имеющуюся инфраструктуру тестирования из lib/tester",
+            "Размещать тесты в правильных местах согласно соглашениям об именовании",
+            "Соблюдать структуру и стиль тестов согласно существующим примерам",
+            "При обновлении библиотеки тестирования - обновить общий шаблон и создать задачи на рефакторинг",
+            "Использовать централизованные сервисы в тестах через мокинг"
+        ],
+        "test_structure_template": {
+            "imports": [
+                "import { createTestSuite, createTest, TestConfigType } from '../../lib/tester';",
+                "import { FixtureManager } from '../../lib/tester/fixtures/fixture-manager';",
+                "import { createTestDataSource } from '../../lib/tester/utils/data-source';"
+            ],
+            "setup": [
+                "let fixtureManager: FixtureManager;",
+                "let dataSource: DataSource;",
+                "",
+                "beforeAll(async () => {",
+                "  dataSource = await createTestDataSource();",
+                "  await dataSource.initialize();",
+                "  fixtureManager = new FixtureManager(dataSource);",
+                "});",
+                "",
+                "afterAll(async () => {",
+                "  if (dataSource && dataSource.isInitialized) {",
+                "    await dataSource.destroy();",
+                "  }",
+                "});",
+                "",
+                "beforeEach(async () => {",
+                "  await fixtureManager.cleanDatabase();",
+                "});"
+            ],
+            "test_example": [
+                "createTest(",
+                "  {",
+                "    name: 'должен корректно выполнить операцию',",
+                "    configType: TestConfigType.DATABASE,",
+                "    imports: [/* модули */],",
+                "  },",
+                "  async (context) => {",
+                "    // Arrange",
+                "    const testData = await fixtureManager.create({",
+                "      // тестовые данные",
+                "    });",
+                "",
+                "    // Act",
+                "    const result = await service.method(testData);",
+                "",
+                "    // Assert",
+                "    expect(result).toBeDefined();",
+                "  }",
+                ");"
+            ]
+        },
+        "environment_setup": {
+            "e2e_database": {
+                "service": "postgres-test",
+                "container": "nexus-test-postgres",
+                "port": "5433:5432",
+                "database": "nexus_test",
+                "user": "test_user",
+                "config_file": "docker-compose.test.yml"
+            },
+            "test_timeouts": {
+                "default": "30000ms",
+                "integration": "45000ms",
+                "e2e": "60000ms"
+            },
+            "force_exit": true
+        }
+    }
+}

@@ -475,9 +475,9 @@ describe('StoryService', () => {
       expect(mockCharacterRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({
           personality: expect.objectContaining({
-            traits: expect.arrayContaining(['caring']),
-          }),
-        }),
+            traits: expect.arrayContaining(['caring']) as unknown,
+          }) as unknown,
+        }) as unknown,
       );
     });
 

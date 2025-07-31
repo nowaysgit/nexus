@@ -23,7 +23,7 @@ interface MockWinstonLogger {
  * ```typescript
  * const mockLogService = new MockLogService();
  * mockLogService.info('Test message', { key: 'value' });
- * expect(mockLogService.winstonLogger.info).toHaveBeenCalled();
+ * expect(mockLogService.info).toHaveBeenCalled();
  * ```
  */
 @Injectable()
@@ -104,7 +104,6 @@ export class MockLogService implements LoggerService {
    */
   log(message: string, context?: string | Record<string, any>): void {
     // Заглушка
-    console.log(`[MOCK LOG] ${this.context || 'global'}: ${message}`);
     this.winstonLogger.log(
       this.formatMessage(message),
       typeof context === 'object' && context !== null ? context : context ? { context } : undefined,
@@ -117,8 +116,6 @@ export class MockLogService implements LoggerService {
    * @param meta Метаданные
    */
   info(message: string, meta?: Record<string, any>): void {
-    // Заглушка
-    console.log(`[MOCK INFO] ${this.context || 'global'}: ${message}`);
     // Вызываем метод winstonLogger.info для имитации работы оригинального сервиса
     this.winstonLogger.info(this.formatMessage(message), this.enrichMeta(meta));
   }
@@ -129,9 +126,6 @@ export class MockLogService implements LoggerService {
    * @param meta Метаданные
    */
   debug(message: string, meta?: Record<string, any>): void {
-    // Заглушка
-    const metaStr = meta ? ` | ${JSON.stringify(meta)}` : '';
-    console.log(`[MOCK DEBUG] ${this.context || 'global'}: ${message}${metaStr}`);
     this.winstonLogger.debug(this.formatMessage(message), this.enrichMeta(meta));
   }
 
@@ -141,8 +135,6 @@ export class MockLogService implements LoggerService {
    * @param meta Метаданные
    */
   warn(message: string, meta?: Record<string, any>): void {
-    // Заглушка
-    console.log(`[MOCK WARN] ${this.context || 'global'}: ${message}`);
     this.winstonLogger.warn(this.formatMessage(message), this.enrichMeta(meta));
   }
 
@@ -152,29 +144,25 @@ export class MockLogService implements LoggerService {
    * @param meta Метаданные
    */
   verbose(message: string, meta?: Record<string, any>): void {
-    // Заглушка
-    console.log(`[MOCK VERBOSE] ${this.context || 'global'}: ${message}`);
     this.winstonLogger.verbose(this.formatMessage(message), this.enrichMeta(meta));
   }
 
   /**
    * Сообщение об ошибке
-   * @param message Строка с сообщением или объект Error
-   * @param metaOrTrace Метаданные или строка со стеком вызовов
-   * @param _contextOrMeta Дополнительный контекст или метаданные
+   * @param message Сообщение об ошибке или объект Error
+   * @param metaOrTrace Метаданные или трассировка стека
+   * @param contextOrMeta Контекст или дополнительные метаданные
    */
   error(
     message: string | Error,
     metaOrTrace?: Record<string, any> | string,
-    _contextOrMeta?: Record<string, any> | string,
+    contextOrMeta?: Record<string, any> | string,
   ): void {
-    // Заглушка
     const errorMessage = message instanceof Error ? message.message : message;
-    console.error(`[MOCK ERROR] ${this.context || 'global'}: ${errorMessage}`);
 
-    // Подготовка метаданных
     let meta: Record<string, any> = {};
 
+    // Обработка различных форматов входных параметров
     if (message instanceof Error) {
       meta.stack = message.stack;
       meta.name = message.name;
@@ -187,22 +175,24 @@ export class MockLogService implements LoggerService {
     } else {
       if (typeof metaOrTrace === 'object') {
         meta = { ...meta, ...metaOrTrace };
+      } else if (typeof metaOrTrace === 'string') {
+        meta.trace = metaOrTrace;
+
+        if (typeof contextOrMeta === 'object') {
+          meta = { ...meta, ...contextOrMeta };
+        }
       }
     }
 
-    // Вызываем метод winstonLogger.error для имитации работы оригинального сервиса
     this.winstonLogger.error(this.formatMessage(errorMessage), this.enrichMeta(meta));
   }
 
   /**
    * Критическая ошибка
-   * @param error Объект Error
+   * @param error Объект ошибки
    * @param meta Метаданные
    */
   critical(error: Error, meta?: Record<string, any>): void {
-    // Заглушка
-    console.error(`[MOCK CRITICAL] ${this.context || 'global'}: ${error.message}`);
-
     const enrichedMeta = this.enrichMeta({
       ...meta,
       level: 'critical',
@@ -211,45 +201,36 @@ export class MockLogService implements LoggerService {
     });
 
     this.winstonLogger.error(this.formatMessage(`CRITICAL: ${error.message}`), enrichedMeta);
-
-    // Имитируем вызов rollbarService.critical
-    this.rollbarService.critical(error, enrichedMeta);
   }
 
   /**
-   * Проверка, следует ли логировать сообщение данного уровня
-   * @param level Уровень логирования
-   * @returns true, если сообщение должно быть записано
+   * Проверка необходимости логирования для указанного уровня
+   * @param _level Уровень логирования для проверки
+   * @returns Всегда true в mock-версии
    */
-  private shouldLog(level: LogLevel): boolean {
-    // В тестах всегда логируем все уровни
+  private shouldLog(_level: LogLevel): boolean {
     return true;
   }
 
   /**
-   * Форматирует сообщение с контекстом
+   * Приватный метод для форматирования сообщений
    * @param message Исходное сообщение
-   * @returns Отформатированное сообщение с контекстом
+   * @returns Форматированное сообщение с контекстом
    */
   private formatMessage(message: string): string {
     return this.context ? `[${this.context}] ${message}` : message;
   }
 
   /**
-   * Обогащает метаданные контекстной информацией
+   * Приватный метод для обогащения метаданных
    * @param meta Исходные метаданные
-   * @returns Обогащенные метаданные
+   * @returns Обогащенные метаданные с контекстом
    */
-  private enrichMeta(meta: Record<string, any> = {}): Record<string, any> {
-    const enriched: Record<string, any> = {
+  private enrichMeta(meta?: Record<string, any>): Record<string, any> {
+    return {
       ...meta,
+      context: this.context || 'MockLogService',
       timestamp: new Date().toISOString(),
     };
-
-    if (this.context) {
-      enriched.context = this.context;
-    }
-
-    return enriched;
   }
 }

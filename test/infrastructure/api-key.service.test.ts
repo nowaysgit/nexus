@@ -1,6 +1,7 @@
 import { ApiKeyService } from '../../src/infrastructure/api-key.service';
 import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
+import { Socket } from 'net';
 import { createTest, createTestSuite, TestConfigType } from '../../lib/tester';
 import { LogService } from '../../src/logging/log.service';
 
@@ -15,7 +16,7 @@ createTestSuite('ApiKeyService Tests', () => {
     headers,
     query,
     ip,
-    connection: { remoteAddress: ip } as any,
+    connection: { remoteAddress: ip } as Socket,
   });
 
   const mockLogService = {

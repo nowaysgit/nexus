@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument -- Файл содержит множество мок объектов */
 import { Test, TestingModule } from '@nestjs/testing';
 import { MessageProcessingCoordinator } from '../../../src/character/services/core/message-processing-coordinator.service';
 import { MessageAnalysisService } from '../../../src/character/services/analysis/message-analysis.service';

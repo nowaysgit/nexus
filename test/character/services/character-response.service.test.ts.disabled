@@ -1,0 +1,432 @@
+import { Test, TestingModule } from '@nestjs/testing';
+import { CharacterResponseService } from '../../../src/character/services/core/character-response.service';
+import { LLMService } from '../../../src/llm/services/llm.service';
+import { PromptTemplateService } from '../../../src/prompt-template/prompt-template.service';
+import { NeedsService } from '../../../src/character/services/core/needs.service';
+import { EmotionalStateService } from '../../../src/character/services/core/emotional-state.service';
+import { LogService } from '../../../src/logging/log.service';
+import { Character } from '../../../src/character/entities/character.entity';
+import { EmotionalState } from '../../../src/character/entities/emotional-state';
+import { CharacterArchetype } from '../../../src/character/enums/character-archetype.enum';
+
+describe('CharacterResponseService', () => {
+  let service: CharacterResponseService;
+  let llmService: jest.Mocked<LLMService>;
+  let promptTemplateService: jest.Mocked<PromptTemplateService>;
+  let emotionalStateService: jest.Mocked<EmotionalStateService>;
+  let logService: jest.Mocked<LogService>;
+
+  const mockCharacter: Partial<Character> = {
+    id: 'char-1',
+    name: 'Тестовая персонаж',
+    archetype: CharacterArchetype.HERO,
+    traits: {
+      personalityTraits: ['дружелюбная', 'отзывчивая'],
+      mentalState: 'стабильный',
+      stressLevel: 0.2,
+    },
+    baseNeed: 'общение',
+    description: 'Тестовый персонаж для проверки',
+  } as Character;
+
+  const mockEmotionalState: EmotionalState = {
+    primary: 'радость',
+    secondary: 'интерес',
+    intensity: 0.7,
+    valence: 0.8,
+    arousal: 0.6,
+    dominance: 0.5,
+  };
+
+  beforeEach(async () => {
+    const mockLLMService = {
+      generateText: jest.fn(),
+    };
+
+    const mockPromptTemplateService = {
+      createCharacterSystemPrompt: jest.fn(),
+    };
+
+    const mockNeedsService = {
+      getCurrentNeeds: jest.fn(),
+    };
+
+    const mockEmotionalStateService = {
+      getEmotionalMemories: jest.fn(),
+      getEmotionalTransitions: jest.fn(),
+    };
+
+    const mockLogService = {
+      log: jest.fn(),
+      error: jest.fn(),
+      warn: jest.fn(),
+      debug: jest.fn(),
+      info: jest.fn(),
+    };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        CharacterResponseService,
+        { provide: LLMService, useValue: mockLLMService },
+        { provide: PromptTemplateService, useValue: mockPromptTemplateService },
+        { provide: NeedsService, useValue: mockNeedsService },
+        { provide: EmotionalStateService, useValue: mockEmotionalStateService },
+        { provide: LogService, useValue: mockLogService },
+      ],
+    }).compile();
+
+    service = module.get<CharacterResponseService>(CharacterResponseService);
+    llmService = module.get(LLMService);
+    promptTemplateService = module.get(PromptTemplateService);
+    mockNeedsService = module.get(NeedsService);
+    emotionalStateService = module.get(EmotionalStateService);
+    logService = module.get(LogService);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('создание сервиса', () => {
+    it('should be defined', () => {
+      expect(service).toBeDefined();
+    });
+
+    it('должен расширять BaseService', () => {
+      expect(service).toBeInstanceOf(CharacterResponseService);
+      expect(service['logService']).toBe(logService);
+    });
+  });
+
+  describe('generateResponse', () => {
+    const mockDialogHistory = [
+      { role: 'user', content: 'Привет!' },
+      { role: 'assistant', content: 'Привет! Как дела?' },
+    ];
+
+    const mockEmotionalMemories = [
+      {
+        id: 'mem-1',
+        trigger: 'positive_conversation',
+        emotionalState: { primary: 'радость' },
+        significance: 60,
+      },
+    ];
+
+    const mockTransitions = [
+      {
+        id: 'trans-1',
+        fromState: { primary: 'нейтральность' },
+        toState: { primary: 'радость' },
+        timestamp: new Date(),
+      },
+    ];
+
+    beforeEach(() => {
+      emotionalStateService.getEmotionalMemories.mockResolvedValue(mockEmotionalMemories as any);
+      emotionalStateService.getEmotionalTransitions.mockResolvedValue(mockTransitions as any);
+      promptTemplateService.createCharacterSystemPrompt.mockReturnValue('System prompt');
+      llmService.generateText.mockResolvedValue({ text: 'Замечательный ответ!' });
+    });
+
+    it('должен генерировать ответ персонажа успешно', async () => {
+      const result = await service.generateResponse(
+        mockCharacter as Character,
+        'Как дела?',
+        mockDialogHistory,
+        mockEmotionalState,
+        'Дополнительный контекст'
+      );
+
+      expect(result).toBe('Замечательный ответ!');
+      expect(emotionalStateService.getEmotionalMemories).toHaveBeenCalledWith(
+        'char-1',
+        {
+          emotions: ['радость'],
+          significance: { min: 40, max: 100 }
+        },
+        5
+      );
+      expect(emotionalStateService.getEmotionalTransitions).toHaveBeenCalledWith(
+        'char-1',
+        expect.objectContaining({
+          from: expect.any(Date),
+          to: expect.any(Date)
+        }),
+        3
+      );
+      expect(llmService.generateText).toHaveBeenCalled();
+    });
+
+    it('должен обрабатывать ошибки LLM и возвращать fallback ответ', async () => {
+      llmService.generateText.mockRejectedValue(new Error('LLM error'));
+
+      const result = await service.generateResponse(
+        mockCharacter as Character,
+        'Привет!',
+        mockDialogHistory,
+        mockEmotionalState
+      );
+
+      expect(result).toContain('отвлеклась');
+      expect(logService.error).toHaveBeenCalled();
+    });
+
+    it('должен генерировать fallback ответ для грустного состояния', async () => {
+      const sadState: EmotionalState = { ...mockEmotionalState, primary: 'грусть' };
+      llmService.generateText.mockRejectedValue(new Error('Error'));
+
+      const result = await service.generateResponse(
+        mockCharacter as Character,
+        'Как дела?',
+        mockDialogHistory,
+        sadState
+      );
+
+      expect(result).toContain('сложно сейчас подобрать слова');
+    });
+
+    it('должен генерировать fallback ответ для злого состояния', async () => {
+      const angryState: EmotionalState = { ...mockEmotionalState, primary: 'злость' };
+      llmService.generateText.mockRejectedValue(new Error('Error'));
+
+      const result = await service.generateResponse(
+        mockCharacter as Character,
+        'Как дела?',
+        mockDialogHistory,
+        angryState
+      );
+
+      expect(result).toContain('нужно немного остыть');
+    });
+
+    it('должен работать с пустой историей диалога', async () => {
+      const result = await service.generateResponse(
+        mockCharacter as Character,
+        'Первое сообщение',
+        [],
+        mockEmotionalState
+      );
+
+      expect(result).toBe('Замечательный ответ!');
+      expect(llmService.generateText).toHaveBeenCalled();
+    });
+
+    it('должен работать без дополнительного контекста', async () => {
+      const result = await service.generateResponse(
+        mockCharacter as Character,
+        'Привет!',
+        mockDialogHistory,
+        mockEmotionalState
+      );
+
+      expect(result).toBe('Замечательный ответ!');
+      expect(llmService.generateText).toHaveBeenCalled();
+    });
+  });
+
+  describe('generateInitialMessage', () => {
+    beforeEach(() => {
+      promptTemplateService.createCharacterSystemPrompt.mockReturnValue('System prompt');
+      llmService.generateText.mockResolvedValue({ text: 'Привет! Меня зовут Тестовая персонаж!' });
+    });
+
+    it('должен генерировать начальное сообщение', async () => {
+      const result = await service.generateInitialMessage(
+        mockCharacter as Character,
+        mockEmotionalState,
+        'Дополнительный контекст'
+      );
+
+      expect(result).toBe('Привет! Меня зовут Тестовая персонаж!');
+      expect(llmService.generateText).toHaveBeenCalled();
+    });
+
+    it('должен обрабатывать ошибки при генерации начального сообщения', async () => {
+      llmService.generateText.mockRejectedValue(new Error('LLM error'));
+
+      const result = await service.generateInitialMessage(
+        mockCharacter as Character,
+        mockEmotionalState
+      );
+
+      expect(result).toContain('Привет! Меня зовут Тестовая персонаж');
+      expect(logService.error).toHaveBeenCalled();
+    });
+  });
+
+  describe('generateProactiveMessage', () => {
+    const mockAction = {
+      type: 'РАБОТА',
+      name: 'программирование',
+      description: 'Разработка программного обеспечения',
+    };
+
+    beforeEach(() => {
+      promptTemplateService.createCharacterSystemPrompt.mockReturnValue('System prompt');
+      llmService.generateText.mockResolvedValue({ text: 'Только что закончила работу!' });
+    });
+
+    it('должен генерировать проактивное сообщение', async () => {
+      const result = await service.generateProactiveMessage(
+        mockCharacter as Character,
+        mockEmotionalState,
+        'friendly',
+        'Контекст',
+        mockAction,
+      );
+
+      expect(result).toBe('Только что закончила работу!');
+      expect(llmService.generateText).toHaveBeenCalled();
+    });
+
+    it('должен обрабатывать ошибки при генерации проактивного сообщения', async () => {
+      llmService.generateText.mockRejectedValue(new Error('LLM error'));
+
+      const result = await service.generateProactiveMessage(
+        mockCharacter as Character,
+        mockEmotionalState,
+        'friendly',
+        'Нет недавних воспоминаний',
+        mockAction,
+      );
+
+      expect(result).toContain('Только что закончила работать');
+      expect(logService.error).toHaveBeenCalled();
+    });
+
+    it('должен обрабатывать разные типы действий в fallback', async () => {
+      llmService.generateText.mockRejectedValue(new Error('Error'));
+
+      const workAction = {
+        type: 'РАБОТА',
+        name: 'тестирование',
+        description: 'Тестирование программного обеспечения',
+      };
+      const result1 = await service.generateProactiveMessage(
+        mockCharacter as Character,
+        mockEmotionalState,
+        'friendly',
+        'Тестирую код',
+        workAction,
+      );
+      expect(result1).toContain('закончила работать над тестирование');
+
+      const restAction = { 
+        type: 'ОТДЫХ', 
+        name: 'чтение',
+        description: 'Чтение художественной литературы'
+      };
+      const result2 = await service.generateProactiveMessage(
+        mockCharacter as Character,
+        mockEmotionalState,
+        'relaxed',
+        'Читаю интересную книгу',
+        restAction,
+      );
+      expect(result2).toContain('Отдыхаю после долгого дня');
+
+      const hobbyAction = { 
+        type: 'ХОББИ', 
+        name: 'рисование',
+        description: 'Создание художественных работ'
+      };
+      const result3 = await service.generateProactiveMessage(
+        mockCharacter as Character,
+        mockEmotionalState,
+        'creative',
+        'Рисую пейзаж',
+        hobbyAction,
+      );
+      expect(result3).toContain('Занимаюсь своим хобби - рисование');
+
+      const unknownAction = { 
+        type: 'UNKNOWN', 
+        name: 'что-то',
+        description: 'Неизвестное действие'
+      };
+      const result4 = await service.generateProactiveMessage(
+        mockCharacter as Character,
+        mockEmotionalState,
+        'neutral',
+        'Делаю что-то неопределенное',
+        unknownAction,
+      );
+      );
+      expect(result4).toContain('Свободна и решила написать');
+    });
+  });
+
+  describe('интеграция с зависимостями', () => {
+    it('должен корректно передавать параметры в LLM сервис', async () => {
+      emotionalStateService.getEmotionalMemories.mockResolvedValue([]);
+      emotionalStateService.getEmotionalTransitions.mockResolvedValue([]);
+      promptTemplateService.createCharacterSystemPrompt.mockReturnValue('Test prompt');
+      llmService.generateText.mockResolvedValue({ text: 'Response' });
+
+      await service.generateResponse(
+        mockCharacter as Character,
+        'Test message',
+        [],
+        mockEmotionalState
+      );
+
+      expect(llmService.generateText).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ role: 'system', content: 'Test prompt' }),
+          expect.objectContaining({ role: 'user', content: 'Test message' })
+        ]),
+        expect.objectContaining({
+          temperature: 0.7,
+          maxTokens: 1000,
+          model: 'gpt-4'
+        })
+      );
+    });
+
+    it('должен корректно форматировать эмоциональную память', async () => {
+      const complexMemories = [
+        {
+          id: 'mem-1',
+          trigger: 'happy_event',
+          emotionalState: { primary: 'радость' },
+          significance: 80,
+        },
+        {
+          id: 'mem-2',
+          trigger: 'sad_event',
+          emotionalState: { primary: 'грусть' },
+          significance: 60,
+        },
+      ];
+
+      const complexTransitions = [
+        {
+          id: 'trans-1',
+          fromState: { primary: 'грусть' },
+          toState: { primary: 'радость' },
+          timestamp: new Date(),
+        },
+      ];
+
+      emotionalStateService.getEmotionalMemories.mockResolvedValue(complexMemories as any);
+      emotionalStateService.getEmotionalTransitions.mockResolvedValue(complexTransitions as any);
+      promptTemplateService.createCharacterSystemPrompt.mockReturnValue('Complex prompt');
+      llmService.generateText.mockResolvedValue({ text: 'Complex response' });
+
+      const result = await service.generateResponse(
+        mockCharacter as Character,
+        'Complex message',
+        [],
+        mockEmotionalState
+      );
+
+      expect(result).toBe('Complex response');
+      expect(promptTemplateService.createCharacterSystemPrompt).toHaveBeenCalledWith(
+        mockCharacter,
+        mockEmotionalState,
+        expect.stringContaining('Эмоциональные воспоминания')
+      );
+    });
+  });
+});

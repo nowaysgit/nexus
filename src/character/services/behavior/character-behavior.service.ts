@@ -1,19 +1,15 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
 import { BaseService } from '../../../common/base/base.service';
 import { Character } from '../../entities/character.entity';
-import { Need } from '../../entities/need.entity';
-import { CharacterMotivation } from '../../entities/character-motivation.entity';
-import { Action } from '../../entities/action.entity';
 import { EmotionalState } from '../../entities/emotional-state';
 import { LLMService } from '../../../llm/services/llm.service';
 import { LogService } from '../../../logging/log.service';
 import { NeedsService } from '../core/needs.service';
 import { EmotionalStateService } from '../core/emotional-state.service';
-import { MotivationService } from '../core/motivation.service';
 import { CharacterService } from '../core/character.service';
 import { CharacterMemory } from '../../entities/character-memory.entity';
 import { ActionExecutorService } from '../action/action-executor.service';
@@ -359,7 +355,8 @@ export class CharacterBehaviorService extends BaseService {
       const emotionalState = await this.emotionalStateService.getEmotionalState(characterId);
 
       // Анализируем фрустрацию через EmotionalBehaviorService
-      const frustrationLevel = await this.emotionalBehaviorService.analyzeFrustration(characterId);
+      const frustrationLevel: FrustrationLevel =
+        await this.emotionalBehaviorService.analyzeFrustration(characterId);
       const frustrationPatterns =
         this.emotionalBehaviorService.getActiveFrustrationPatterns(characterId);
 
@@ -391,7 +388,11 @@ export class CharacterBehaviorService extends BaseService {
       }
 
       // Модифицируем поведение на основе фрустрации
-      if (frustrationLevel !== 'none' && frustrationPatterns && frustrationPatterns.length > 0) {
+      if (
+        frustrationLevel !== FrustrationLevel.NONE &&
+        frustrationPatterns &&
+        frustrationPatterns.length > 0
+      ) {
         const pattern = frustrationPatterns[0];
         const aggressionIncrease = pattern.behaviorModifiers.aggressionIncrease;
         const withdrawalTendency = pattern.behaviorModifiers.withdrawalTendency;

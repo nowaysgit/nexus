@@ -6,8 +6,6 @@ import {
   EmotionalState,
   EmotionalProfile,
   EmotionalMemory,
-  EmotionalTransition,
-  EmotionalEvent,
   EmotionalPattern,
   EmotionalRegulationStrategy,
 } from '../../../src/character/entities/emotional-state';
@@ -16,7 +14,7 @@ import { createTestSuite } from '../../../lib/tester';
 createTestSuite('EmotionalStateController Unit Tests', () => {
   let controller: EmotionalStateController;
   let emotionalStateService: jest.Mocked<EmotionalStateService>;
-  let logService: jest.Mocked<LogService>;
+  let _logService: jest.Mocked<LogService>;
 
   const mockEmotionalState: EmotionalState = {
     primary: 'радость',
@@ -155,7 +153,7 @@ createTestSuite('EmotionalStateController Unit Tests', () => {
 
     controller = module.get<EmotionalStateController>(EmotionalStateController);
     emotionalStateService = module.get(EmotionalStateService);
-    logService = module.get(LogService);
+    _logService = module.get(LogService);
   });
 
   describe('getEmotionalState', () => {
@@ -611,7 +609,20 @@ createTestSuite('EmotionalStateController Unit Tests', () => {
         profile: mockEmotionalProfile,
         recentMemories: [],
         activePatterns: [],
-        context: {},
+        context: {
+          socialSetting: 'private' as const,
+          relationshipLevel: 50,
+          timeOfDay: 'afternoon' as const,
+          characterEnergy: 80,
+          recentEvents: [],
+          environmentalFactors: [],
+          culturalContext: 'modern',
+          historicalContext: 'new relationship',
+          emotionalClimate: 'neutral',
+          expectations: [],
+          constraints: [],
+          opportunities: [],
+        },
         metadata: {},
       };
 

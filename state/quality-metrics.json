@@ -1,0 +1,478 @@
+{
+    "version": "1.0",
+    "last_updated": "2025-07-31T12:00:00Z",
+    "description": "Централизованное хранилище всех метрик качества для автономного агента GitHub Copilot",
+    "core_metrics": {
+        "description": "Базовые метрики качества проекта - критически важные показатели",
+        "coverage": {
+            "current": 0,
+            "target": 80,
+            "minimum_threshold": 95,
+            "warning_threshold": 85,
+            "critical_threshold": 70,
+            "unit": "percent",
+            "description": "Процент покрытия кода автоматическими тестами",
+            "measurement_method": "jest --coverage",
+            "update_frequency": "after_each_test_run"
+        },
+        "coverage_full_work": {
+            "current": 0,
+            "target": 100,
+            "minimum_threshold": 95,
+            "warning_threshold": 85,
+            "critical_threshold": 70,
+            "unit": "percent",
+            "description": "Процент тестовых сценариев, успешно завершающихся",
+            "measurement_method": "automated_test_analysis",
+            "update_frequency": "after_each_test_run"
+        },
+        "technical_specifications_compliance": {
+            "current": 0,
+            "target": 100,
+            "minimum_threshold": 95,
+            "warning_threshold": 85,
+            "critical_threshold": 70,
+            "unit": "percent",
+            "description": "Процент соответствия реализации техническому заданию",
+            "measurement_method": "requirement_traceability_analysis",
+            "update_frequency": "daily"
+        },
+        "test_success_rate": {
+            "current": 0,
+            "target": 100,
+            "minimum_threshold": 100,
+            "warning_threshold": 95,
+            "critical_threshold": 90,
+            "unit": "percent",
+            "description": "Процент успешно проходящих тестов при запуске полного набора",
+            "measurement_method": "yarn test:all",
+            "update_frequency": "real_time"
+        }
+    },
+    "performance_metrics": {
+        "description": "Метрики производительности системы и ресурсов",
+        "response_time": {
+            "current": 0,
+            "target": 200,
+            "maximum_threshold": 500,
+            "warning_threshold": 300,
+            "critical_threshold": 1000,
+            "unit": "ms",
+            "description": "Среднее время отклика API endpoints",
+            "measurement_method": "api_performance_monitoring",
+            "update_frequency": "real_time"
+        },
+        "memory_usage": {
+            "current": 0,
+            "target": 50,
+            "maximum_threshold": 80,
+            "warning_threshold": 70,
+            "critical_threshold": 90,
+            "unit": "percent",
+            "description": "Процент использования оперативной памяти",
+            "measurement_method": "system_monitoring",
+            "update_frequency": "real_time"
+        },
+        "cpu_usage": {
+            "current": 0,
+            "target": 40,
+            "maximum_threshold": 70,
+            "warning_threshold": 60,
+            "critical_threshold": 85,
+            "unit": "percent",
+            "description": "Процент использования CPU",
+            "measurement_method": "system_monitoring",
+            "update_frequency": "real_time"
+        },
+        "disk_usage": {
+            "current": 0,
+            "target": 30,
+            "maximum_threshold": 80,
+            "warning_threshold": 70,
+            "critical_threshold": 90,
+            "unit": "percent",
+            "description": "Процент использования дискового пространства",
+            "measurement_method": "filesystem_monitoring",
+            "update_frequency": "hourly"
+        },
+        "database_query_time": {
+            "current": 0,
+            "target": 50,
+            "maximum_threshold": 200,
+            "warning_threshold": 100,
+            "critical_threshold": 500,
+            "unit": "ms",
+            "description": "Среднее время выполнения запросов к базе данных",
+            "measurement_method": "database_profiling",
+            "update_frequency": "real_time"
+        }
+    },
+    "quality_metrics": {
+        "description": "Метрики качества кода и архитектуры",
+        "security_score": {
+            "current": 0,
+            "target": 100,
+            "minimum_threshold": 95,
+            "warning_threshold": 85,
+            "critical_threshold": 70,
+            "unit": "score",
+            "description": "Оценка безопасности кода (0-100)",
+            "measurement_method": "security_scanner",
+            "update_frequency": "daily"
+        },
+        "maintainability_index": {
+            "current": 0,
+            "target": 85,
+            "minimum_threshold": 70,
+            "warning_threshold": 60,
+            "critical_threshold": 40,
+            "unit": "score",
+            "description": "Индекс поддерживаемости кода (0-100)",
+            "measurement_method": "static_code_analysis",
+            "update_frequency": "after_each_commit"
+        },
+        "cyclomatic_complexity": {
+            "current": 0,
+            "target": 5,
+            "maximum_threshold": 10,
+            "warning_threshold": 8,
+            "critical_threshold": 15,
+            "unit": "number",
+            "description": "Средняя цикломатическая сложность методов",
+            "measurement_method": "complexity_analyzer",
+            "update_frequency": "after_each_commit"
+        },
+        "code_duplication": {
+            "current": 0,
+            "target": 0,
+            "maximum_threshold": 5,
+            "warning_threshold": 3,
+            "critical_threshold": 10,
+            "unit": "percent",
+            "description": "Процент дублированного кода",
+            "measurement_method": "duplication_detector",
+            "update_frequency": "after_each_commit"
+        },
+        "lint_violations": {
+            "current": 0,
+            "target": 0,
+            "maximum_threshold": 0,
+            "warning_threshold": 5,
+            "critical_threshold": 20,
+            "unit": "count",
+            "description": "Количество нарушений правил линтера",
+            "measurement_method": "eslint",
+            "update_frequency": "real_time"
+        },
+        "type_coverage": {
+            "current": 0,
+            "target": 100,
+            "minimum_threshold": 95,
+            "warning_threshold": 85,
+            "critical_threshold": 70,
+            "unit": "percent",
+            "description": "Процент типизированного кода (для TypeScript)",
+            "measurement_method": "typescript_analyzer",
+            "update_frequency": "after_each_commit"
+        }
+    },
+    "technical_debt_metrics": {
+        "description": "Метрики технического долга и архитектурного качества",
+        "reliability_score": {
+            "current": 0,
+            "target": 95,
+            "minimum_threshold": 85,
+            "warning_threshold": 75,
+            "critical_threshold": 60,
+            "unit": "score",
+            "description": "Оценка надежности системы (0-100)",
+            "measurement_method": "reliability_analyzer",
+            "update_frequency": "daily"
+        },
+        "scalability_score": {
+            "current": 0,
+            "target": 90,
+            "minimum_threshold": 80,
+            "warning_threshold": 70,
+            "critical_threshold": 50,
+            "unit": "score",
+            "description": "Оценка масштабируемости архитектуры (0-100)",
+            "measurement_method": "architecture_analyzer",
+            "update_frequency": "weekly"
+        },
+        "technical_debt_ratio": {
+            "current": 0,
+            "target": 0,
+            "maximum_threshold": 5,
+            "warning_threshold": 3,
+            "critical_threshold": 10,
+            "unit": "percent",
+            "description": "Отношение времени на исправление долга к времени разработки",
+            "measurement_method": "debt_calculator",
+            "update_frequency": "weekly"
+        },
+        "architecture_violations": {
+            "current": 0,
+            "target": 0,
+            "maximum_threshold": 0,
+            "warning_threshold": 2,
+            "critical_threshold": 5,
+            "unit": "count",
+            "description": "Количество нарушений архитектурных принципов",
+            "measurement_method": "architecture_linter",
+            "update_frequency": "after_each_commit"
+        }
+    },
+    "user_experience_metrics": {
+        "description": "Метрики пользовательского опыта и качества продукта",
+        "error_rate": {
+            "current": 0,
+            "target": 0,
+            "maximum_threshold": 1,
+            "warning_threshold": 0.5,
+            "critical_threshold": 2,
+            "unit": "percent",
+            "description": "Процент ошибочных запросов от пользователей",
+            "measurement_method": "error_tracking",
+            "update_frequency": "real_time"
+        },
+        "uptime": {
+            "current": 0,
+            "target": 99.9,
+            "minimum_threshold": 99.5,
+            "warning_threshold": 99.0,
+            "critical_threshold": 98.0,
+            "unit": "percent",
+            "description": "Время доступности системы",
+            "measurement_method": "uptime_monitoring",
+            "update_frequency": "real_time"
+        },
+        "user_satisfaction": {
+            "current": 0,
+            "target": 90,
+            "minimum_threshold": 80,
+            "warning_threshold": 70,
+            "critical_threshold": 60,
+            "unit": "score",
+            "description": "Оценка удовлетворенности пользователей (0-100)",
+            "measurement_method": "user_feedback_analysis",
+            "update_frequency": "weekly"
+        }
+    },
+    "autonomous_agent_metrics": {
+        "description": "Специальные метрики для автономного агента",
+        "decision_accuracy": {
+            "current": 0,
+            "target": 95,
+            "minimum_threshold": 85,
+            "warning_threshold": 75,
+            "critical_threshold": 60,
+            "unit": "percent",
+            "description": "Точность принимаемых агентом решений",
+            "measurement_method": "decision_validation",
+            "update_frequency": "after_each_decision"
+        },
+        "learning_velocity": {
+            "current": 0,
+            "target": 8,
+            "minimum_threshold": 5,
+            "warning_threshold": 3,
+            "critical_threshold": 1,
+            "unit": "score",
+            "description": "Скорость обучения и адаптации агента (0-10)",
+            "measurement_method": "learning_analytics",
+            "update_frequency": "daily"
+        },
+        "task_completion_rate": {
+            "current": 0,
+            "target": 95,
+            "minimum_threshold": 85,
+            "warning_threshold": 75,
+            "critical_threshold": 60,
+            "unit": "percent",
+            "description": "Процент успешно завершенных задач агентом",
+            "measurement_method": "task_tracking",
+            "update_frequency": "after_each_task"
+        },
+        "autonomy_level": {
+            "current": 0,
+            "target": 90,
+            "minimum_threshold": 80,
+            "warning_threshold": 70,
+            "critical_threshold": 50,
+            "unit": "percent",
+            "description": "Уровень автономности работы без внешнего вмешательства",
+            "measurement_method": "autonomy_analyzer",
+            "update_frequency": "daily"
+        },
+        "self_improvement_rate": {
+            "current": 0,
+            "target": 85,
+            "minimum_threshold": 70,
+            "warning_threshold": 60,
+            "critical_threshold": 40,
+            "unit": "percent",
+            "description": "Способность к самосовершенствованию и оптимизации",
+            "measurement_method": "improvement_tracker",
+            "update_frequency": "weekly"
+        },
+        "context_understanding": {
+            "current": 0,
+            "target": 90,
+            "minimum_threshold": 80,
+            "warning_threshold": 70,
+            "critical_threshold": 50,
+            "unit": "percent",
+            "description": "Качество понимания контекста проекта и задач",
+            "measurement_method": "context_analyzer",
+            "update_frequency": "after_each_interaction"
+        }
+    },
+    "alert_rules": {
+        "description": "Правила для автоматических уведомлений и эскалации",
+        "critical_alert_conditions": [
+            "any core_metric below critical_threshold",
+            "any performance_metric above critical_threshold",
+            "lint_violations > 0",
+            "test_success_rate < 100",
+            "architecture_violations > 0",
+            "autonomous_agent decision_accuracy < 60"
+        ],
+        "warning_alert_conditions": [
+            "any metric approaching warning_threshold",
+            "declining trend in autonomous_agent_metrics",
+            "increasing technical_debt_ratio",
+            "memory_usage > 70 for more than 5 minutes"
+        ],
+        "notification_channels": [
+            "telegram_bot",
+            "log_file",
+            "monitoring_dashboard",
+            "email_alerts"
+        ],
+        "escalation_rules": {
+            "immediate": "critical system failures, security breaches",
+            "within_1_hour": "critical threshold violations",
+            "within_4_hours": "warning threshold violations",
+            "daily_summary": "trend analysis and recommendations"
+        }
+    },
+    "calculation_rules": {
+        "description": "Правила расчета композитных метрик и общих показателей",
+        "overall_quality_score": {
+            "formula": "(core_metrics_avg * 0.4) + (quality_metrics_avg * 0.3) + (technical_debt_inverted * 0.2) + (autonomous_agent_avg * 0.1)",
+            "target": 90,
+            "description": "Общая оценка качества проекта",
+            "components": {
+                "core_metrics_weight": 40,
+                "quality_metrics_weight": 30,
+                "technical_debt_weight": 20,
+                "autonomous_agent_weight": 10
+            }
+        },
+        "project_health_status": {
+            "excellent": "> 90",
+            "good": "80-90",
+            "fair": "70-80",
+            "poor": "60-70",
+            "critical": "< 60",
+            "description": "Общее состояние здоровья проекта"
+        },
+        "readiness_for_production": {
+            "formula": "min(core_metrics_avg, quality_metrics_avg, user_experience_avg)",
+            "threshold": 95,
+            "description": "Готовность к продакшену (минимум из основных категорий)"
+        }
+    },
+    "monitoring_config": {
+        "description": "Конфигурация мониторинга и обновления метрик",
+        "update_frequency": {
+            "real_time_metrics": [
+                "cpu_usage",
+                "memory_usage",
+                "response_time",
+                "test_success_rate",
+                "lint_violations"
+            ],
+            "hourly_metrics": [
+                "coverage",
+                "disk_usage",
+                "error_rate",
+                "uptime"
+            ],
+            "daily_metrics": [
+                "technical_specifications_compliance",
+                "security_score",
+                "maintainability_index",
+                "autonomy_level",
+                "learning_velocity"
+            ],
+            "weekly_metrics": [
+                "user_satisfaction",
+                "scalability_score",
+                "technical_debt_ratio",
+                "self_improvement_rate"
+            ]
+        },
+        "data_retention": {
+            "raw_data": "30_days",
+            "hourly_aggregates": "6_months",
+            "daily_aggregates": "2_years",
+            "weekly_aggregates": "5_years"
+        },
+        "backup_strategy": {
+            "frequency": "daily",
+            "retention": "1_year",
+            "location": "metrics_backup/",
+            "format": "compressed_json"
+        }
+    },
+    "integration_points": {
+        "description": "Точки интеграции с другими компонентами системы",
+        "referenced_by": [
+            ".progress.json - ссылается на метрики через reference поле",
+            ".knowledge_base.json - использует пороговые значения в секции metrics",
+            "base2.instructions.md - все роли агента ссылаются на этот файл для получения пороговых значений",
+            "Стратегический Координатор - для анализа состояния проекта",
+            "Автономный Аудитор - для оценки качества и прогнозирования",
+            "Менеджер Ресурсов и Рисков - для мониторинга производительности",
+            "Исполнитель Кода - для триггеров автоматического рефакторинга"
+        ],
+        "data_sources": [
+            "jest test runner - для coverage и test_success_rate",
+            "eslint - для lint_violations и type_coverage",
+            "system monitors - для cpu_usage, memory_usage, disk_usage",
+            "api monitors - для response_time и error_rate",
+            "security scanners - для security_score",
+            "code analyzers - для maintainability_index, cyclomatic_complexity",
+            "agent logs - для autonomous_agent_metrics",
+            "user feedback systems - для user_satisfaction"
+        ],
+        "output_destinations": [
+            "monitoring dashboards",
+            "alert systems",
+            "reporting tools",
+            "CI/CD pipelines",
+            "quality gates"
+        ]
+    },
+    "meta_information": {
+        "total_metrics": 25,
+        "categories": 6,
+        "version_history": [
+            "1.0 - Initial centralized metrics structure"
+        ],
+        "responsible_roles": [
+            "Стратегический Координатор - общее управление метриками",
+            "Автономный Аудитор - анализ качества и тренды",
+            "Менеджер Ресурсов и Рисков - производительность и доступность",
+            "Исполнитель Кода - метрики качества кода",
+            "Инженер по Знаниям - метрики обучения и адаптации",
+            "Интеграционный Менеджер - метрики интеграции и развертывания"
+        ],
+        "storage_format": "JSON",
+        "file_size_limit": "1MB",
+        "encoding": "UTF-8",
+        "validation_schema": "quality_metrics.schema.json"
+    }
+}

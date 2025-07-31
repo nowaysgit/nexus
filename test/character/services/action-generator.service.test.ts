@@ -252,8 +252,10 @@ describe('ActionGeneratorService', () => {
   describe('обработка ошибок', () => {
     it('должен обрабатывать ошибки при генерации действий', async () => {
       // Тест на обработку ошибок - создаем ситуацию, где может возникнуть ошибка
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const invalidCharacter = null as any;
 
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       await expect(service.generateCommunicationAction(invalidCharacter, 'test')).rejects.toThrow();
     });
   });

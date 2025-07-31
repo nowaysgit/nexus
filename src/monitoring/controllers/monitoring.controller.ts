@@ -11,7 +11,7 @@ import {
   ParseIntPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
-import { MonitoringService } from '../monitoring.service';
+import { MonitoringService, SystemMetric } from '../monitoring.service';
 import { AlertService } from '../services/alert.service';
 import { OptimizationService } from '../services/optimization.service';
 
@@ -70,7 +70,7 @@ export class MonitoringController {
   async getSystemMetrics(
     @Query('limit') limit?: number,
     @Query('metricType') metricType?: string,
-  ): Promise<any[]> {
+  ): Promise<SystemMetric[]> {
     try {
       return this.monitoringService.getMetrics(metricType || 'system', limit || 100);
     } catch (error) {
@@ -84,7 +84,7 @@ export class MonitoringController {
   async getApiMetrics(
     @Query('limit') limit?: number,
     @Query('endpoint') endpoint?: string,
-  ): Promise<any[]> {
+  ): Promise<SystemMetric[]> {
     try {
       return this.monitoringService.getMetrics(endpoint || 'api', limit || 100);
     } catch (error) {

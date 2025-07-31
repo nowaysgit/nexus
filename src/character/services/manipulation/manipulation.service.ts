@@ -35,6 +35,13 @@ export interface ITechniqueExecution {
   effectiveness: number;
 }
 
+interface AnalysisResult {
+  primaryNeed?: string;
+  emotionalTone?: string;
+  vulnerability?: string;
+  recommendation?: string;
+}
+
 export interface ITechniqueStrategy {
   characterId: number;
   primaryTechniques: ManipulativeTechniqueType[];
@@ -140,12 +147,13 @@ export class ManipulationService extends BaseService {
       { role: LLMMessageRole.SYSTEM, content: analysisPrompt },
     ]);
 
-    let analysisResult;
+    let analysisResult: AnalysisResult;
     try {
-      analysisResult = analysisResponse;
+      analysisResult = analysisResponse as AnalysisResult;
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       this.logError(`Failed to parse analysis response for character ${characterId}`, {
-        error: error.message,
+        error: errorMessage,
       });
       return null;
     }
@@ -309,8 +317,9 @@ export class ManipulationService extends BaseService {
 
         return manipulativeResponse;
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
         this.logError(`Error executing technique ${technique} for character ${characterId}`, {
-          error: error.message,
+          error: errorMessage,
           characterId,
           userId,
           technique,
@@ -407,8 +416,9 @@ export class ManipulationService extends BaseService {
 
         return { success: true, message: executionResult.message };
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
         this.logError(`Error executing technique ${selectedTechnique.techniqueType} for context`, {
-          error: error.message,
+          error: errorMessage,
           context,
           selectedTechnique,
         });
@@ -515,8 +525,9 @@ export class ManipulationService extends BaseService {
 
       return savedProfile;
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       this.logError(`Failed to update user manipulation profile`, {
-        error: error.message,
+        error: errorMessage,
         userId: numericUserId,
         characterId: numericCharacterId,
         profileData,
@@ -688,7 +699,12 @@ export class ManipulationService extends BaseService {
   /**
    * Получение статистики применения техник
    */
-  async getTechniqueStatistics(characterId: number): Promise<any> {
+  async getTechniqueStatistics(characterId: number): Promise<{
+    totalExecutions: number;
+    averageEffectiveness: number;
+    techniqueUsage: Record<string, number>;
+    ethicalViolations: number;
+  }> {
     const executions = this.activeExecutions.get(characterId) || [];
 
     return {
@@ -741,9 +757,10 @@ export class ManipulationService extends BaseService {
       return result || 0; // Возвращаем результат или 0, если не удалось преобразовать
     } catch (error) {
       console.error('Error converting UUID to numeric:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
       this.logWarning('Не удалось преобразовать UUID в числовой ID', {
         uuid,
-        error: error.message,
+        error: errorMessage,
       });
       return 0;
     }

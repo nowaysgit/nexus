@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { StoryAutomationService } from '../../src/story/services/story-automation.service';
-import { StoryService } from '../../src/story/services/story.service';
+import { StoryService, IStoryContext } from '../../src/story/services/story.service';
 import {
   Character,
   CharacterGender,
@@ -12,8 +12,24 @@ import { CharacterArchetype } from '../../src/character/enums/character-archetyp
 import { Dialog } from '../../src/dialog/entities/dialog.entity';
 import { Message } from '../../src/dialog/entities/message.entity';
 import { Need } from '../../src/character/entities/need.entity';
-import { CharacterNeedType } from '../../src/character/enums/character-need-type.enum';
+import { StoryEvent, StoryEventType } from '../../src/story/entities/story-event.entity';
 import { LogService } from '../../src/logging/log.service';
+
+function createMockStoryEvent(partial: Partial<StoryEvent> = {}): StoryEvent {
+  return {
+    id: 'mock-story-event-id',
+    name: 'Mock Story Event',
+    description: 'Mock story event description',
+    eventType: StoryEventType.USER_INTERACTION,
+    triggers: {},
+    effects: {},
+    isActive: true,
+    priority: 1,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...partial,
+  } as StoryEvent;
+}
 import { MockLogService } from '../../lib/tester/mocks/log.service.mock';
 
 describe('StoryAutomationService', () => {
@@ -200,7 +216,7 @@ describe('StoryAutomationService', () => {
           lastUserMessage: 'Hello there!',
           conversationLength: 1,
           timeSinceLastInteraction: expect.any(Number),
-        }),
+        }) as IStoryContext,
       );
     });
 
@@ -225,7 +241,7 @@ describe('StoryAutomationService', () => {
 
   describe('initializeDefaultEvents', () => {
     it('должен создавать стандартные события', async () => {
-      mockStoryService.createStoryEvent.mockResolvedValue({} as any);
+      mockStoryService.createStoryEvent.mockResolvedValue(createMockStoryEvent());
 
       await service.initializeDefaultEvents();
 
@@ -261,7 +277,7 @@ describe('StoryAutomationService', () => {
       } as Character;
 
       mockCharacterRepository.findOne.mockResolvedValue(testCharacter);
-      mockStoryService.createStoryEvent.mockResolvedValue({} as any);
+      mockStoryService.createStoryEvent.mockResolvedValue(createMockStoryEvent());
 
       await service.createPersonalizedEvents(1);
 
@@ -289,7 +305,7 @@ describe('StoryAutomationService', () => {
       } as Character;
 
       mockCharacterRepository.findOne.mockResolvedValue(testCharacter);
-      mockStoryService.createStoryEvent.mockResolvedValue({} as any);
+      mockStoryService.createStoryEvent.mockResolvedValue(createMockStoryEvent());
 
       await service.createPersonalizedEvents(1);
 

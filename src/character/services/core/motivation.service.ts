@@ -132,12 +132,16 @@ export class MotivationService extends BaseService {
         return null;
       }
 
+      const oldStatus = motivation.status;
       motivation.currentValue += delta;
       motivation.lastUpdated = new Date();
 
       // Проверяем достижение порогового значения
       if (motivation.currentValue >= motivation.thresholdValue) {
         this.logInfo(`Мотивация ${motivationId} достигла порогового значения`);
+
+        // Изменяем статус на выполненный
+        motivation.status = MotivationStatus.FULFILLED;
 
         // Генерируем событие достижения порога мотивации
         this.eventEmitter.emit('motivation.threshold_reached', {
@@ -151,6 +155,15 @@ export class MotivationService extends BaseService {
       }
 
       const updatedMotivation = await this.motivationRepository.save(motivation);
+
+      // Генерируем событие изменения статуса, если статус изменился
+      if (oldStatus !== motivation.status) {
+        this.eventEmitter.emit('motivation.status.changed', {
+          motivationId,
+          oldStatus,
+          newStatus: motivation.status,
+        });
+      }
 
       // Генерируем событие обновления мотивации
       this.eventEmitter.emit('motivation.updated', {
@@ -453,8 +466,8 @@ export class MotivationService extends BaseService {
   private calculatePriority(need: Need): number {
     // Базовый приоритет зависит от значения потребности и её важности
     const valueWeight = Math.min(need.currentValue / 100, 1.0);
-    const priorityWeight =
-      need.priority === ('high' as any) ? 1.5 : need.priority === ('medium' as any) ? 1.0 : 0.7;
+    // priority является числом, где высокое значение означает высокий приоритет
+    const priorityWeight = need.priority >= 8 ? 1.5 : need.priority >= 5 ? 1.0 : 0.7;
 
     return Math.round(valueWeight * priorityWeight * 10);
   }

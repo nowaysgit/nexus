@@ -12,13 +12,13 @@ describe('AccessControlService', () => {
   beforeEach(async () => {
     mockLogService = new MockLogService();
     mockConfigService = {
-      get: jest.fn().mockImplementation((key: string, defaultValue?: any) => {
+      get: jest.fn().mockImplementation((key: string, defaultValue?: unknown) => {
         if (key === 'telegram.accessMode') return 'open';
         if (key === 'telegram.allowedUsers') return '';
         if (key === 'telegram.adminUsers') return '';
         return defaultValue;
       }),
-    } as any;
+    } as unknown as jest.Mocked<ConfigService>;
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [

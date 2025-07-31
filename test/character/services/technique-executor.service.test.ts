@@ -2,7 +2,10 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { TechniqueExecutorService } from '../../../src/character/services/technique/technique-executor.service';
 import { LogService } from '../../../src/logging/log.service';
 import { TechniqueHistoryService } from '../../../src/character/services/technique/technique-history.service';
-import { TechniqueStrategyService } from '../../../src/character/services/technique/technique-strategy.service';
+import {
+  TechniqueStrategyService,
+  ITechniqueExecutionStrategy,
+} from '../../../src/character/services/technique/technique-strategy.service';
 import {
   ManipulativeTechniqueType,
   TechniqueIntensity,
@@ -13,7 +16,7 @@ import {
 
 describe('TechniqueExecutorService', () => {
   let service: TechniqueExecutorService;
-  let mockLogService: jest.Mocked<LogService>;
+  let _mockLogService: jest.Mocked<LogService>;
   let mockHistoryService: jest.Mocked<TechniqueHistoryService>;
   let mockStrategyService: jest.Mocked<TechniqueStrategyService>;
 
@@ -23,9 +26,10 @@ describe('TechniqueExecutorService', () => {
     messageContent: 'Test message',
     relationshipLevel: 50,
     emotionalState: {
-      dominantEmotion: 'neutral',
-      intensity: 0.5,
-    } as any,
+      primary: 'neutral',
+      secondary: 'calm',
+      intensity: 50,
+    },
     needsState: {
       attention: 70,
       validation: 60,
@@ -96,7 +100,7 @@ describe('TechniqueExecutorService', () => {
     }).compile();
 
     service = module.get<TechniqueExecutorService>(TechniqueExecutorService);
-    mockLogService = module.get(LogService);
+    _mockLogService = module.get(LogService);
     mockHistoryService = module.get(TechniqueHistoryService);
     mockStrategyService = module.get(TechniqueStrategyService);
   });
@@ -269,7 +273,7 @@ describe('TechniqueExecutorService', () => {
 
   describe('selectAdaptiveTechnique', () => {
     it('should select appropriate technique based on context', async () => {
-      const strategiesMap = new Map();
+      const strategiesMap = new Map<ManipulativeTechniqueType, ITechniqueExecutionStrategy>();
       strategiesMap.set(ManipulativeTechniqueType.VALIDATION, mockStrategy);
       strategiesMap.set(ManipulativeTechniqueType.LOVE_BOMBING, {
         ...mockStrategy,

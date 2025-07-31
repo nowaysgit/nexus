@@ -18,7 +18,7 @@ createTestSuite('TestConfigurations & TestModuleBuilder Unit Test', () => {
         .compile();
 
       const dummy = moduleRef.get(DummyService);
-      const logService = moduleRef.get<LogService>(LogService as any);
+      const logService = moduleRef.get<LogService>(LogService);
 
       expect(dummy.hello()).toBe('world');
       expect(logService).toBeDefined();

@@ -32,7 +32,9 @@ export class StorySeederService implements OnModuleInit {
       await this.storyEventRepository.save(eventsToCreate);
       this.logService.info(`Успешно создано ${eventsToCreate.length} сюжетных событий.`);
     } catch (error) {
-      this.logService.error('Ошибка при сидинге сюжетных событий', { error });
+      this.logService.error('Ошибка при сидинге сюжетных событий', {
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 

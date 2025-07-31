@@ -4,13 +4,14 @@ import { BaseService } from '../../../common/base/base.service';
 import { LLMService } from '../../../llm/services/llm.service';
 import { PromptTemplateService } from '../../../prompt-template/prompt-template.service';
 import { Character } from '../../entities/character.entity';
-import { MessageAnalysis } from '../../interfaces/analysis.interfaces';
 import { LLMMessageRole, ILLMMessage } from '../../../common/interfaces/llm-provider.interface';
 import {
+  MessageAnalysis,
   EmotionalAnalysis,
   ManipulationAnalysis,
   SpecializationAnalysis,
   BehaviorAnalysis,
+  UserIntent,
 } from '../../interfaces/analysis.interfaces';
 import { ManipulativeTechniqueType } from '../../enums/technique.enums';
 
@@ -104,12 +105,13 @@ export class MessageAnalysisService extends BaseService {
 
   private parseAnalysisFromLLM(llmResponse: unknown): Omit<MessageAnalysis, 'analysisMetadata'> {
     try {
-      const parsed = typeof llmResponse === 'string' ? JSON.parse(llmResponse) : llmResponse;
+      const parsed: unknown =
+        typeof llmResponse === 'string' ? JSON.parse(llmResponse) : llmResponse;
       if (!parsed || typeof parsed !== 'object') {
         throw new Error('Некорректный формат ответа от LLM');
       }
 
-      const response = parsed as Record<string, any>;
+      const response = parsed as Record<string, unknown>;
 
       const needsImpact = this.parseObject(response.needs, {}) as Record<string, number>;
       const emotionalAnalysis = this.parseObject(response.emotion, {});
@@ -119,60 +121,75 @@ export class MessageAnalysisService extends BaseService {
 
       return {
         urgency: this.parseNumber(response.urgency, 0.5),
-        userIntent: this.parseString(response.userIntent, 'unknown') as any,
+        userIntent: this.parseString(response.userIntent, 'unknown') as UserIntent,
         needsImpact,
         emotionalAnalysis: {
           userMood: this.parseString(
-            (emotionalAnalysis as any)?.userMood,
+            (emotionalAnalysis as Record<string, unknown>)?.userMood,
             'neutral',
           ) as EmotionalAnalysis['userMood'],
-          emotionalIntensity: this.parseNumber((emotionalAnalysis as any)?.emotionalIntensity, 0.5),
-          triggerEmotions: this.parseStringArray((emotionalAnalysis as any)?.triggerEmotions, []),
+          emotionalIntensity: this.parseNumber(
+            (emotionalAnalysis as Record<string, unknown>)?.emotionalIntensity,
+            0.5,
+          ),
+          triggerEmotions: this.parseStringArray(
+            (emotionalAnalysis as Record<string, unknown>)?.triggerEmotions,
+            [],
+          ),
           expectedEmotionalResponse: this.parseString(
-            (emotionalAnalysis as any)?.expectedEmotionalResponse,
+            (emotionalAnalysis as Record<string, unknown>)?.expectedEmotionalResponse,
             'neutral',
           ),
         },
         manipulationAnalysis: {
           userVulnerability: this.parseNumber(
-            (manipulationAnalysis as any)?.userVulnerability,
+            (manipulationAnalysis as Record<string, unknown>)?.userVulnerability,
             0.1,
           ),
           applicableTechniques: this.parseStringArray(
-            (manipulationAnalysis as any)?.applicableTechniques,
+            (manipulationAnalysis as Record<string, unknown>)?.applicableTechniques,
             [],
           ),
           riskLevel: this.parseString(
-            (manipulationAnalysis as any)?.riskLevel,
+            (manipulationAnalysis as Record<string, unknown>)?.riskLevel,
             'low',
           ) as ManipulationAnalysis['riskLevel'],
           recommendedIntensity: this.parseNumber(
-            (manipulationAnalysis as any)?.recommendedIntensity,
+            (manipulationAnalysis as Record<string, unknown>)?.recommendedIntensity,
             0.1,
           ),
         },
         specializationAnalysis: {
           responseComplexityLevel: this.parseString(
-            (specializationAnalysis as any)?.responseComplexityLevel,
+            (specializationAnalysis as Record<string, unknown>)?.responseComplexityLevel,
             'simple',
           ) as SpecializationAnalysis['responseComplexityLevel'],
           requiredKnowledge: this.parseStringArray(
-            (specializationAnalysis as any)?.requiredKnowledge,
+            (specializationAnalysis as Record<string, unknown>)?.requiredKnowledge,
             [],
           ),
-          domain: this.parseString((specializationAnalysis as any)?.domain, 'general'),
+          domain: this.parseString(
+            (specializationAnalysis as Record<string, unknown>)?.domain,
+            'general',
+          ),
         },
         behaviorAnalysis: {
           interactionType: this.parseString(
-            (behaviorAnalysis as any)?.interactionType,
+            (behaviorAnalysis as Record<string, unknown>)?.interactionType,
             'casual',
           ) as BehaviorAnalysis['interactionType'],
           conversationDirection: this.parseString(
-            (behaviorAnalysis as any)?.conversationDirection,
+            (behaviorAnalysis as Record<string, unknown>)?.conversationDirection,
             'continue',
           ) as BehaviorAnalysis['conversationDirection'],
-          userIntent: this.parseString((behaviorAnalysis as any)?.userIntent, 'unknown'),
-          keyTopics: this.parseStringArray((behaviorAnalysis as any)?.keyTopics, []),
+          userIntent: this.parseString(
+            (behaviorAnalysis as Record<string, unknown>)?.userIntent,
+            'unknown',
+          ),
+          keyTopics: this.parseStringArray(
+            (behaviorAnalysis as Record<string, unknown>)?.keyTopics,
+            [],
+          ),
         },
       };
     } catch (error) {
@@ -195,7 +212,7 @@ export class MessageAnalysisService extends BaseService {
 
   private parseStringArray(value: unknown, fallback: string[]): string[] {
     if (Array.isArray(value) && value.every(item => typeof item === 'string')) {
-      return value;
+      return value as string[];
     }
     if (typeof value === 'string' && value.length > 0) {
       return [value];

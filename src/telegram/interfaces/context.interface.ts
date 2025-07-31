@@ -4,7 +4,7 @@ export interface SessionData {
   userId?: number;
   username?: string;
   state?: string;
-  data?: Record<string, any>;
+  data?: Record<string, unknown>;
   lastActivity?: Date;
   characterId?: number;
   activeCharacterId?: number;
@@ -18,7 +18,21 @@ export interface ExtendedCallbackQuery {
     first_name: string;
     username?: string;
   };
-  message?: any;
+  message?: {
+    message_id: number;
+    date: number;
+    chat: {
+      id: number;
+      type: string;
+    };
+    from?: {
+      id: number;
+      is_bot: boolean;
+      first_name: string;
+      username?: string;
+    };
+    text?: string;
+  };
   inline_message_id?: string;
   chat_instance: string;
   data: string;

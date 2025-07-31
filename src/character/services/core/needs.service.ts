@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { LogService } from '../../../logging/log.service';
-import { Need } from '../../entities/need.entity';
+import { Need, NeedState } from '../../entities/need.entity';
 import { Character } from '../../entities/character.entity';
 import { INeedsService, INeed, INeedUpdate } from '../../interfaces/needs.interfaces';
 import { CharacterNeedType } from '../../enums/character-need-type.enum';
@@ -310,11 +310,11 @@ export class NeedsService extends BaseService implements INeedsService {
           .enqueue(
             messageContext,
             async (context: MessageContext) => {
-              // Безопасно извлекаем characterId
-              const charId = context.metadata?.characterId;
+              // Безопасно извлекаем characterId с проверкой типов
+              const charId = context.metadata?.characterId as unknown;
               if (typeof charId !== 'number') {
                 const error = new Error(
-                  `Неверный или отсутствующий characterId в метаданных задачи: ${String(charId)}`,
+                  `Неверный или отсутствующий characterId в метаданных задачи: ${charId !== null && charId !== undefined ? JSON.stringify(charId) : 'undefined'}`,
                 );
                 this.logError(error.message, { context });
                 return { success: false, handled: true, context, error };
@@ -350,9 +350,10 @@ export class NeedsService extends BaseService implements INeedsService {
             },
             { priority: MessagePriority.LOW }, // Используем корректный enum и значение
           )
-          .catch(error => {
+          .catch((error: unknown) => {
+            const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
             this.logError(`Ошибка при постановке задачи в очередь для персонажа ${character.id}`, {
-              error,
+              error: error instanceof Error ? error : new Error(errorMessage),
             });
           });
       }
@@ -728,11 +729,11 @@ export class NeedsService extends BaseService implements INeedsService {
           // Влияние зависит от состояния источника и коэффициента
           let influenceAmount = 0;
 
-          if (sourceNeed.state === 'blocked' || sourceNeed.state === 'frustrated') {
+          if (sourceNeed.state === NeedState.BLOCKED || sourceNeed.state === NeedState.FRUSTRATED) {
             // Негативное влияние при блокировке или фрустрации
             influenceAmount = coefficient * sourceNeed.frustrationLevel * 0.1;
             relatedNeed.increaseFrustration(influenceAmount);
-          } else if (sourceNeed.state === 'satisfied') {
+          } else if (sourceNeed.state === NeedState.SATISFIED) {
             // Позитивное влияние при удовлетворении
             influenceAmount = coefficient * 10;
             relatedNeed.decreaseFrustration(Math.abs(influenceAmount));

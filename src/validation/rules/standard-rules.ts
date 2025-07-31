@@ -1,5 +1,8 @@
-import { ValidationRule } from '../../common/interfaces/message-validation.interface';
-import { ValidationResult, ValidationError } from '../../common/interfaces/validation.interface';
+import {
+  ValidationRule,
+  ValidationResult,
+  ValidationError,
+} from '../../common/interfaces/message-validation.interface';
 import { MessageContext } from '../../common/interfaces/message-processor.interface';
 
 // Расширим MessageContext для безопасного доступа к полям
@@ -31,7 +34,6 @@ export class RequiredFieldsRule implements ValidationRule {
     return {
       isValid: errors.length === 0,
       errors,
-      validatedData: message,
     };
   }
 
@@ -72,7 +74,6 @@ export class MessageTypeRule implements ValidationRule {
     return {
       isValid: errors.length === 0,
       errors,
-      validatedData: message,
     };
   }
 }
@@ -104,7 +105,6 @@ export class ContentLengthRule implements ValidationRule {
     return {
       isValid: errors.length === 0,
       errors,
-      validatedData: message,
     };
   }
 
@@ -147,7 +147,6 @@ export class DateFormatRule implements ValidationRule {
     return {
       isValid: errors.length === 0,
       errors,
-      validatedData: message,
     };
   }
 
@@ -207,7 +206,6 @@ export class RegexRule implements ValidationRule {
     return {
       isValid: errors.length === 0,
       errors,
-      validatedData: message,
     };
   }
 

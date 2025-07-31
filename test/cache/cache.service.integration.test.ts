@@ -316,8 +316,8 @@ createTestSuite('CacheService Integration Tests', () => {
               field1: 'value1',
               field2: 42,
               array: expect.arrayContaining([1, 2, 3, 'test']),
-            }),
-          }),
+            } as Record<string, unknown>),
+          } as Record<string, unknown>),
         );
 
         // Проверяем, что дата была сохранена

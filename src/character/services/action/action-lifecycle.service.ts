@@ -257,7 +257,7 @@ export class ActionLifecycleService extends BaseService {
   /**
    * Проверяет, можно ли прервать текущее действие для выполнения нового
    */
-  canInterruptAction(current: CharacterAction, newAction: CharacterAction): boolean {
+  canInterruptAction(_current: CharacterAction, newAction: CharacterAction): boolean {
     // Действия с высоким приоритетом
     const highPriorityActions = [
       ActionType.EMOTIONAL_RESPONSE,

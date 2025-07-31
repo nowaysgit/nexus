@@ -1,14 +1,21 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
 import { SanitizeRequestInterceptor } from '../../../src/common/interceptors/sanitize-request.interceptor';
 import { ValidationService } from '../../../src/validation/services/validation.service';
 import { ExecutionContext, CallHandler } from '@nestjs/common';
 import { of } from 'rxjs';
+
+interface MockRequest {
+  body: Record<string, unknown>;
+  query: Record<string, unknown>;
+  params: Record<string, unknown>;
+}
 
 describe('SanitizeRequestInterceptor', () => {
   let interceptor: SanitizeRequestInterceptor;
   let mockValidationService: jest.Mocked<ValidationService>;
   let mockExecutionContext: jest.Mocked<ExecutionContext>;
   let mockCallHandler: jest.Mocked<CallHandler>;
-  let mockRequest: any;
+  let mockRequest: MockRequest;
 
   beforeEach(() => {
     mockValidationService = {
@@ -71,8 +78,10 @@ describe('SanitizeRequestInterceptor', () => {
       expect(mockValidationService.sanitizeInput).toHaveBeenCalledWith(
         '<img src="x" onerror="alert(1)">',
       );
-      expect(mockRequest.body.user.name).toBe('&lt;script&gt;evil&lt;/script&gt;');
-      expect(mockRequest.body.user.profile.bio).toBe('&lt;img src="x" onerror="alert(1)"&gt;');
+      expect((mockRequest.body as any).user.name).toBe('&lt;script&gt;evil&lt;/script&gt;');
+      expect((mockRequest.body as any).user.profile.bio).toBe(
+        '&lt;img src="x" onerror="alert(1)"&gt;',
+      );
     });
 
     it('should not affect non-string values in body', () => {
@@ -158,7 +167,7 @@ describe('SanitizeRequestInterceptor', () => {
 
       expect(mockValidationService.sanitizeInput).toHaveBeenCalledWith('<script>evil</script>');
       expect(mockValidationService.sanitizeInput).toHaveBeenCalledWith('user');
-      expect(mockRequest.query.filter.name).toBe('&lt;script&gt;evil&lt;/script&gt;');
+      expect((mockRequest.query as any).filter.name).toBe('&lt;script&gt;evil&lt;/script&gt;');
     });
 
     it('should handle mixed types in query arrays', () => {
@@ -267,7 +276,11 @@ describe('SanitizeRequestInterceptor', () => {
 
   describe('edge cases', () => {
     it('should handle request without body, query, or params', () => {
-      mockRequest = {};
+      mockRequest = {
+        body: undefined,
+        query: undefined,
+        params: undefined,
+      };
 
       mockExecutionContext.switchToHttp.mockReturnValue({
         getRequest: jest.fn().mockReturnValue(mockRequest),
@@ -295,7 +308,7 @@ describe('SanitizeRequestInterceptor', () => {
       interceptor.intercept(mockExecutionContext, mockCallHandler);
 
       expect(mockValidationService.sanitizeInput).toHaveBeenCalledWith('<script>deep</script>');
-      expect(mockRequest.body.level1.level2.level3.level4).toBe(
+      expect((mockRequest.body as any).level1.level2.level3.level4).toBe(
         '&lt;script&gt;deep&lt;/script&gt;',
       );
     });

@@ -1,7 +1,6 @@
 import { createTestDataSource } from '../../lib/tester/utils/data-source';
 import { DbOptimizationUtil } from '../../lib/tester/utils/db-optimization';
 import { DataSource } from 'typeorm';
-import { User } from '../../src/user/entities/user.entity';
 import { FixtureManager } from '../../lib/tester/fixtures/fixture-manager';
 import { createTestSuite, createTest } from '../../lib/tester';
 

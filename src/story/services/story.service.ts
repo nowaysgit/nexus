@@ -154,7 +154,9 @@ export class StoryService extends BaseService {
 
     // Проверка значений потребностей
     if (triggers.needValue && context.currentNeeds) {
-      const targetNeed = context.currentNeeds.find(need => need.type === triggers.needValue.need);
+      const targetNeed = context.currentNeeds.find(
+        need => String(need.type) === String(triggers.needValue.need),
+      );
       if (targetNeed) {
         const needValue = targetNeed.currentValue;
         if (
@@ -302,7 +304,7 @@ export class StoryService extends BaseService {
     // Изменение потребностей
     if (effects.needChange && context.currentNeeds) {
       for (const needEffect of effects.needChange) {
-        const need = context.currentNeeds.find(n => n.type === needEffect.need);
+        const need = context.currentNeeds.find(n => String(n.type) === String(needEffect.need));
         if (need) {
           const oldValue = need.currentValue;
           need.currentValue = Math.max(
@@ -345,13 +347,14 @@ export class StoryService extends BaseService {
    * @private
    */
   private getRelationshipStageValue(stage: string): number {
-    const stageMap = {
+    const stageMap: Record<string, number> = {
       acquaintance: 10,
       friendship: 30,
       romance: 60,
       commitment: 90,
     };
-    return stageMap[stage.toLowerCase()] || 0;
+    const stageKey = stage.toLowerCase();
+    return stageKey in stageMap ? stageMap[stageKey] : 0;
   }
 
   /**

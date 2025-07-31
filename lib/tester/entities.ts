@@ -98,11 +98,29 @@ export const MANIPULATION_TEST_ENTITIES = [
   User,
 ];
 
+// Создаем тип для всех entity классов
+type TestEntityClass =
+  | typeof User
+  | typeof AccessKey
+  | typeof Character
+  | typeof Need
+  | typeof CharacterMotivation
+  | typeof Action
+  | typeof StoryPlan
+  | typeof StoryMilestone
+  | typeof Dialog
+  | typeof Message
+  | typeof TelegramCharacterSettings
+  | typeof TechniqueExecution
+  | typeof UserManipulationProfile
+  | typeof CharacterMemory
+  | typeof PsychologicalTest;
+
 /**
  * Проверка, что сущность существует в списке ALL_TEST_ENTITIES
  * @param entity Класс сущности для проверки
  */
-export function isTestEntity(entity: any): boolean {
+export function isTestEntity(entity: TestEntityClass): boolean {
   return ALL_TEST_ENTITIES.includes(entity);
 }
 

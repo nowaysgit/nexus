@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { createTestSuite, createTest } from '../../lib/tester';
 import { FixtureManager } from '../../lib/tester/fixtures/fixture-manager';
 import { TestModuleBuilder } from '../../lib/tester/utils/test-module-builder';
@@ -92,7 +91,7 @@ createTestSuite('ContextCompressionService Tests', () => {
       name: 'должен создать экземпляр сервиса',
       providers: [],
       imports: [],
-      timeout: 10000,
+      timeout: 3000,
     },
     async () => {
       expect(contextCompressionService).toBeDefined();
@@ -105,7 +104,7 @@ createTestSuite('ContextCompressionService Tests', () => {
       name: 'должен анализировать и сжимать контекст',
       providers: [],
       imports: [],
-      timeout: 10000,
+      timeout: 3000,
     },
     async () => {
       const contextData =
@@ -135,7 +134,7 @@ createTestSuite('ContextCompressionService Tests', () => {
       name: 'должен генерировать адаптивный контекст',
       providers: [],
       imports: [],
-      timeout: 10000,
+      timeout: 3000,
     },
     async () => {
       // Создаем тестового персонажа и сообщения
@@ -156,22 +155,27 @@ createTestSuite('ContextCompressionService Tests', () => {
       const userId = userObj.id;
       const currentDialog = 'Текущий диалог с пользователем';
 
+      // Преобразуем ID в числовые типы, если они строковые
+      const numericUserId = typeof userId === 'string' ? parseInt(userId, 10) : userId;
+      const numericCharacterId =
+        typeof characterId === 'string' ? parseInt(characterId, 10) : characterId;
+
       // Создаем тестовые сообщения
       await fixtureManager.createMessage({
         content: 'Привет, как дела?',
-        userId: userId as any,
-        characterId: characterId as any,
+        userId: numericUserId,
+        characterId: numericCharacterId,
         createdAt: new Date('2024-01-01T10:00:00Z'),
       });
       await fixtureManager.createMessage({
         content: 'Хорошо, спасибо! А у тебя?',
-        userId: userId as any,
-        characterId: characterId as any,
+        userId: numericUserId,
+        characterId: numericCharacterId,
         createdAt: new Date('2024-01-01T10:01:00Z'),
       });
       const adaptiveContext = await contextCompressionService.generateAdaptiveContext(
         characterId,
-        userId as any,
+        Number(userId),
         currentDialog,
       );
 
@@ -185,7 +189,7 @@ createTestSuite('ContextCompressionService Tests', () => {
       name: 'должен конвертировать сообщения в сегменты контекста',
       providers: [],
       imports: [],
-      timeout: 10000,
+      timeout: 3000,
     },
     async () => {
       // Создаем тестового персонажа и сообщения
@@ -205,18 +209,23 @@ createTestSuite('ContextCompressionService Tests', () => {
       const userObj2 = await fixtureManager.createUser({});
       const userId = userObj2.id;
 
+      // Преобразуем ID в числовые типы, если они строковые
+      const numericUserId2 = typeof userId === 'string' ? parseInt(userId, 10) : userId;
+      const numericCharacterId2 =
+        typeof characterId === 'string' ? parseInt(characterId, 10) : characterId;
+
       const messages = [
         await fixtureManager.createMessage({
           content: 'Первое сообщение',
           createdAt: new Date('2024-01-01T10:00:00Z'),
-          userId: userId as any,
-          characterId: characterId as any,
+          userId: numericUserId2,
+          characterId: numericCharacterId2,
         }),
         await fixtureManager.createMessage({
           content: 'Второе сообщение',
           createdAt: new Date('2024-01-01T10:01:00Z'),
-          userId: userId as any,
-          characterId: characterId as any,
+          userId: numericUserId2,
+          characterId: numericCharacterId2,
         }),
       ];
 
@@ -244,7 +253,7 @@ createTestSuite('ContextCompressionService Tests', () => {
       name: 'должен обрабатывать различные типы компрессии',
       providers: [],
       imports: [],
-      timeout: 10000,
+      timeout: 3000,
     },
     async () => {
       const contextData = 'Тестовый контекст для компрессии';
@@ -278,7 +287,7 @@ createTestSuite('ContextCompressionService Tests', () => {
       name: 'должен обрабатывать пустой контекст',
       providers: [],
       imports: [],
-      timeout: 10000,
+      timeout: 3000,
     },
     async () => {
       const emptyContext = '';

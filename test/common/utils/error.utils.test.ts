@@ -10,7 +10,6 @@ import {
   validateEnum,
   createValidationResult,
   validateWithErrorHandling,
-  ValidationResult,
 } from '../../../src/common/utils/error.utils';
 
 describe('error.utils', () => {
@@ -113,11 +112,11 @@ describe('error.utils', () => {
     });
 
     it('должен выбрасывать ошибку для null', () => {
-      expect(() => validateRequired(null, 'param')).toThrow('param обязателен');
+      expect(() => validateRequired(null as unknown, 'param')).toThrow('param обязателен');
     });
 
     it('должен выбрасывать ошибку для undefined', () => {
-      expect(() => validateRequired(undefined, 'param')).toThrow('param обязателен');
+      expect(() => validateRequired(undefined as unknown, 'param')).toThrow('param обязателен');
     });
   });
 

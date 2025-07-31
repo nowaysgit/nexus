@@ -3,13 +3,12 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { LogService } from '../../src/logging/log.service';
 import { RollbarService } from '../../src/logging/rollbar.service';
 import { MockLogService, MockRollbarService } from '../../lib/tester/mocks';
-import { TestConfigurations } from '../../lib/tester/test-configurations';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 
 createTestSuite('Пример использования моков для логирования', () => {
   let moduleRef: TestingModule;
   let logService: LogService;
-  let rollbarService: RollbarService;
+  let _rollbarService: RollbarService;
 
   beforeEach(async () => {
     moduleRef = await Test.createTestingModule({
@@ -21,7 +20,7 @@ createTestSuite('Пример использования моков для ло�
     }).compile();
 
     logService = moduleRef.get<LogService>(LogService);
-    rollbarService = moduleRef.get<RollbarService>(RollbarService);
+    _rollbarService = moduleRef.get<RollbarService>(RollbarService);
   });
 
   afterEach(async () => {

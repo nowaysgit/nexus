@@ -1,7 +1,6 @@
 import { FixtureManager } from '../../lib/tester/fixtures/fixture-manager';
 import { createTestDataSource } from '../../lib/tester/utils/data-source';
 import { DataSource } from 'typeorm';
-import { ALL_TEST_ENTITIES } from '../../lib/tester/entities';
 
 describe('Batch Data Creation Tests', () => {
   let dataSource: DataSource;

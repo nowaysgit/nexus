@@ -2,6 +2,7 @@ import { Injectable, ExecutionContext, UnauthorizedException } from '@nestjs/com
 import { AuthGuard } from '@nestjs/passport';
 import { Reflector } from '@nestjs/core';
 import { LogService } from '../logging/log.service';
+import { Request } from 'express';
 
 /**
  * Guard для защиты маршрутов, требующих JWT аутентификации
@@ -38,17 +39,22 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
   /**
    * Обработка ошибок аутентификации с логированием
    */
-  handleRequest(err: any, user: any, info: any, context: ExecutionContext) {
+  handleRequest<TUser = Record<string, unknown>>(
+    err: Error | null,
+    user: TUser | null,
+    info: { message?: string } | null,
+    context: ExecutionContext,
+  ): TUser {
     if (err || !user) {
-      const request = context.switchToHttp().getRequest();
-      const path = request.url as string;
-      const method = request.method as string;
+      const request = context.switchToHttp().getRequest<Request>();
+      const path = request?.url || 'unknown';
+      const method = request?.method || 'unknown';
 
       this.logService.log(`Неудачная попытка аутентификации: ${method} ${path}`, {
-        error: (err as Error)?.message || 'Нет пользователя',
+        error: err?.message || 'Нет пользователя',
         info: info?.message,
-        ip: request.ip as string,
-        userAgent: request.headers['user-agent'] as string,
+        ip: request?.ip || 'unknown',
+        userAgent: request?.headers?.['user-agent'] || 'Unknown',
       });
 
       throw new UnauthorizedException('Требуется аутентификация');

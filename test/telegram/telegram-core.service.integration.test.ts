@@ -1,30 +1,77 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument -- Telegraf Context имеет сложную типизацию, тесты используют безопасные моки */
 import { TestConfigType, createTest, createTestSuite } from '../../lib/tester';
-import { Context } from 'telegraf';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { TelegramCoreService } from '../../src/telegram/services/telegram-core.service';
 import { LogService } from '../../src/logging/log.service';
 import { MockLogService } from '../../lib/tester/mocks';
 
-// Расширяем тип Context для соответствия требованиям TelegramCoreService
-interface ExtendedContext extends Context {
+// Интерфейсы для правильной типизации Context
+interface MockTelegram {
+  sendMessage: jest.MockedFunction<any>;
+  deleteMessage: jest.MockedFunction<any>;
+  answerCbQuery: jest.MockedFunction<any>;
+}
+
+interface MockChat {
+  id: number;
+  type: string;
+}
+
+interface MockUser {
+  id: number;
+  is_bot: boolean;
+  first_name: string;
+  username?: string;
+  language_code?: string;
+}
+
+interface MockMessage {
+  message_id: number;
+  date: number;
+  chat: MockChat;
+  text?: string;
+}
+
+interface MockCallbackQuery {
+  id: string;
+  from: MockUser;
+  chat_instance: string;
+  data: string; // Сделаем обязательным для совместимости
+  message?: MockMessage;
+}
+
+interface MockUpdate {
+  update_id: number;
+  callback_query?: MockCallbackQuery;
+}
+
+// Интерфейс мока Context для тестирования (не наследуется от реального Context из-за сложности типизации)
+interface ExtendedContext {
   session: { data: unknown };
-  update: any; // Используем any для обхода ограничения read-only
+  update: MockUpdate;
+  telegram: MockTelegram;
+  chat: MockChat;
+  from: MockUser;
+  message?: any;
+  reply: jest.MockedFunction<any>;
+  answerCbQuery: jest.MockedFunction<any>;
+  editMessageText: jest.MockedFunction<any>;
 }
 
 const createMockContext = (overrides: Partial<ExtendedContext> = {}): ExtendedContext => {
   const baseContext: Partial<ExtendedContext> = {
-    update: {} as any,
+    update: { update_id: 1 },
     telegram: {
       sendMessage: jest.fn().mockResolvedValue({}),
       deleteMessage: jest.fn().mockResolvedValue(true),
       answerCbQuery: jest.fn().mockResolvedValue(true),
-    } as any,
+    },
     message: undefined,
     chat: {
       id: 123456789,
       type: 'private',
-    } as any,
+    },
     from: {
       id: 123456789,
       is_bot: false,
@@ -401,8 +448,9 @@ createTestSuite('TelegramCoreService Integration Tests', () => {
       const mockContext = createMockContext();
       await telegramServiceOld.executeCommand(mockContext as any, 'nonexistent');
       expect(mockContext.reply).toHaveBeenCalled();
-      const replyArgs = (mockContext.reply as jest.Mock).mock.calls[0][0];
-      expect(replyArgs).toContain('не найдена');
+      const replyMock = mockContext.reply as jest.MockedFunction<(...args: any[]) => any>;
+      const replyArgs = replyMock.mock.calls[0]?.[0] as string;
+      expect(replyArgs).toContain('Команда /nonexistent не найдена');
     },
   );
 
@@ -423,7 +471,8 @@ createTestSuite('TelegramCoreService Integration Tests', () => {
 
       await telegramServiceOld.executeCommand(mockContext as any, 'args', ['one']);
       expect(mockContext.reply).toHaveBeenCalled();
-      const replyArgs = (mockContext.reply as jest.Mock).mock.calls[0][0];
+      const replyMock = mockContext.reply as jest.MockedFunction<(...args: any[]) => any>;
+      const replyArgs = replyMock.mock.calls[0]?.[0] as string;
       expect(replyArgs).toContain('требует 2 аргумент(ов)');
     },
   );

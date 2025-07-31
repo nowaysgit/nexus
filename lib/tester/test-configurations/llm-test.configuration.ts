@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access -- Provider introspection requires any type access for NestJS provider checking */
+import { Provider } from '@nestjs/common';
 import { LLMModule } from '../../../src/llm/llm.module';
 import { LLMProviderManagerService } from '../../../src/llm/services/llm-provider-manager.service';
 import { LLMService } from '../../../src/llm/services/llm.service';

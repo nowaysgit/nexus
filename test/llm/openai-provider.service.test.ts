@@ -102,15 +102,12 @@ describe('OpenAIProviderService', () => {
 
       const result = await service.generateText(messages);
 
-      expect(result).toEqual({
-        text: mockResponse,
-        requestInfo: expect.objectContaining({
-          requestId: expect.any(String),
-          fromCache: false,
-          executionTime: expect.any(Number),
-          model: 'gpt-4',
-        }),
-      });
+      expect(result.text).toBe(mockResponse);
+      expect(result.requestInfo).toBeDefined();
+      expect(typeof result.requestInfo.requestId).toBe('string');
+      expect(result.requestInfo.fromCache).toBe(false);
+      expect(typeof result.requestInfo.executionTime).toBe('number');
+      expect(result.requestInfo.model).toBe('gpt-4');
 
       expect(openaiCoreService.sendRequest).toHaveBeenCalledWith(
         'gpt-4',
@@ -191,15 +188,12 @@ describe('OpenAIProviderService', () => {
 
       const result = await service.generateJSON(messages);
 
-      expect(result).toEqual({
-        data: mockJsonData,
-        requestInfo: expect.objectContaining({
-          requestId: expect.any(String),
-          fromCache: false,
-          executionTime: expect.any(Number),
-          model: 'gpt-4',
-        }),
-      });
+      expect(result.data).toEqual(mockJsonData);
+      expect(result.requestInfo).toBeDefined();
+      expect(typeof result.requestInfo.requestId).toBe('string');
+      expect(result.requestInfo.fromCache).toBe(false);
+      expect(typeof result.requestInfo.executionTime).toBe('number');
+      expect(result.requestInfo.model).toBe('gpt-4');
 
       expect(openaiCoreService.sendRequest).toHaveBeenCalledWith(
         'gpt-4',

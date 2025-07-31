@@ -54,9 +54,9 @@ describe('CallbackHandler', () => {
                 { text: '👥 Мои персонажи', callback_data: 'my_characters' },
                 { text: '➕ Создать персонажа', callback_data: 'create_character' },
               ],
-            ]),
-          }),
-        }),
+            ]) as unknown,
+          }) as unknown,
+        }) as unknown,
       );
     });
 
@@ -235,6 +235,7 @@ describe('CallbackHandler', () => {
 
   describe('parseCallbackData', () => {
     it('should parse simple callback data', () => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment -- Testing private method
       const result = (handler as any).parseCallbackData('main_menu');
       expect(result).toEqual({
         action: 'main_menu',
@@ -243,6 +244,7 @@ describe('CallbackHandler', () => {
     });
 
     it('should parse callback data with entity ID', () => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment -- Testing private method
       const result = (handler as any).parseCallbackData('char_123_info');
       expect(result).toEqual({
         action: 'char',
@@ -253,6 +255,7 @@ describe('CallbackHandler', () => {
     });
 
     it('should parse callback data with parameters', () => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment -- Testing private method
       const result = (handler as any).parseCallbackData('settings_show_param1=value1');
       expect(result).toEqual({
         action: 'settings',
@@ -262,6 +265,7 @@ describe('CallbackHandler', () => {
     });
 
     it('should handle empty callback data', () => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment -- Testing private method
       const result = (handler as any).parseCallbackData('');
       expect(result).toEqual({
         action: '',

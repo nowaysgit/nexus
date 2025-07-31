@@ -18,8 +18,8 @@ import { Context } from '../../../src/telegram/interfaces/context.interface';
 
 describe('MessageHandler', () => {
   let handler: MessageHandler;
-  let mockLogService: jest.Mocked<LogService>;
-  let mockMessageService: jest.Mocked<MessageService>;
+  let _mockLogService: jest.Mocked<LogService>;
+  let _mockMessageService: jest.Mocked<MessageService>;
   let mockDialogService: jest.Mocked<DialogService>;
   let mockCharacterService: jest.Mocked<CharacterService>;
   let mockAccessControlService: jest.Mocked<AccessControlService>;
@@ -100,8 +100,8 @@ describe('MessageHandler', () => {
     }).compile();
 
     handler = module.get<MessageHandler>(MessageHandler);
-    mockLogService = module.get(LogService);
-    mockMessageService = module.get(MessageService);
+    _mockLogService = module.get(LogService);
+    _mockMessageService = module.get(MessageService);
     mockDialogService = module.get(DialogService);
     mockCharacterService = module.get(CharacterService);
     mockAccessControlService = module.get(AccessControlService);

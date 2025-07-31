@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument -- Файл содержит множество мок объектов для TypeORM Repository */
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -22,7 +23,6 @@ import { CharacterArchetype } from '../../../src/character/enums/character-arche
 import { CharacterNeedType } from '../../../src/character/enums/character-need-type.enum';
 import { ActionType } from '../../../src/character/enums/action-type.enum';
 import { MessageAnalysis } from '../../../src/character/interfaces/analysis.interfaces';
-import { ILLMTextResult } from '../../../src/common/interfaces/llm-provider.interface';
 
 describe('CharacterBehaviorService', () => {
   let service: CharacterBehaviorService;
@@ -306,7 +306,7 @@ describe('CharacterBehaviorService', () => {
     it('должен возвращать контекст поведения для ответа', async () => {
       const characterId = 1;
       const mockEmotionalState = { mood: 'happy', intensity: 0.8 };
-      const mockMotivations = [
+      const _mockMotivations = [
         {
           id: 1,
           characterId,

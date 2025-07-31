@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call */
 import { Injectable, NotFoundException, Optional, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -9,6 +8,10 @@ import { BaseService } from '../../common/base/base.service';
 import { IMessagingService } from '../../common/interfaces/messaging.interface';
 import { CacheService } from '../../cache/cache.service';
 import { LogService } from '../../logging/log.service';
+
+interface IUserService {
+  getUserIdByTelegramId(telegramId: string): Promise<number | null>;
+}
 import { CreateDialogData } from '../interfaces/create-dialog.interface';
 
 /**
@@ -62,7 +65,7 @@ export class DialogService extends BaseService implements IMessagingService {
     logService: LogService,
     @Optional()
     @Inject('UserService')
-    private readonly userService?: any,
+    private readonly userService?: IUserService,
   ) {
     super(logService);
     this.isTestMode = process.env.NODE_ENV === 'test';
@@ -130,7 +133,7 @@ export class DialogService extends BaseService implements IMessagingService {
             typeof this.userService.getUserIdByTelegramId === 'function'
           ) {
             const userIdResult = await this.userService.getUserIdByTelegramId(stringTelegramId);
-            userId = userIdResult ? userIdResult.toString() : null;
+            userId = userIdResult ? String(userIdResult) : null;
           }
 
           if (userId === null) {
@@ -201,9 +204,9 @@ export class DialogService extends BaseService implements IMessagingService {
             await queryRunner.connect();
 
             // Выполняем SQL запрос напрямую
-            const result = await queryRunner.query(`SELECT * FROM "dialog" WHERE "id" = ?`, [
+            const result = (await queryRunner.query(`SELECT * FROM "dialog" WHERE "id" = ?`, [
               numericDialogId,
-            ]);
+            ])) as Record<string, unknown>[];
 
             // Освобождаем queryRunner
             await queryRunner.release();
@@ -610,7 +613,7 @@ export class DialogService extends BaseService implements IMessagingService {
           typeof this.userService.getUserIdByTelegramId === 'function'
         ) {
           const userIdResult = await this.userService.getUserIdByTelegramId(telegramId);
-          userId = userIdResult ? userIdResult.toString() : null;
+          userId = userIdResult ? String(userIdResult) : null;
         }
 
         if (userId === null) {

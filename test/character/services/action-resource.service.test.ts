@@ -9,11 +9,32 @@ import { MockLogService } from '../../../lib/tester/mocks/log.service.mock';
 import { LogService } from '../../../src/logging/log.service';
 import { ActionContext } from '../../../src/character/services/action/action-lifecycle.service';
 import { CharacterAction } from '../../../src/character/interfaces/behavior.interfaces';
+import { INeed } from '../../../src/character/interfaces/needs.interfaces';
+
+function createMockNeed(partial: Partial<INeed>): INeed {
+  return {
+    id: 1,
+    characterId: 1,
+    type: CharacterNeedType.REST,
+    currentValue: 50,
+    maxValue: 100,
+    growthRate: 1,
+    decayRate: 0.5,
+    priority: 0.5,
+    threshold: 30,
+    dynamicPriority: 0.5,
+    ...partial,
+  } as INeed;
+}
+
+function createMockNeedUpdate(): INeed {
+  return createMockNeed({ currentValue: 45 });
+}
 
 describe('ActionResourceService', () => {
   let service: ActionResourceService;
   let mockLogService: MockLogService;
-  let mockNeedsService: jest.Mocked<NeedsService>;
+  let mockNeedsService: Partial<jest.Mocked<NeedsService>>;
   let testCharacter: Character;
 
   beforeEach(async () => {
@@ -22,7 +43,7 @@ describe('ActionResourceService', () => {
       getActiveNeeds: jest.fn(),
       updateNeed: jest.fn(),
       processNeedsGrowth: jest.fn(),
-    } as any;
+    } as Partial<jest.Mocked<NeedsService>>;
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -78,8 +99,8 @@ describe('ActionResourceService', () => {
       };
 
       mockNeedsService.getActiveNeeds.mockResolvedValue([
-        { type: CharacterNeedType.REST, currentValue: 50 },
-      ] as any);
+        createMockNeed(createMockNeed({ type: CharacterNeedType.REST, currentValue: 50 })),
+      ]);
 
       const result = await service.checkResourceAvailability(context);
       expect(result).toBe(true);
@@ -105,8 +126,8 @@ describe('ActionResourceService', () => {
       };
 
       mockNeedsService.getActiveNeeds.mockResolvedValue([
-        { type: CharacterNeedType.REST, currentValue: 5 },
-      ] as any);
+        createMockNeed(createMockNeed({ type: CharacterNeedType.REST, currentValue: 5 })),
+      ]);
 
       const result = await service.checkResourceAvailability(context);
       expect(result).toBe(false);
@@ -158,9 +179,9 @@ describe('ActionResourceService', () => {
       };
 
       mockNeedsService.getActiveNeeds.mockResolvedValue([
-        { type: CharacterNeedType.REST, currentValue: 50 },
-      ] as any);
-      mockNeedsService.updateNeed.mockResolvedValue({} as any);
+        createMockNeed({ type: CharacterNeedType.REST, currentValue: 50 }),
+      ]);
+      mockNeedsService.updateNeed.mockResolvedValue(createMockNeedUpdate());
 
       const result = await service.executeActionWithResources(context);
 
@@ -190,8 +211,8 @@ describe('ActionResourceService', () => {
       };
 
       mockNeedsService.getActiveNeeds.mockResolvedValue([
-        { type: CharacterNeedType.REST, currentValue: 5 },
-      ] as any);
+        createMockNeed({ type: CharacterNeedType.REST, currentValue: 5 }),
+      ]);
 
       const result = await service.executeActionWithResources(context);
 
@@ -221,9 +242,9 @@ describe('ActionResourceService', () => {
       };
 
       mockNeedsService.getActiveNeeds.mockResolvedValue([
-        { type: CharacterNeedType.REST, currentValue: 50 },
-      ] as any);
-      mockNeedsService.updateNeed.mockResolvedValue({} as any);
+        createMockNeed({ type: CharacterNeedType.REST, currentValue: 50 }),
+      ]);
+      mockNeedsService.updateNeed.mockResolvedValue(createMockNeedUpdate());
 
       const result = await service.executeActionWithResources(context);
 
@@ -312,9 +333,9 @@ describe('ActionResourceService', () => {
       };
 
       mockNeedsService.getActiveNeeds.mockResolvedValue([
-        { type: CharacterNeedType.REST, currentValue: 50 },
-      ] as any);
-      mockNeedsService.updateNeed.mockResolvedValue({} as any);
+        createMockNeed({ type: CharacterNeedType.REST, currentValue: 50 }),
+      ]);
+      mockNeedsService.updateNeed.mockResolvedValue(createMockNeedUpdate());
 
       // Проверяем доступность ресурсов
       const isAvailable = await service.checkResourceAvailability(context);
@@ -338,9 +359,9 @@ describe('ActionResourceService', () => {
       };
 
       mockNeedsService.getActiveNeeds.mockResolvedValue([
-        { type: CharacterNeedType.REST, currentValue: 50 },
-      ] as any);
-      mockNeedsService.updateNeed.mockResolvedValue({} as any);
+        createMockNeed({ type: CharacterNeedType.REST, currentValue: 50 }),
+      ]);
+      mockNeedsService.updateNeed.mockResolvedValue(createMockNeedUpdate());
 
       const result = await service.executeActionWithResources(context);
       expect(result.success).toBe(false);
@@ -390,8 +411,8 @@ describe('ActionResourceService', () => {
       };
 
       mockNeedsService.getActiveNeeds.mockResolvedValue([
-        { type: CharacterNeedType.REST, currentValue: 50 },
-      ] as any);
+        createMockNeed({ type: CharacterNeedType.REST, currentValue: 50 }),
+      ]);
       mockNeedsService.updateNeed.mockRejectedValue(new Error('Update error'));
 
       await expect(service.executeActionWithResources(context)).rejects.toThrow();

@@ -1,3 +1,8 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
+// Отключение ESLint правил для интеграционного теста из-за сложности правильного мокирования TypeORM репозиториев
+// и множественных сервисных зависимостей. Использование правильной типизации потребовало бы создания
+// десятков мок-объектов со всеми свойствами, что нецелесообразно для интеграционного тестирования.
+
 import { createTestSuite, createTest, TestConfigType } from '../../lib/tester';
 import { ManipulationService } from '../../src/character/services/manipulation/manipulation.service';
 import {
@@ -6,16 +11,17 @@ import {
 } from '../../src/character/enums/technique.enums';
 import { IManipulationContext } from '../../src/character/interfaces/technique.interfaces';
 import { MockLogService, MockEventEmitter } from '../../lib/tester/mocks';
+import { UserManipulationProfile } from '../../src/character/entities/manipulation-technique.entity';
 
 createTestSuite('ManipulationService Integration Tests', () => {
   let service: ManipulationService;
 
-  // Моки репозиториев
+  // Моки репозиториев - используем any для простоты интеграционного тестирования
   let mockCharacterRepository: any;
   let mockTechniqueExecutionRepository: any;
   let mockUserManipulationProfileRepository: any;
 
-  // Моки сервисов
+  // Моки сервисов - используем any для простоты интеграционного тестирования
   let mockNeedsService: any;
   let mockEmotionalStateService: any;
   let mockLLMService: any;
@@ -43,18 +49,18 @@ createTestSuite('ManipulationService Integration Tests', () => {
     };
 
     mockTechniqueExecutionRepository = {
-      create: jest.fn().mockImplementation(data => ({
+      create: jest.fn().mockImplementation((data: unknown) => ({
         id: 1,
-        ...data,
+        ...(data as Record<string, unknown>),
       })),
-      save: jest.fn().mockImplementation(data => Promise.resolve(data)),
+      save: jest.fn().mockImplementation((data: unknown) => Promise.resolve(data)),
       update: jest.fn().mockResolvedValue({}),
       findOne: jest.fn().mockResolvedValue(null),
     };
 
     mockUserManipulationProfileRepository = {
       findOne: jest.fn().mockResolvedValue(null),
-      create: jest.fn().mockImplementation(data => ({
+      create: jest.fn().mockImplementation((data: Partial<UserManipulationProfile>) => ({
         id: 1,
         ...data,
         vulnerabilities: data.vulnerabilities || [],

@@ -114,7 +114,7 @@ export class CallbackHandler extends BaseService {
             params: {},
           };
         }
-        
+
         // Иначе это action + subAction
         return {
           action: parts[0],
@@ -146,7 +146,7 @@ export class CallbackHandler extends BaseService {
         for (const part of paramParts) {
           if (part.includes('=')) {
             const [key, value] = part.split('=');
-            result.params![key] = value;
+            result.params[key] = value;
           }
         }
 

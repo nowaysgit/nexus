@@ -2,7 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { Character } from '../../entities/character.entity';
 import { LLMService } from '../../../llm/services/llm.service';
 import { LLMMessageRole } from '../../../common/interfaces/llm-provider.interface';
-import { EmotionalState } from '../../entities/emotional-state';
+import {
+  EmotionalState,
+  EmotionalMemory,
+  EmotionalTransition,
+} from '../../entities/emotional-state';
 import { NeedsService } from '../core/needs.service';
 import { LogService } from '../../../logging/log.service';
 import { PromptTemplateService } from '../../../prompt-template/prompt-template.service';
@@ -104,7 +108,10 @@ export class CharacterResponseService extends BaseService {
   /**
    * Форматирует контекст эмоциональной памяти для включения в промпт
    */
-  private formatEmotionalMemoryContext(memories: any[], transitions: any[]): string {
+  private formatEmotionalMemoryContext(
+    memories: EmotionalMemory[],
+    transitions: EmotionalTransition[],
+  ): string {
     let context = '';
 
     if (memories.length > 0) {

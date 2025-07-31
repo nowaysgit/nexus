@@ -6,7 +6,7 @@ import {
   LLMProviderType,
   LLMMessageRole,
 } from '../../src/common/interfaces/llm-provider.interface';
-import axios from 'axios';
+import axios, { AxiosInstance } from 'axios';
 
 // Мокаем axios
 jest.mock('axios');
@@ -14,9 +14,9 @@ const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 describe('LlamaProviderService', () => {
   let service: LlamaProviderService;
-  let configService: jest.Mocked<ConfigService>;
+  let _configService: jest.Mocked<ConfigService>;
   let logService: jest.Mocked<LogService>;
-  let mockHttpClient: jest.Mocked<any>;
+  let mockHttpClient: jest.Mocked<Pick<AxiosInstance, 'post' | 'get'>>;
 
   beforeEach(async () => {
     // Создаем мок HTTP клиента
@@ -38,7 +38,7 @@ describe('LlamaProviderService', () => {
               endpoint: 'http://test-llama-endpoint:8080',
               apiKey: 'test-api-key',
               model: 'llama-4-70b',
-              timeout: 30000,
+              timeout: 5000,
             }),
           },
         },
@@ -56,7 +56,7 @@ describe('LlamaProviderService', () => {
     }).compile();
 
     service = module.get<LlamaProviderService>(LlamaProviderService);
-    configService = module.get(ConfigService);
+    _configService = module.get(ConfigService);
     logService = module.get(LogService);
   });
 
@@ -78,7 +78,7 @@ describe('LlamaProviderService', () => {
         endpoint: 'http://test-endpoint:8080',
         apiKey: 'test-api-key',
         model: 'test-model',
-        timeout: 60000,
+        timeout: 10000,
       };
 
       const mockConfigService = {
@@ -100,7 +100,7 @@ describe('LlamaProviderService', () => {
         ],
       }).compile();
 
-      const newService = module.get<LlamaProviderService>(LlamaProviderService);
+      const _newService = module.get<LlamaProviderService>(LlamaProviderService);
 
       expect(mockConfigService.get).toHaveBeenCalledWith('llm.providers.llama');
       expect(mockedAxios.create).toHaveBeenCalledWith({
@@ -190,18 +190,15 @@ describe('LlamaProviderService', () => {
 
       const result = await service.generateText(messages);
 
-      expect(result).toEqual({
-        text: 'Тестовый ответ от Llama',
-        requestInfo: expect.objectContaining({
-          requestId: expect.any(String),
-          fromCache: false,
-          executionTime: expect.any(Number),
-          model: 'llama-4-70b',
-          promptTokens: 10,
-          completionTokens: 5,
-          totalTokens: 15,
-        }),
-      });
+      expect(result.text).toBe('Тестовый ответ от Llama');
+      expect(result.requestInfo).toBeDefined();
+      expect(typeof result.requestInfo.requestId).toBe('string');
+      expect(result.requestInfo.fromCache).toBe(false);
+      expect(typeof result.requestInfo.executionTime).toBe('number');
+      expect(result.requestInfo.model).toBe('llama-4-70b');
+      expect(result.requestInfo.promptTokens).toBe(10);
+      expect(result.requestInfo.completionTokens).toBe(5);
+      expect(result.requestInfo.totalTokens).toBe(15);
 
       expect(mockHttpClient.post).toHaveBeenCalledWith('/v1/chat/completions', {
         model: 'llama-4-70b',
@@ -325,18 +322,15 @@ describe('LlamaProviderService', () => {
 
       const result = await service.generateJSON(messages);
 
-      expect(result).toEqual({
-        data: { name: 'test', value: 123 },
-        requestInfo: expect.objectContaining({
-          requestId: expect.any(String),
-          fromCache: false,
-          executionTime: expect.any(Number),
-          model: 'llama-4-70b',
-          promptTokens: 10,
-          completionTokens: 5,
-          totalTokens: 15,
-        }),
-      });
+      expect(result.data).toEqual({ name: 'test', value: 123 });
+      expect(result.requestInfo).toBeDefined();
+      expect(typeof result.requestInfo.requestId).toBe('string');
+      expect(result.requestInfo.fromCache).toBe(false);
+      expect(typeof result.requestInfo.executionTime).toBe('number');
+      expect(result.requestInfo.model).toBe('llama-4-70b');
+      expect(result.requestInfo.promptTokens).toBe(10);
+      expect(result.requestInfo.completionTokens).toBe(5);
+      expect(result.requestInfo.totalTokens).toBe(15);
     });
 
     it('должен обрабатывать некорректный JSON', async () => {

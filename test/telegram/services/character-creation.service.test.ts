@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment -- Jest expect API использует any в своих типах */
 import { Test, TestingModule } from '@nestjs/testing';
 import { CharacterCreationService } from '../../../src/telegram/services/character-creation.service';
 import { CharacterManagementService } from '../../../src/character/services/core/character-management.service';
@@ -9,7 +10,9 @@ import { MockLogService } from '../../../lib/tester/mocks/log.service.mock';
 describe('CharacterCreationService', () => {
   let service: CharacterCreationService;
   let mockLogService: MockLogService;
-  let mockCharacterManagementService: jest.Mocked<CharacterManagementService>;
+  let mockCharacterManagementService: {
+    createCharacter: jest.MockedFunction<CharacterManagementService['createCharacter']>;
+  };
 
   const mockCharacter: Character = {
     id: 1,
@@ -34,13 +37,17 @@ describe('CharacterCreationService', () => {
 
   beforeEach(async () => {
     mockLogService = new MockLogService();
-    // Добавляем jest mock функции для тестирования
-    (mockLogService as any).error = jest.fn();
-    (mockLogService as any).log = jest.fn();
+    // Добавляем jest mock функции для тестирования через правильную типизацию
+    const logServiceMock = mockLogService as MockLogService & {
+      error: jest.MockedFunction<any>;
+      log: jest.MockedFunction<any>;
+    };
+    logServiceMock.error = jest.fn();
+    logServiceMock.log = jest.fn();
 
     mockCharacterManagementService = {
       createCharacter: jest.fn(),
-    } as any;
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -379,16 +386,20 @@ describe('CharacterCreationService', () => {
 
     it('должен обрабатывать null как архетип', async () => {
       const userId = 222;
-      const archetype = null as any;
+      const archetype = null;
 
-      await expect(service.createCharacterWithArchetype(archetype, userId)).rejects.toThrow();
+      await expect(
+        service.createCharacterWithArchetype(archetype as string, userId),
+      ).rejects.toThrow();
     });
 
     it('должен обрабатывать undefined как архетип', async () => {
       const userId = 333;
-      const archetype = undefined as any;
+      const archetype = undefined;
 
-      await expect(service.createCharacterWithArchetype(archetype, userId)).rejects.toThrow();
+      await expect(
+        service.createCharacterWithArchetype(archetype as string, userId),
+      ).rejects.toThrow();
     });
 
     it('должен обрабатывать отрицательный userId', async () => {

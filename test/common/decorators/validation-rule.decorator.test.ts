@@ -1,3 +1,7 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
+// Отключение ESLint правил для тестов декораторов валидации из-за сложности типизации
+// рефлексии метаданных и динамических функций валидации
+
 import {
   ValidationRule,
   getValidationRules,

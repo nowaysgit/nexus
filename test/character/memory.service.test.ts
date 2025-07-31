@@ -69,7 +69,7 @@ createTestSuite('MemoryService Tests', () => {
     }
   });
 
-  createTest({ name: 'должен быть определен', timeout: 10000 }, async () => {
+  createTest({ name: 'должен быть определен', timeout: 3000 }, async () => {
     expect(memoryService).toBeDefined();
   });
 
@@ -118,13 +118,13 @@ createTestSuite('MemoryService Tests', () => {
       type: MemoryType.EVENT,
       importance: MemoryImportanceLevel.AVERAGE,
       metadata: {},
-      memoryDate: expect.any(Date),
+      memoryDate: expect.any(Date) as unknown,
       isActive: true,
-      embedding: expect.any(Array),
+      embedding: expect.any(Array) as unknown,
       isLongTerm: false,
       relatedMemories: [],
-    });
-    expect(mockRepository.save).toHaveBeenCalledWith(mockMemory);
+    } as unknown);
+    expect(mockRepository.save).toHaveBeenCalledWith(mockMemory as unknown);
     expect(result).toEqual(mockMemory);
   });
 

@@ -18,7 +18,7 @@ describe('LLMService', () => {
   let service: LLMService;
   let providerManager: jest.Mocked<LLMProviderManagerService>;
   let cacheService: jest.Mocked<CacheService>;
-  let logService: jest.Mocked<LogService>;
+  let _logService: jest.Mocked<LogService>;
   let mockProvider: jest.Mocked<ILLMProvider>;
 
   const mockTextResult: ILLMTextResult = {
@@ -102,7 +102,7 @@ describe('LLMService', () => {
     service = module.get<LLMService>(LLMService);
     providerManager = module.get(LLMProviderManagerService);
     cacheService = module.get(CacheService);
-    logService = module.get(LogService);
+    _logService = module.get(LogService);
 
     // Настраиваем мок провайдера
     mockProvider.getProviderInfo.mockReturnValue({
@@ -116,12 +116,6 @@ describe('LLMService', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
-  });
-
-  describe('constructor', () => {
-    it('should be defined', () => {
-      expect(service).toBeDefined();
-    });
   });
 
   describe('generateText', () => {
@@ -345,7 +339,7 @@ describe('LLMService', () => {
       // Тестируем приватный метод через публичный интерфейс
       const spy = jest.spyOn(cacheService, 'get');
 
-      service.generateText(mockMessages, mockOptions);
+      void service.generateText(mockMessages, mockOptions);
 
       expect(spy).toHaveBeenCalledWith(expect.any(String));
     });

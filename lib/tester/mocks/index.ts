@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-require-imports */
 export * from './config.service.mock';
 export * from './event-emitter.mock';
 export * from './llm.service.mock';
@@ -51,7 +52,6 @@ export class MockEncryptionService {
     return Buffer.from(encrypted, 'base64').toString('utf8');
   }
   async hash(data: string): Promise<string> {
-    /* eslint-disable import/no-commonjs */
     const hash = require('crypto').createHash('sha256').update(data).digest('hex');
 
     return hash;
@@ -65,7 +65,6 @@ export class MockEncryptionService {
     }
   }
   async generateKey(): Promise<string> {
-    /* eslint-disable import/no-commonjs */
     return require('crypto').randomBytes(32).toString('hex');
   }
 }

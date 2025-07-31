@@ -103,7 +103,7 @@ createTestSuite('MessageQueueService Integration Tests', () => {
       imports,
       providers,
       requiresDatabase: false, // Используем моки вместо реальной базы данных
-      timeout: 30000, // Уменьшаем таймаут до 30 секунд, так как тест теперь должен выполняться быстрее
+      timeout: 5000, // Оптимизированный таймаут
     },
     async ({ get }) => {
       const messageQueueService = get(MessageQueueService);

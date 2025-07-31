@@ -2,21 +2,23 @@ import { createTestSuite, createTest, TestConfigType } from '../../lib/tester';
 import {
   ValidationErrorHandlerService,
   ValidationErrorType,
+  ExtendedValidationError,
 } from '../../src/validation/services/validation-error-handler.service';
 import {
   ValidationResult,
   ValidationError,
 } from '../../src/common/interfaces/validation.interface';
 import { MessageContext } from '../../src/common/interfaces/message-processor.interface';
+import { LogService } from '../../src/logging/log.service';
 
 // Мок для LogService
-const mockLogService = {
+const mockLogService: Partial<LogService> = {
   log: jest.fn(),
   error: jest.fn(),
   warn: jest.fn(),
   debug: jest.fn(),
-  verbose: jest.fn(),
-  setContext: jest.fn().mockReturnThis(),
+  info: jest.fn(),
+  setContext: jest.fn(),
 };
 
 createTestSuite('ValidationErrorHandlerService Tests', () => {
@@ -30,7 +32,7 @@ createTestSuite('ValidationErrorHandlerService Tests', () => {
       providers: [
         {
           provide: ValidationErrorHandlerService,
-          useFactory: () => new ValidationErrorHandlerService(mockLogService as any),
+          useFactory: () => new ValidationErrorHandlerService(mockLogService as LogService),
         },
       ],
     },
@@ -47,7 +49,7 @@ createTestSuite('ValidationErrorHandlerService Tests', () => {
       providers: [
         {
           provide: ValidationErrorHandlerService,
-          useFactory: () => new ValidationErrorHandlerService(mockLogService as any),
+          useFactory: () => new ValidationErrorHandlerService(mockLogService as LogService),
         },
       ],
     },
@@ -89,7 +91,7 @@ createTestSuite('ValidationErrorHandlerService Tests', () => {
       providers: [
         {
           provide: ValidationErrorHandlerService,
-          useFactory: () => new ValidationErrorHandlerService(mockLogService as any),
+          useFactory: () => new ValidationErrorHandlerService(mockLogService as LogService),
         },
       ],
     },
@@ -145,7 +147,7 @@ createTestSuite('ValidationErrorHandlerService Tests', () => {
       providers: [
         {
           provide: ValidationErrorHandlerService,
-          useFactory: () => new ValidationErrorHandlerService(mockLogService as any),
+          useFactory: () => new ValidationErrorHandlerService(mockLogService as LogService),
         },
       ],
     },
@@ -199,7 +201,7 @@ createTestSuite('ValidationErrorHandlerService Tests', () => {
       providers: [
         {
           provide: ValidationErrorHandlerService,
-          useFactory: () => new ValidationErrorHandlerService(mockLogService as any),
+          useFactory: () => new ValidationErrorHandlerService(mockLogService as LogService),
         },
       ],
     },
@@ -249,7 +251,7 @@ createTestSuite('ValidationErrorHandlerService Tests', () => {
       providers: [
         {
           provide: ValidationErrorHandlerService,
-          useFactory: () => new ValidationErrorHandlerService(mockLogService as any),
+          useFactory: () => new ValidationErrorHandlerService(mockLogService as LogService),
         },
       ],
     },
@@ -305,7 +307,7 @@ createTestSuite('ValidationErrorHandlerService Tests', () => {
       providers: [
         {
           provide: ValidationErrorHandlerService,
-          useFactory: () => new ValidationErrorHandlerService(mockLogService as any),
+          useFactory: () => new ValidationErrorHandlerService(mockLogService as LogService),
         },
       ],
     },
@@ -332,7 +334,7 @@ createTestSuite('ValidationErrorHandlerService Tests', () => {
       providers: [
         {
           provide: ValidationErrorHandlerService,
-          useFactory: () => new ValidationErrorHandlerService(mockLogService as any),
+          useFactory: () => new ValidationErrorHandlerService(mockLogService as LogService),
         },
       ],
     },
@@ -346,7 +348,7 @@ createTestSuite('ValidationErrorHandlerService Tests', () => {
       expect(result.errors[0].message).toBe('Ошибка валидации API запроса');
       expect(result.errors[0].field).toBe('api');
       expect(result.errors[0].code).toBe('API_VALIDATION_ERROR');
-      expect((result.errors[0] as any).type).toBe(ValidationErrorType.API);
+      expect((result.errors[0] as ExtendedValidationError).type).toBe(ValidationErrorType.API);
 
       expect(mockLogService.warn).toHaveBeenCalledWith(
         'Ошибка валидации API',
@@ -366,7 +368,7 @@ createTestSuite('ValidationErrorHandlerService Tests', () => {
       providers: [
         {
           provide: ValidationErrorHandlerService,
-          useFactory: () => new ValidationErrorHandlerService(mockLogService as any),
+          useFactory: () => new ValidationErrorHandlerService(mockLogService as LogService),
         },
       ],
     },
@@ -380,7 +382,7 @@ createTestSuite('ValidationErrorHandlerService Tests', () => {
       expect(result.errors[0].message).toBe('Неверный формат данных');
       expect(result.errors[0].field).toBe('json');
       expect(result.errors[0].code).toBe('FORMAT_VALIDATION_ERROR');
-      expect((result.errors[0] as any).type).toBe(ValidationErrorType.FORMAT);
+      expect((result.errors[0] as ExtendedValidationError).type).toBe(ValidationErrorType.FORMAT);
 
       expect(mockLogService.warn).toHaveBeenCalledWith(
         'Ошибка валидации формата данных',
@@ -401,7 +403,7 @@ createTestSuite('ValidationErrorHandlerService Tests', () => {
       providers: [
         {
           provide: ValidationErrorHandlerService,
-          useFactory: () => new ValidationErrorHandlerService(mockLogService as any),
+          useFactory: () => new ValidationErrorHandlerService(mockLogService as LogService),
         },
       ],
     },
@@ -415,8 +417,8 @@ createTestSuite('ValidationErrorHandlerService Tests', () => {
       expect(result.errors[0].message).toContain('Ошибка валидации в базе данных для User');
       expect(result.errors[0].field).toBe('User');
       expect(result.errors[0].code).toBe('DATABASE_VALIDATION_ERROR');
-      expect((result.errors[0] as any).type).toBe(ValidationErrorType.DATABASE);
-      expect((result.errors[0] as any).details).toEqual({ entity: 'User' });
+      expect((result.errors[0] as ExtendedValidationError).type).toBe(ValidationErrorType.DATABASE);
+      expect((result.errors[0] as ExtendedValidationError).details).toEqual({ entity: 'User' });
       expect(mockLogService.error).toHaveBeenCalledWith(
         'Ошибка валидации базы данных',
         expect.objectContaining({
@@ -435,7 +437,7 @@ createTestSuite('ValidationErrorHandlerService Tests', () => {
       providers: [
         {
           provide: ValidationErrorHandlerService,
-          useFactory: () => new ValidationErrorHandlerService(mockLogService as any),
+          useFactory: () => new ValidationErrorHandlerService(mockLogService as LogService),
         },
       ],
     },
@@ -449,8 +451,10 @@ createTestSuite('ValidationErrorHandlerService Tests', () => {
       expect(result.errors[0].message).toContain('Ошибка валидации сообщения');
       expect(result.errors[0].field).toBe('message');
       expect(result.errors[0].code).toBe('MESSAGE_VALIDATION_ERROR');
-      expect((result.errors[0] as any).type).toBe(ValidationErrorType.MESSAGE);
-      expect((result.errors[0] as any).details).toEqual({ messageId: 'msg-123' });
+      expect((result.errors[0] as ExtendedValidationError).type).toBe(ValidationErrorType.MESSAGE);
+      expect((result.errors[0] as ExtendedValidationError).details).toEqual({
+        messageId: 'msg-123',
+      });
       expect(mockLogService.warn).toHaveBeenCalledWith(
         'Ошибка валидации сообщения',
         expect.objectContaining({
@@ -469,7 +473,7 @@ createTestSuite('ValidationErrorHandlerService Tests', () => {
       providers: [
         {
           provide: ValidationErrorHandlerService,
-          useFactory: () => new ValidationErrorHandlerService(mockLogService as any),
+          useFactory: () => new ValidationErrorHandlerService(mockLogService as LogService),
         },
       ],
     },
@@ -485,8 +489,10 @@ createTestSuite('ValidationErrorHandlerService Tests', () => {
       );
       expect(result.errors[0].field).toBe('command');
       expect(result.errors[0].code).toBe('USER_INPUT_VALIDATION_ERROR');
-      expect((result.errors[0] as any).type).toBe(ValidationErrorType.USER_INPUT);
-      expect((result.errors[0] as any).details).toEqual({
+      expect((result.errors[0] as ExtendedValidationError).type).toBe(
+        ValidationErrorType.USER_INPUT,
+      );
+      expect((result.errors[0] as ExtendedValidationError).details).toEqual({
         userId: 'user-456',
         inputType: 'command',
       });
@@ -509,7 +515,7 @@ createTestSuite('ValidationErrorHandlerService Tests', () => {
       providers: [
         {
           provide: ValidationErrorHandlerService,
-          useFactory: () => new ValidationErrorHandlerService(mockLogService as any),
+          useFactory: () => new ValidationErrorHandlerService(mockLogService as LogService),
         },
       ],
     },
@@ -523,8 +529,12 @@ createTestSuite('ValidationErrorHandlerService Tests', () => {
       expect(result.errors[0].message).toContain('Ошибка валидации конфигурации (api.timeout)');
       expect(result.errors[0].field).toBe('api.timeout');
       expect(result.errors[0].code).toBe('CONFIG_VALIDATION_ERROR');
-      expect((result.errors[0] as any).type).toBe(ValidationErrorType.CONFIGURATION);
-      expect((result.errors[0] as any).details).toEqual({ configKey: 'api.timeout' });
+      expect((result.errors[0] as ExtendedValidationError).type).toBe(
+        ValidationErrorType.CONFIGURATION,
+      );
+      expect((result.errors[0] as ExtendedValidationError).details).toEqual({
+        configKey: 'api.timeout',
+      });
       expect(mockLogService.error).toHaveBeenCalledWith(
         'Ошибка валидации конфигурации',
         expect.objectContaining({
@@ -543,7 +553,7 @@ createTestSuite('ValidationErrorHandlerService Tests', () => {
       providers: [
         {
           provide: ValidationErrorHandlerService,
-          useFactory: () => new ValidationErrorHandlerService(mockLogService as any),
+          useFactory: () => new ValidationErrorHandlerService(mockLogService as LogService),
         },
       ],
     },
@@ -568,8 +578,8 @@ createTestSuite('ValidationErrorHandlerService Tests', () => {
       expect(result.errors[0].message).toBe(customErrorMessage);
       expect(result.errors[0].field).toBe(customField);
       expect(result.errors[0].code).toBe(customCode);
-      expect((result.errors[0] as any).type).toBe(customType);
-      expect((result.errors[0] as any).details).toEqual(customDetails);
+      expect((result.errors[0] as ExtendedValidationError).type).toBe(customType);
+      expect((result.errors[0] as ExtendedValidationError).details).toEqual(customDetails);
 
       expect(mockLogService.warn).toHaveBeenCalledWith(
         'Кастомная ошибка валидации',

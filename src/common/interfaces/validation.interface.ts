@@ -47,7 +47,7 @@ export interface ValidationError {
   /**
    * Значение, которое вызвало ошибку
    */
-  value?: any;
+  value?: unknown;
 
   /**
    * Вложенные ошибки (для объектных полей)
@@ -137,8 +137,8 @@ export interface IValidationService {
    * @returns Результат валидации
    */
   validate(
-    schema: any,
-    value: Record<string, any>,
+    schema: object | (new (...args: unknown[]) => object),
+    value: Record<string, unknown>,
     options?: ValidationOptions,
   ): Promise<ValidationResult>;
 
@@ -150,8 +150,8 @@ export interface IValidationService {
    * @returns Массив результатов валидации
    */
   validateMany(
-    schema: any,
-    values: Array<Record<string, any>>,
+    schema: object | (new (...args: unknown[]) => object),
+    values: Array<Record<string, unknown>>,
     options?: ValidationOptions,
   ): Promise<ValidationResult[]>;
 
@@ -162,8 +162,8 @@ export interface IValidationService {
    * @returns Результат валидации
    */
   validateWithFn(
-    validationFn: (value: any) => boolean | string | Error | Promise<boolean | string | Error>,
-    value: any,
+    validationFn: (value: unknown) => boolean | string | Error | Promise<boolean | string | Error>,
+    value: unknown,
   ): Promise<ValidationResult>;
 
   /**

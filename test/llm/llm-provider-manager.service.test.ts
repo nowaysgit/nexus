@@ -81,10 +81,6 @@ describe('LLMProviderManagerService', () => {
   });
 
   describe('constructor', () => {
-    it('should be defined', () => {
-      expect(service).toBeDefined();
-    });
-
     it('should initialize with active provider from config', () => {
       expect(configService.get).toHaveBeenCalledWith('llm.activeProvider', LLMProviderType.LLAMA);
       expect(logService.setContext).toHaveBeenCalledWith('LLMProviderManagerService');

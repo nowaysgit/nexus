@@ -243,7 +243,7 @@ createTestSuite('Manipulation and Techniques Workflow Integration Tests', () => 
           );
           expect(updatedProfile.emotionalTriggers).toContain('loneliness');
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Ошибка в тесте:', error);
         throw error;
       }
@@ -356,7 +356,7 @@ createTestSuite('Manipulation and Techniques Workflow Integration Tests', () => 
 
         // Проверяем, что техника была выбрана и выполнена
         expect(selectedTechnique.techniqueType).toBeDefined();
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Ошибка в тесте:', error);
         throw error;
       }

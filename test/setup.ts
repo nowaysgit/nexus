@@ -34,7 +34,7 @@ beforeAll(async () => {
       'Для полного тестирования запустите: docker compose -f docker-compose.test.yml up -d',
     );
   }
-}, 30000);
+}, 5000);
 
 /**
  * Глобальная очистка после выполнения всех тестов
@@ -51,15 +51,15 @@ afterAll(async () => {
     }
 
     console.log('✅ Очистка тестового окружения завершена');
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Ошибка при очистке тестового окружения:', error);
   }
-}, 30000);
+}, 5000);
 
 /**
  * Настройка таймаутов для Jest
  */
-jest.setTimeout(30000);
+jest.setTimeout(5000);
 
 /**
  * Настройка обработчиков ошибок

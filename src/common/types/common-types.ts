@@ -43,8 +43,7 @@ export type Callback<T = void, Args extends unknown[] = unknown[]> = (...args: A
 /**
  * Тип для функции обработки ошибок
  */
-// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
-export type ErrorHandler = (error: Error | unknown, context?: OperationContext) => void;
+export type ErrorHandler = (error: unknown, context?: OperationContext) => void;
 
 /**
  * Тип для функции трансформации данных
