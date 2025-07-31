@@ -5,7 +5,7 @@ import { MockLogService } from '../../lib/tester/mocks/log.service.mock';
 
 describe('CacheService - Comprehensive Tests', () => {
   let service: CacheService;
-  let mockLogService: any;
+  let mockLogService: MockLogService;
 
   beforeEach(async () => {
     // Создаем mock LogService с jest spies до инициализации модуля

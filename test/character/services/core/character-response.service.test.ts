@@ -7,6 +7,7 @@ import { EmotionalStateService } from '../../../../src/character/services/core/e
 import { LogService } from '../../../../src/logging/log.service';
 import { Character, CharacterGender } from '../../../../src/character/entities/character.entity';
 import { CharacterArchetype } from '../../../../src/character/enums/character-archetype.enum';
+import { EmotionalState } from '../../../../src/character/entities/emotional-state';
 
 describe('CharacterResponseService', () => {
   let service: CharacterResponseService;
@@ -32,7 +33,7 @@ describe('CharacterResponseService', () => {
     },
   };
 
-  const mockEmotionalState = {
+  const mockEmotionalState: EmotionalState = {
     primary: 'happy',
     secondary: 'excited',
     intensity: 75,
@@ -126,7 +127,7 @@ describe('CharacterResponseService', () => {
         mockCharacter as Character,
         'How are you?',
         dialogHistory,
-        mockEmotionalState as any,
+        mockEmotionalState,
         'Additional context',
       );
 
@@ -141,7 +142,7 @@ describe('CharacterResponseService', () => {
         mockCharacter as Character,
         'How are you?',
         dialogHistory,
-        mockEmotionalState as any,
+        mockEmotionalState,
       );
 
       expect(result).toBeDefined();

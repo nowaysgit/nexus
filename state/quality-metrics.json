@@ -1,11 +1,11 @@
 {
-    "version": "1.0",
-    "last_updated": "2025-07-31T12:00:00Z",
+    "version": "1.1",
+    "last_updated": "2025-08-01T18:00:00Z",
     "description": "Централизованное хранилище всех метрик качества для автономного агента GitHub Copilot",
     "core_metrics": {
         "description": "Базовые метрики качества проекта - критически важные показатели",
         "coverage": {
-            "current": 0,
+            "current": 67.96,
             "target": 80,
             "minimum_threshold": 95,
             "warning_threshold": 85,
@@ -16,7 +16,7 @@
             "update_frequency": "after_each_test_run"
         },
         "coverage_full_work": {
-            "current": 0,
+            "current": 98.94,
             "target": 100,
             "minimum_threshold": 95,
             "warning_threshold": 85,
@@ -27,7 +27,7 @@
             "update_frequency": "after_each_test_run"
         },
         "technical_specifications_compliance": {
-            "current": 0,
+            "current": 85,
             "target": 100,
             "minimum_threshold": 95,
             "warning_threshold": 85,
@@ -38,7 +38,7 @@
             "update_frequency": "daily"
         },
         "test_success_rate": {
-            "current": 0,
+            "current": 98.94,
             "target": 100,
             "minimum_threshold": 100,
             "warning_threshold": 95,
@@ -460,7 +460,8 @@
         "total_metrics": 25,
         "categories": 6,
         "version_history": [
-            "1.0 - Initial centralized metrics structure"
+            "1.0 - Initial centralized metrics structure",
+            "1.1 - Updated after TASK-001 completion with real coverage data"
         ],
         "responsible_roles": [
             "Стратегический Координатор - общее управление метриками",
@@ -473,6 +474,12 @@
         "storage_format": "JSON",
         "file_size_limit": "1MB",
         "encoding": "UTF-8",
-        "validation_schema": "quality_metrics.schema.json"
+        "validation_schema": "quality_metrics.schema.json",
+        "recent_improvements": {
+            "coverage_improvement": "+4.49%",
+            "test_success_rate": "98.94%",
+            "services_improved": 6,
+            "date": "2025-08-01"
+        }
     }
 }

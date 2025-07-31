@@ -203,7 +203,7 @@ describe('ErrorHandlingService - Safe Operations & Utilities Fixed', () => {
 
   describe('Edge cases', () => {
     it('should handle formatErrorMessage with circular references', () => {
-      const circularObj: any = { prop: 'value' };
+      const circularObj: Record<string, unknown> = { prop: 'value' };
       circularObj.self = circularObj;
 
       // Тестируем через logError, так как formatErrorMessage приватный

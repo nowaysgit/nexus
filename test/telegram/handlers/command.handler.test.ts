@@ -153,7 +153,7 @@ describe('CommandHandler', () => {
             inline_keyboard: expect.arrayContaining([
               [{ text: 'Character 1', callback_data: 'info_1' }],
               [{ text: 'Character 2', callback_data: 'info_2' }],
-            ]),
+            ]) as unknown[][],
           }) as Record<string, unknown>,
         }) as Record<string, unknown>,
       );

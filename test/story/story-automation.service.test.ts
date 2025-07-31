@@ -215,7 +215,7 @@ describe('StoryAutomationService', () => {
           character: testCharacter,
           lastUserMessage: 'Hello there!',
           conversationLength: 1,
-          timeSinceLastInteraction: expect.any(Number),
+          timeSinceLastInteraction: expect.any(Number) as number,
         }) as IStoryContext,
       );
     });
@@ -290,8 +290,8 @@ describe('StoryAutomationService', () => {
         expect.objectContaining({
           sendMessage: expect.objectContaining({
             text: 'Я вижу, что тебе непросто. Хочешь поговорить об этом?',
-          }),
-        }),
+          }) as Record<string, unknown>,
+        }) as Record<string, unknown>,
         true,
       );
     });
@@ -319,8 +319,8 @@ describe('StoryAutomationService', () => {
         expect.objectContaining({
           sendMessage: expect.objectContaining({
             text: 'У меня есть интересная мысль, которой хочу поделиться...',
-          }),
-        }),
+          }) as Record<string, unknown>,
+        }) as Record<string, unknown>,
         true,
       );
     });

@@ -90,7 +90,7 @@ describe('KeyboardFormatterService', () => {
     });
 
     it('should return object with inline_keyboard property', () => {
-      const result = service.createMainMenuKeyboard() as InlineKeyboardResult as any;
+      const result = service.createMainMenuKeyboard() as InlineKeyboardResult;
 
       expect(result).toHaveProperty('inline_keyboard');
       expect(Array.isArray(result.inline_keyboard)).toBe(true);
@@ -474,19 +474,23 @@ describe('KeyboardFormatterService', () => {
 
   describe('error handling and edge cases', () => {
     it('should handle null character in createCharacterProfileKeyboard', async () => {
-      const nullCharacter = null as any;
+      const nullCharacter = null;
 
-      await expect(service.createCharacterProfileKeyboard(nullCharacter)).rejects.toThrow();
+      await expect(
+        service.createCharacterProfileKeyboard(nullCharacter as never),
+      ).rejects.toThrow();
     });
 
     it('should handle undefined character in createCharacterProfileKeyboard', async () => {
-      const undefinedCharacter = undefined as any;
+      const undefinedCharacter = undefined;
 
-      await expect(service.createCharacterProfileKeyboard(undefinedCharacter)).rejects.toThrow();
+      await expect(
+        service.createCharacterProfileKeyboard(undefinedCharacter as never),
+      ).rejects.toThrow();
     });
 
     it('should handle character with undefined id', async () => {
-      const characterWithUndefinedId = { ...mockCharacter, id: undefined as any };
+      const characterWithUndefinedId = { ...mockCharacter, id: undefined as never };
 
       const result = (await service.createCharacterProfileKeyboard(
         characterWithUndefinedId,
@@ -497,7 +501,11 @@ describe('KeyboardFormatterService', () => {
     });
 
     it('should handle null/undefined values in action arrays', () => {
-      const actionsWithNulls = ['Valid Action', null, undefined, 'Another Valid'] as any[];
+      const actionsWithNulls = ['Valid Action', null, undefined, 'Another Valid'] as (
+        | string
+        | null
+        | undefined
+      )[];
       const result = service.createActionKeyboard('test', actionsWithNulls) as InlineKeyboardResult;
 
       // Should handle gracefully

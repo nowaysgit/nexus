@@ -13,7 +13,7 @@ import { LogService } from '../../src/logging/log.service';
 describe('ErrorHandlingService Unit Tests', () => {
   let service: ErrorHandlingService;
   let logService: LogService;
-  let configService: ConfigService;
+  let _configService: ConfigService;
   let logger: Logger;
 
   const mockLogService = {
@@ -50,7 +50,7 @@ describe('ErrorHandlingService Unit Tests', () => {
 
     service = module.get<ErrorHandlingService>(ErrorHandlingService);
     logService = module.get<LogService>(LogService);
-    configService = module.get<ConfigService>(ConfigService);
+    _configService = module.get<ConfigService>(ConfigService);
     logger = mockLogger as unknown as Logger;
 
     jest.clearAllMocks();
@@ -208,7 +208,7 @@ describe('ErrorHandlingService Unit Tests', () => {
 
       try {
         await service.withErrorHandling(operation, 'test', logService, meta);
-      } catch (error) {
+      } catch (_error) {
         // Expected to throw
       }
 
@@ -226,7 +226,7 @@ describe('ErrorHandlingService Unit Tests', () => {
     });
 
     it('should return null when item not found and throwError is false', () => {
-      const result = service.handleNotFound(null, 'Item', 1, logService, false);
+      const result = service.handleNotFound<string>(null, 'Item', 1, logService, false);
 
       expect(result).toBeNull();
       expect(mockLogService.error).not.toHaveBeenCalled();
@@ -268,21 +268,21 @@ describe('ErrorHandlingService Unit Tests', () => {
     });
 
     it('should return null and warn when service not available', () => {
-      const result = service.requireService(null, 'TestService', logService);
+      const result = service.requireService<string>(null, 'TestService', logService);
 
       expect(result).toBeNull();
       expect(mockLogService.warn).toHaveBeenCalledWith('Сервис TestService не доступен');
     });
 
     it('should handle undefined service', () => {
-      const result = service.requireService(undefined, 'TestService', logService);
+      const result = service.requireService<string>(undefined, 'TestService', logService);
 
       expect(result).toBeNull();
       expect(mockLogService.warn).toHaveBeenCalled();
     });
 
     it('should work with standard logger', () => {
-      const result = service.requireService(null, 'TestService', logger);
+      const result = service.requireService<string>(null, 'TestService', logger);
 
       expect(result).toBeNull();
       expect(mockLogger.warn).toHaveBeenCalledWith('Сервис TestService не доступен');

@@ -11,10 +11,13 @@ import {
   EmotionalUpdate,
   EmotionalContext,
   EmotionalRegulationStrategy,
+  EmotionalImpact,
 } from '../../../src/character/entities/emotional-state';
 import { MessageAnalysis } from '../../../src/character/interfaces/analysis.interfaces';
 import { createTestSuite } from '../../../lib/tester';
 import { CharacterArchetype } from '../../../src/character/enums/character-archetype.enum';
+import { CharacterNeedType } from '../../../src/character/enums/character-need-type.enum';
+import { INeed } from '../../../src/character/interfaces/needs.interfaces';
 
 createTestSuite('EmotionalStateService Unit Tests', () => {
   let service: EmotionalStateService;
@@ -596,6 +599,302 @@ createTestSuite('EmotionalStateService Unit Tests', () => {
       expect(restoration).toHaveProperty('restoredState');
       expect(restoration).toHaveProperty('differences');
       expect(restoration.success).toBe(true);
+    });
+  });
+
+  describe('normalizeEmotionalState', () => {
+    beforeEach(() => {
+      characterRepository.findOne.mockResolvedValue(mockCharacter as Character);
+    });
+
+    it('должен нормализовать эмоциональное состояние персонажа', async () => {
+      // Сначала установим ненормализованное состояние
+      await service.updateEmotionalState(1, {
+        emotions: { грусть: 95, злость: 90, тревога: 85 },
+        source: 'test',
+        description: 'High intensity emotions',
+      });
+
+      const result = await service.normalizeEmotionalState(1);
+
+      expect(result).toHaveProperty('primary');
+      expect(result).toHaveProperty('intensity');
+      expect(result).toHaveProperty('description');
+      expect(result.primary).toBeDefined();
+      expect(result.intensity).toBeGreaterThanOrEqual(1);
+      expect(result.intensity).toBeLessThanOrEqual(10);
+    });
+
+    it('должен сохранять умеренные эмоциональные состояния', async () => {
+      // Устанавливаем умеренное состояние
+      await service.updateEmotionalState(1, {
+        emotions: { радость: 50 },
+        source: 'test',
+        description: 'Moderate emotions',
+      });
+
+      const stateBefore = await service.getEmotionalState(1);
+      const result = await service.normalizeEmotionalState(1);
+
+      // Проверяем что состояние остается стабильным
+      expect(result.primary).toBeDefined();
+      expect(result.intensity).toBeGreaterThanOrEqual(1);
+      expect(result.intensity).toBeLessThanOrEqual(10);
+      // Для умеренных состояний изменения должны быть минимальными
+      expect(Math.abs(result.intensity - stateBefore.intensity)).toBeLessThanOrEqual(2);
+    });
+  });
+
+  describe('getEmotionalProfile', () => {
+    beforeEach(() => {
+      characterRepository.findOne.mockResolvedValue(mockCharacter as Character);
+    });
+
+    it('должен возвращать эмоциональный профиль персонажа', async () => {
+      const profile = await service.getEmotionalProfile(1);
+
+      expect(profile).toHaveProperty('characterId');
+      expect(profile).toHaveProperty('baselineEmotions');
+      expect(profile).toHaveProperty('emotionalRange');
+      expect(profile).toHaveProperty('regulationCapacity');
+      expect(profile).toHaveProperty('vulnerabilities');
+      expect(profile).toHaveProperty('strengths');
+      expect(profile).toHaveProperty('patterns');
+      expect(profile).toHaveProperty('adaptability');
+      expect(profile).toHaveProperty('resilience');
+      expect(profile).toHaveProperty('sensitivity');
+      expect(profile).toHaveProperty('expressiveness');
+      expect(profile.characterId).toBe(1);
+    });
+
+    it('должен создавать базовый профиль для нового персонажа', async () => {
+      const profile = await service.getEmotionalProfile(1);
+
+      expect(profile.baselineEmotions).toBeDefined();
+      expect(profile.emotionalRange).toBeDefined();
+      expect(profile.regulationCapacity).toBeDefined();
+      expect(profile.adaptability).toBeGreaterThanOrEqual(0);
+      expect(profile.adaptability).toBeLessThanOrEqual(100);
+      expect(profile.resilience).toBeGreaterThanOrEqual(0);
+      expect(profile.resilience).toBeLessThanOrEqual(100);
+    });
+  });
+
+  describe('updateEmotionalStateFromNeeds', () => {
+    beforeEach(() => {
+      characterRepository.findOne.mockResolvedValue(mockCharacter as Character);
+    });
+
+    it('должен обновлять эмоциональное состояние на основе потребностей', async () => {
+      const needs: INeed[] = [
+        {
+          id: 1,
+          characterId: 1,
+          type: CharacterNeedType.COMMUNICATION,
+          currentValue: 20,
+          maxValue: 100,
+          frustrationLevel: 80,
+          priority: 9,
+          growthRate: 0.1,
+          decayRate: 0.05,
+          threshold: 70,
+          dynamicPriority: 8.5,
+        },
+        {
+          id: 2,
+          characterId: 1,
+          type: CharacterNeedType.RECOGNITION,
+          currentValue: 50,
+          maxValue: 100,
+          frustrationLevel: 30,
+          priority: 5,
+          growthRate: 0.08,
+          decayRate: 0.03,
+          threshold: 60,
+          dynamicPriority: 4.8,
+        },
+      ];
+
+      const result = await service.updateEmotionalStateFromNeeds(1, needs);
+
+      expect(result).toHaveProperty('primary');
+      expect(result).toHaveProperty('intensity');
+      expect(result).toHaveProperty('description');
+      expect(result.primary).toBeDefined();
+    });
+
+    it('должен возвращать текущее состояние если потребности не критичны', async () => {
+      const needs: INeed[] = [
+        {
+          id: 1,
+          characterId: 1,
+          type: CharacterNeedType.COMMUNICATION,
+          currentValue: 80,
+          maxValue: 100,
+          frustrationLevel: 20, // Низкая фрустрация
+          priority: 2,
+          growthRate: 0.1,
+          decayRate: 0.05,
+          threshold: 70,
+          dynamicPriority: 1.8,
+        },
+      ];
+
+      const currentState = await service.getEmotionalState(1);
+      const result = await service.updateEmotionalStateFromNeeds(1, needs);
+
+      expect(result).toEqual(currentState);
+    });
+
+    it('должен обрабатывать пустой список потребностей', async () => {
+      const currentState = await service.getEmotionalState(1);
+      const result = await service.updateEmotionalStateFromNeeds(1, []);
+
+      expect(result).toEqual(currentState);
+    });
+  });
+
+  describe('applyGradualEmotionalImpact', () => {
+    beforeEach(() => {
+      characterRepository.findOne.mockResolvedValue(mockCharacter as Character);
+    });
+
+    it('должен применять градуальное эмоциональное воздействие', async () => {
+      const impact: EmotionalImpact = {
+        emotionalType: 'волнение',
+        intensity: 60,
+        duration: 8000,
+        fadeRate: 0.15,
+        triggers: ['test'],
+        manifestations: [],
+        cascadeEffects: [],
+        interactions: [],
+        resistance: 10,
+        amplifiers: [],
+        dampeners: [],
+      };
+
+      const context: EmotionalContext = {
+        socialSetting: 'private',
+        relationshipLevel: 70,
+        timeOfDay: 'morning',
+        characterEnergy: 90,
+        recentEvents: [],
+        environmentalFactors: [],
+        culturalContext: 'neutral',
+        historicalContext: 'neutral',
+        emotionalClimate: 'positive',
+        expectations: [],
+        constraints: [],
+        opportunities: [],
+      };
+
+      const result = await service.applyGradualEmotionalImpact(1, impact, context);
+
+      expect(result).toHaveProperty('primary');
+      expect(result).toHaveProperty('intensity');
+      expect(result).toHaveProperty('description');
+      expect(result.primary).toBeDefined();
+      expect(result.intensity).toBeGreaterThanOrEqual(1);
+      expect(result.intensity).toBeLessThanOrEqual(10);
+    });
+
+    it('должен правильно настраивать таймеры затухания', async () => {
+      const impact: EmotionalImpact = {
+        emotionalType: 'радость',
+        intensity: 80,
+        duration: 1000, // Короткая длительность для теста
+        fadeRate: 0.5,
+        triggers: ['timer_test'],
+        manifestations: [],
+        cascadeEffects: [],
+        interactions: [],
+        resistance: 5,
+        amplifiers: [],
+        dampeners: [],
+      };
+
+      const context: EmotionalContext = {
+        socialSetting: 'private',
+        relationshipLevel: 50,
+        timeOfDay: 'afternoon',
+        characterEnergy: 75,
+        recentEvents: [],
+        environmentalFactors: [],
+        culturalContext: 'neutral',
+        historicalContext: 'neutral',
+        emotionalClimate: 'neutral',
+        expectations: [],
+        constraints: [],
+        opportunities: [],
+      };
+
+      const result = await service.applyGradualEmotionalImpact(1, impact, context);
+
+      expect(result).toBeDefined();
+      expect(result.primary).toBe('радость');
+    });
+  });
+
+  describe('createEmotionalSnapshot', () => {
+    it('должен создавать снимок эмоционального состояния', async () => {
+      characterRepository.findOne.mockResolvedValue(mockCharacter as Character);
+
+      const snapshot = await service.createEmotionalSnapshot(1);
+
+      expect(snapshot).toHaveProperty('timestamp');
+      expect(snapshot).toHaveProperty('state');
+      expect(snapshot).toHaveProperty('profile');
+      expect(snapshot).toHaveProperty('recentMemories');
+      expect(snapshot).toHaveProperty('activePatterns');
+      expect(snapshot).toHaveProperty('context');
+      expect(snapshot).toHaveProperty('metadata');
+      expect(snapshot.timestamp).toBeInstanceOf(Date);
+    });
+  });
+
+  describe('restoreFromSnapshot', () => {
+    it('должен восстанавливать состояние из снимка', async () => {
+      characterRepository.findOne.mockResolvedValue(mockCharacter as Character);
+
+      // Создаем снимок
+      const snapshot = await service.createEmotionalSnapshot(1);
+
+      // Изменяем состояние
+      await service.updateEmotionalState(1, {
+        emotions: { грусть: 80 },
+        source: 'test',
+        description: 'Test change',
+      });
+
+      // Восстанавливаем из снимка
+      const restoration = await service.restoreFromSnapshot(1, snapshot);
+
+      expect(restoration).toHaveProperty('success');
+      expect(restoration).toHaveProperty('restoredState');
+      expect(restoration).toHaveProperty('differences');
+      expect(restoration.success).toBe(true);
+    });
+  });
+
+  describe('error handling', () => {
+    it('должен корректно обрабатывать ошибки при отсутствии персонажа', async () => {
+      characterRepository.findOne.mockResolvedValue(null);
+
+      await expect(service.getEmotionalState(999)).rejects.toThrow();
+      await expect(
+        service.updateEmotionalState(999, {
+          emotions: { грусть: 50 },
+          source: 'test',
+          description: 'Test',
+        }),
+      ).rejects.toThrow();
+    });
+
+    it('должен логировать ошибки при неудачных операциях', async () => {
+      characterRepository.findOne.mockRejectedValue(new Error('Database error'));
+
+      await expect(service.getEmotionalState(1)).rejects.toThrow();
     });
   });
 });

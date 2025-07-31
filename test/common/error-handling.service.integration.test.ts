@@ -61,7 +61,7 @@ createTestSuite('ErrorHandling.service Integration Tests', () => {
       service.logError(logService, 'test operation', testError);
       expect(logService.error).toHaveBeenCalledWith(
         expect.stringContaining('Ошибка при test operation: Test error'),
-        { context: 'ErrorHandlingService', operation: 'test operation' }
+        { context: 'ErrorHandlingService', operation: 'test operation' },
       );
     },
   );

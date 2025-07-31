@@ -9,13 +9,18 @@ describe('TelegramInitializationService', () => {
 
   beforeEach(async () => {
     mockLogService = {
-      log: jest.fn(),
-      error: jest.fn(),
-      warn: jest.fn(),
-      debug: jest.fn(),
-      info: jest.fn(),
+      onModuleDestroy: jest.fn(),
       setContext: jest.fn().mockReturnThis(),
-    } as any;
+      getContext: jest.fn(),
+      forContext: jest.fn().mockReturnThis(),
+      log: jest.fn(),
+      info: jest.fn(),
+      debug: jest.fn(),
+      warn: jest.fn(),
+      verbose: jest.fn(),
+      error: jest.fn(),
+      critical: jest.fn(),
+    } as unknown as jest.Mocked<LogService>;
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [

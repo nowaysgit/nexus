@@ -92,7 +92,7 @@ describe('ErrorHandlingService - Safe Operations & Utility Methods', () => {
       expect(result).toBeNull();
       expect(operation).not.toHaveBeenCalled();
       expect(mockLogService.warn).toHaveBeenCalledWith(
-        expect.stringContaining('Операция dropSchema отклонена')
+        expect.stringContaining('Операция dropSchema отклонена'),
       );
     });
 
@@ -117,13 +117,13 @@ describe('ErrorHandlingService - Safe Operations & Utility Methods', () => {
       const error = new Error('Operation failed');
       const operation = jest.fn().mockRejectedValue(error);
 
-      await expect(
-        service.executeOperation('safeOperation', operation)
-      ).rejects.toThrow('Operation failed');
+      await expect(service.executeOperation('safeOperation', operation)).rejects.toThrow(
+        'Operation failed',
+      );
 
       expect(mockLogService.error).toHaveBeenCalledWith(
         'Ошибка при выполнении операции safeOperation',
-        'Operation failed'
+        'Operation failed',
       );
     });
   });
@@ -255,7 +255,7 @@ describe('ErrorHandlingService - Safe Operations & Utility Methods', () => {
 
       it('should validate array items with predicate', () => {
         const isString = (item: unknown): item is string => typeof item === 'string';
-        
+
         expect(service.isArray(['a', 'b', 'c'], isString)).toBe(true);
         expect(service.isArray([1, 2, 3], isString)).toBe(false);
         expect(service.isArray(['a', 1, 'c'], isString)).toBe(false);
@@ -286,7 +286,7 @@ describe('ErrorHandlingService - Safe Operations & Utility Methods', () => {
 
       decorator({}, 'testMethod', descriptor);
 
-      const result = await descriptor.value();
+      const result = (await descriptor.value()) as string;
       expect(result).toBe('success');
     });
 
@@ -297,7 +297,7 @@ describe('ErrorHandlingService - Safe Operations & Utility Methods', () => {
 
       decorator({}, 'testMethod', descriptor);
 
-      const result = await descriptor.value();
+      const result = (await descriptor.value()) as string;
       expect(result).toBe('async success');
     });
 
@@ -315,7 +315,7 @@ describe('ErrorHandlingService - Safe Operations & Utility Methods', () => {
       await expect(descriptor.value.call(context)).rejects.toThrow('Method error');
       expect(mockLogger.error).toHaveBeenCalledWith(
         'Ошибка в TestController.testMethod',
-        error.stack
+        error.stack,
       );
     });
 
@@ -355,7 +355,7 @@ describe('ErrorHandlingService - Safe Operations & Utility Methods', () => {
         const result = await ErrorHandlingService.withErrorHandling(
           operation,
           'test',
-          mockLogService as unknown as LogService
+          mockLogService as unknown as LogService,
         );
 
         expect(result).toBe('success');
@@ -369,7 +369,7 @@ describe('ErrorHandlingService - Safe Operations & Utility Methods', () => {
           'test',
           mockLogService as unknown as LogService,
           {},
-          'default'
+          'default',
         );
 
         expect(result).toBe('default');
@@ -384,8 +384,8 @@ describe('ErrorHandlingService - Safe Operations & Utility Methods', () => {
           ErrorHandlingService.withErrorHandling(
             operation,
             'test',
-            mockLogService as unknown as LogService
-          )
+            mockLogService as unknown as LogService,
+          ),
         ).rejects.toThrow('Test error');
 
         expect(mockLogService.error).toHaveBeenCalled();
@@ -401,8 +401,8 @@ describe('ErrorHandlingService - Safe Operations & Utility Methods', () => {
             'test',
             mockLogger as unknown as Logger,
             {},
-            'default'
-          )
+            'default',
+          ),
         ).resolves.toBe('default');
 
         expect(mockLogger.error).toHaveBeenCalled();
@@ -415,61 +415,48 @@ describe('ErrorHandlingService - Safe Operations & Utility Methods', () => {
         ErrorHandlingService.logError(
           mockLogService as unknown as LogService,
           'test operation',
-          error
+          error,
         );
 
-        expect(mockLogService.error).toHaveBeenCalledWith(
-          'Test error',
-          undefined
-        );
+        expect(mockLogService.error).toHaveBeenCalledWith('Test error', undefined);
       });
 
       it('should log error with standard Logger', () => {
         const mockLogger = { error: jest.fn() };
         const error = new Error('Test error');
-        ErrorHandlingService.logError(
-          mockLogger as unknown as Logger,
-          'test operation',
-          error
-        );
+        ErrorHandlingService.logError(mockLogger as unknown as Logger, 'test operation', error);
 
-        expect(mockLogger.error).toHaveBeenCalledWith(
-          'Ошибка при test operation: Test error'
-        );
+        expect(mockLogger.error).toHaveBeenCalledWith('Ошибка при test operation: Test error');
       });
 
       it('should handle non-Error objects', () => {
-        ErrorHandlingService.logError(
-          mockLogService as unknown as LogService,
-          'test operation',
-          { message: 'object error' }
-        );
+        ErrorHandlingService.logError(mockLogService as unknown as LogService, 'test operation', {
+          message: 'object error',
+        });
 
         expect(mockLogService.error).toHaveBeenCalled();
       });
 
       it('should handle circular reference objects', () => {
-        const circularObj: any = { prop: 'value' };
+        const circularObj: Record<string, unknown> = { prop: 'value' };
         circularObj.self = circularObj;
 
         ErrorHandlingService.logError(
           mockLogService as unknown as LogService,
           'test operation',
-          circularObj
+          circularObj,
         );
 
         expect(mockLogService.error).toHaveBeenCalledWith(
           'Ошибка при test operation: [Object object]',
-          undefined
+          undefined,
         );
       });
     });
 
     describe('measureExecutionTime', () => {
       beforeEach(() => {
-        jest.spyOn(Date, 'now')
-          .mockReturnValueOnce(1000)
-          .mockReturnValueOnce(1500);
+        jest.spyOn(Date, 'now').mockReturnValueOnce(1000).mockReturnValueOnce(1500);
       });
 
       afterEach(() => {
@@ -481,7 +468,7 @@ describe('ErrorHandlingService - Safe Operations & Utility Methods', () => {
         const result = await ErrorHandlingService.measureExecutionTime(
           operation,
           'test_operation',
-          mockLogService as unknown as LogService
+          mockLogService as unknown as LogService,
         );
 
         expect(result).toBe('success');
@@ -490,7 +477,7 @@ describe('ErrorHandlingService - Safe Operations & Utility Methods', () => {
           {
             operationName: 'test_operation',
             executionTime: 500,
-          }
+          },
         );
       });
 
@@ -502,8 +489,8 @@ describe('ErrorHandlingService - Safe Operations & Utility Methods', () => {
           ErrorHandlingService.measureExecutionTime(
             operation,
             'test_operation',
-            mockLogService as unknown as LogService
-          )
+            mockLogService as unknown as LogService,
+          ),
         ).rejects.toThrow('Test error');
 
         expect(mockLogService.error).toHaveBeenCalledWith(
@@ -511,7 +498,7 @@ describe('ErrorHandlingService - Safe Operations & Utility Methods', () => {
           {
             executionTime: '500.00ms',
             error: 'Test error',
-          }
+          },
         );
       });
 
@@ -522,12 +509,10 @@ describe('ErrorHandlingService - Safe Operations & Utility Methods', () => {
         await ErrorHandlingService.measureExecutionTime(
           operation,
           'test_operation',
-          mockLogger as unknown as Logger
+          mockLogger as unknown as Logger,
         );
 
-        expect(mockLogger.log).toHaveBeenCalledWith(
-          'Операция test_operation выполнена за 500ms'
-        );
+        expect(mockLogger.log).toHaveBeenCalledWith('Операция test_operation выполнена за 500ms');
       });
 
       it('should handle non-Error exceptions in static method', async () => {
@@ -537,15 +522,15 @@ describe('ErrorHandlingService - Safe Operations & Utility Methods', () => {
           ErrorHandlingService.measureExecutionTime(
             operation,
             'test_operation',
-            mockLogService as unknown as LogService
-          )
+            mockLogService as unknown as LogService,
+          ),
         ).rejects.toBe('string error');
 
         expect(mockLogService.error).toHaveBeenCalledWith(
           'Ошибка при выполнении операции test_operation',
           expect.objectContaining({
             error: 'string error',
-          })
+          }),
         );
       });
     });
@@ -554,7 +539,7 @@ describe('ErrorHandlingService - Safe Operations & Utility Methods', () => {
   describe('Edge cases and error scenarios', () => {
     it('should handle formatErrorMessage with circular references', () => {
       // Создаем объект с циклической ссылкой
-      const circularObj: any = { prop: 'value' };
+      const circularObj: Record<string, unknown> = { prop: 'value' };
       circularObj.self = circularObj;
 
       // Метод formatErrorMessage приватный, но мы можем протестировать его через logError
@@ -564,8 +549,8 @@ describe('ErrorHandlingService - Safe Operations & Utility Methods', () => {
     });
 
     it('should handle complex nested validation errors', () => {
-      const complexError = new Error('Validation failed') as Error & { 
-        constraints: Record<string, unknown> 
+      const complexError = new Error('Validation failed') as Error & {
+        constraints: Record<string, unknown>;
       };
       complexError.constraints = {
         nested: { deep: { error: 'Deep validation error' } },

@@ -667,5 +667,191 @@ describe('NeedsService', () => {
       });
       expect(mockMessageQueueService.enqueue).toHaveBeenCalledTimes(2);
     });
+
+    it('should handle database error gracefully', async () => {
+      mockCharacterRepository.find = jest.fn().mockRejectedValue(new Error('Database error'));
+
+      // Не должно выбрасывать исключение
+      await expect(service.processAllCharactersNeeds()).resolves.not.toThrow();
+
+      expect(mockLogService.error).toHaveBeenCalledWith(
+        'Критическая ошибка при запуске фоновой обработки потребностей',
+        expect.objectContaining({
+          error: 'Database error',
+        }),
+      );
+    });
+
+    it('should handle empty character list', async () => {
+      mockCharacterRepository.find = jest.fn().mockResolvedValue([]);
+
+      await service.processAllCharactersNeeds();
+
+      expect(mockCharacterRepository.find).toHaveBeenCalled();
+      expect(mockMessageQueueService.enqueue).not.toHaveBeenCalled();
+    });
+
+    it('should handle queue enqueue errors', async () => {
+      const mockCharacters = [{ id: 1 }];
+      mockCharacterRepository.find = jest.fn().mockResolvedValue(mockCharacters);
+      mockMessageQueueService.enqueue = jest.fn().mockRejectedValue(new Error('Queue error'));
+
+      // Не должно выбрасывать исключение
+      await expect(service.processAllCharactersNeeds()).resolves.not.toThrow();
+    });
+  });
+
+  describe('createDefaultNeeds error handling', () => {
+    it('should handle character not found', async () => {
+      mockCharacterRepository.findOne = jest.fn().mockResolvedValue(null);
+
+      await expect(service.createDefaultNeeds(999)).rejects.toThrow('Character not found');
+
+      expect(mockLogService.error).toHaveBeenCalledWith(
+        'Ошибка создания базовых потребностей',
+        expect.objectContaining({
+          characterId: 999,
+          error: 'Character not found',
+        }),
+      );
+    });
+
+    it('should handle repository save errors', async () => {
+      const mockCharacter = { id: 1, name: 'Test' } as Character;
+      mockCharacterRepository.findOne = jest.fn().mockResolvedValue(mockCharacter);
+      mockNeedRepository.create = jest
+        .fn()
+        .mockImplementation((data: Partial<Need>) => data as Need);
+      mockNeedRepository.save = jest.fn().mockRejectedValue(new Error('Save failed'));
+
+      await expect(service.createDefaultNeeds(1)).rejects.toThrow('Save failed');
+
+      expect(mockLogService.error).toHaveBeenCalledWith(
+        'Ошибка создания базовых потребностей',
+        expect.objectContaining({
+          characterId: 1,
+          error: 'Save failed',
+        }),
+      );
+    });
+  });
+
+  describe('additional alias methods coverage', () => {
+    it('should calculate needs growth correctly', async () => {
+      const mockNeeds = [
+        new MockNeed({ id: 1, growthRate: 2.0, characterId: 1 }),
+        new MockNeed({ id: 2, growthRate: 1.5, characterId: 1 }),
+      ];
+
+      mockNeedRepository.find = jest.fn().mockResolvedValue(mockNeeds);
+
+      const result = await service.calculateNeedsGrowth(1);
+
+      expect(Array.isArray(result)).toBe(true);
+      expect(result).toHaveLength(2);
+    });
+
+    it('should handle empty needs for growth calculation', async () => {
+      mockNeedRepository.find = jest.fn().mockResolvedValue([]);
+
+      const result = await service.calculateNeedsGrowth(1);
+
+      expect(Array.isArray(result)).toBe(true);
+      expect(result).toHaveLength(0);
+    });
+
+    it('should return unfulfilled needs correctly', async () => {
+      const mockNeeds = [
+        new MockNeed({ id: 1, currentValue: 0.9, threshold: 0.8 }),
+        new MockNeed({ id: 2, currentValue: 0.5, threshold: 0.8 }),
+      ];
+
+      // Настраиваем hasReachedThreshold
+      mockNeeds[0].hasReachedThreshold = jest.fn(() => true);
+      mockNeeds[1].hasReachedThreshold = jest.fn(() => false);
+
+      mockNeedRepository.find = jest.fn().mockResolvedValue(mockNeeds);
+
+      const result = await service.getUnfulfilledNeeds(1);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe(1);
+    });
+
+    it('should filter needs correctly by active status', async () => {
+      const mockNeeds = [
+        new MockNeed({ id: 1, isActive: true }),
+        new MockNeed({ id: 2, isActive: false }),
+      ];
+
+      // Настраиваем isActive getter
+      Object.defineProperty(mockNeeds[0], 'isActive', { value: true, writable: true });
+      Object.defineProperty(mockNeeds[1], 'isActive', { value: false, writable: true });
+
+      mockNeedRepository.find = jest.fn().mockResolvedValue(mockNeeds);
+
+      await service.getActiveNeeds(1);
+
+      expect(mockNeedRepository.find).toHaveBeenCalledWith({
+        where: { characterId: 1, isActive: true },
+        order: { priority: 'DESC', currentValue: 'DESC' },
+      });
+    });
+  });
+
+  describe('edge cases and boundary conditions', () => {
+    it('should handle updateNeed with valid update object', async () => {
+      const mockNeed = new MockNeed({
+        id: 1,
+        characterId: 1,
+        type: CharacterNeedType.SOCIAL_CONNECTION,
+        currentValue: 0.5,
+      });
+
+      mockNeedRepository.findOne = jest.fn().mockResolvedValue(mockNeed);
+      mockNeedRepository.save = jest.fn().mockResolvedValue(mockNeed);
+
+      const update = {
+        type: CharacterNeedType.SOCIAL_CONNECTION,
+        change: 0.3,
+        reason: 'test update',
+      };
+
+      await service.updateNeed(1, update);
+
+      expect(mockNeed.updateLevel).toHaveBeenCalledWith(0.3);
+      expect(mockNeedRepository.save).toHaveBeenCalled();
+    });
+
+    it('should handle blockNeed with correct parameters', async () => {
+      const mockNeed = new MockNeed({
+        id: 1,
+        characterId: 1,
+        type: CharacterNeedType.SOCIAL_CONNECTION,
+      });
+
+      mockNeedRepository.findOne = jest.fn().mockResolvedValue(mockNeed);
+      mockNeedRepository.save = jest.fn().mockResolvedValue(mockNeed);
+
+      await service.blockNeed(1, CharacterNeedType.SOCIAL_CONNECTION, 2, 'test block');
+
+      expect(mockNeedRepository.findOne).toHaveBeenCalledWith({
+        where: { characterId: 1, type: CharacterNeedType.SOCIAL_CONNECTION, isActive: true },
+      });
+    });
+
+    it('should handle missing need in getNeedsByType', async () => {
+      mockNeedRepository.findOne = jest.fn().mockResolvedValue(null);
+
+      const result = await service.getNeedsByType(999, CharacterNeedType.SOCIAL_CONNECTION);
+
+      expect(result).toBeNull();
+    });
+
+    it('should handle repository errors in processNeedsGrowth', async () => {
+      mockNeedRepository.find = jest.fn().mockRejectedValue(new Error('DB Connection lost'));
+
+      await expect(service.processNeedsGrowth(1)).rejects.toThrow('DB Connection lost');
+    });
   });
 });

@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name        VSCode Auto Resume
 // @namespace   nexus-automation
-// @description Automatically handles VS Code chat interactions with optimized performance
-// @version     2.0
+// @description Automatically handles VS Code chat interactions with periodic checks
+// @version     3.0
 // @grant       none
 // ==/UserScript==
 
@@ -13,13 +13,9 @@
      * Конфигурация и константы
      */
     const CONFIG = {
-        observer: {
-            childList: true,
-            subtree: true,
-            characterData: true
-        },
-        throttle: {
-            delay: 100 // мс для throttling обработчика мутаций
+        timing: {
+            checkInterval: 2000, // мс между проверками (2 секунды)
+            actionCooldown: 1000 // мс между действиями для предотвращения спама
         },
         selectors: {
             continueButton: 'a.monaco-button',
@@ -42,40 +38,17 @@
      */
     const Utils = {
         /**
-         * Throttling функция для ограничения частоты вызовов
-         */
-        throttle(func, delay) {
-            let timeoutId;
-            let lastExecTime = 0;
-            
-            return function(...args) {
-                const currentTime = Date.now();
-                
-                if (currentTime - lastExecTime > delay) {
-                    func.apply(this, args);
-                    lastExecTime = currentTime;
-                } else {
-                    clearTimeout(timeoutId);
-                    timeoutId = setTimeout(() => {
-                        func.apply(this, args);
-                        lastExecTime = Date.now();
-                    }, delay - (currentTime - lastExecTime));
-                }
-            };
-        },
-
-        /**
          * Безопасный клик по элементу с логированием
          */
         safeClick(element, buttonName) {
             try {
                 if (element && typeof element.click === 'function') {
                     element.click();
-                    console.log(`${buttonName} button clicked successfully`);
+                    console.log(`[VSCode Automation] ${buttonName} button clicked successfully`);
                     return true;
                 }
             } catch (error) {
-                console.error(`Error clicking ${buttonName} button:`, error);
+                console.error(`[VSCode Automation] Error clicking ${buttonName} button:`, error);
             }
             return false;
         },
@@ -88,6 +61,13 @@
             const rect = element.getBoundingClientRect();
             return rect.width > 0 && rect.height > 0 && 
                    window.getComputedStyle(element).visibility !== 'hidden';
+        },
+
+        /**
+         * Форматирование времени для логов
+         */
+        formatTime() {
+            return new Date().toLocaleTimeString();
         }
     };
 
@@ -96,78 +76,123 @@
      */
     class VSCodeAutomation {
         constructor() {
-            this.observer = null;
-            this.isInitialized = false;
+            this.intervalId = null;
+            this.isRunning = false;
             this.lastActionTimestamp = 0;
-            
-            // Throttled версия обработчика мутаций
-            this.throttledMutationHandler = Utils.throttle(
-                this.handleMutations.bind(this), 
-                CONFIG.throttle.delay
-            );
+            this.checkCount = 0;
         }
 
         /**
-         * Инициализация автоматизации
+         * Запуск автоматизации
          */
-        init() {
-            if (this.isInitialized) {
-                console.warn('VSCodeAutomation already initialized');
-                return;
+        start() {
+            if (this.isRunning) {
+                console.warn('[VSCode Automation] Already running');
+                return false;
             }
 
-            this.setupMutationObserver();
-            this.runInitialChecks();
-            this.setupCleanup();
+            this.isRunning = true;
+            this.checkCount = 0;
+            this.lastActionTimestamp = 0;
+
+            // Запуск периодических проверок
+            this.intervalId = setInterval(() => {
+                this.performAllChecks();
+            }, CONFIG.timing.checkInterval);
+
+            // Выполнить первую проверку немедленно
+            setTimeout(() => this.performAllChecks(), 500);
+
+            console.log(`[VSCode Automation] Started with ${CONFIG.timing.checkInterval}ms interval`);
+            return true;
+        }
+
+        /**
+         * Остановка автоматизации
+         */
+        stop() {
+            if (!this.isRunning) {
+                console.warn('[VSCode Automation] Not running');
+                return false;
+            }
+
+            if (this.intervalId) {
+                clearInterval(this.intervalId);
+                this.intervalId = null;
+            }
+
+            this.isRunning = false;
+            console.log(`[VSCode Automation] Stopped after ${this.checkCount} checks`);
+            return true;
+        }
+
+        /**
+         * Получение статуса автоматизации
+         */
+        getStatus() {
+            return {
+                isRunning: this.isRunning,
+                checkCount: this.checkCount,
+                checkInterval: CONFIG.timing.checkInterval,
+                lastActionTime: this.lastActionTimestamp ? new Date(this.lastActionTimestamp).toLocaleTimeString() : 'Never'
+            };
+        }
+
+        /**
+         * Изменение интервала проверок
+         */
+        setInterval(newInterval) {
+            if (newInterval < 500 || newInterval > 30000) {
+                console.error('[VSCode Automation] Interval must be between 500ms and 30000ms');
+                return false;
+            }
+
+            CONFIG.timing.checkInterval = newInterval;
             
-            this.isInitialized = true;
-            console.log('VSCodeAutomation initialized successfully');
-        }
-
-        /**
-         * Настройка MutationObserver
-         */
-        setupMutationObserver() {
-            this.observer = new MutationObserver(this.throttledMutationHandler);
-            this.observer.observe(document.body, CONFIG.observer);
-        }
-
-        /**
-         * Обработчик мутаций DOM
-         */
-        handleMutations(mutationsList) {
-            const relevantMutations = mutationsList.filter(mutation => 
-                mutation.type === 'childList' || mutation.type === 'characterData'
-            );
-
-            if (relevantMutations.length === 0) return;
-
-            this.performAllChecks();
+            if (this.isRunning) {
+                this.stop();
+                this.start();
+                console.log(`[VSCode Automation] Interval changed to ${newInterval}ms`);
+            }
+            
+            return true;
         }
 
         /**
          * Выполнение всех проверок и действий
          */
         performAllChecks() {
+            if (!this.isRunning) return;
+
+            this.checkCount++;
             const now = Date.now();
+            
             // Предотвращаем слишком частые действия
-            if (now - this.lastActionTimestamp < 500) return;
+            if (now - this.lastActionTimestamp < CONFIG.timing.actionCooldown) {
+                return;
+            }
 
             try {
                 const actions = [
-                    this.checkAndClickContinueButton.bind(this),
-                    this.checkAndClickTryAgainButton.bind(this),
-                    this.checkAwaitNextMoveCondition.bind(this)
+                    { name: 'Continue Button', func: this.checkAndClickContinueButton.bind(this) },
+                    { name: 'Try Again Button', func: this.checkAndClickTryAgainButton.bind(this) },
+                    { name: 'AWAIT NEXT MOVE', func: this.checkAwaitNextMoveCondition.bind(this) }
                 ];
 
                 for (const action of actions) {
-                    if (action()) {
+                    if (action.func()) {
                         this.lastActionTimestamp = now;
+                        console.log(`[VSCode Automation] Action performed: ${action.name} at ${Utils.formatTime()}`);
                         break; // Выполняем только одно действие за раз
                     }
                 }
+
+                // Логируем каждые 10 проверок для отслеживания активности
+                if (this.checkCount % 10 === 0) {
+                    console.log(`[VSCode Automation] Performed ${this.checkCount} checks, running for ${Math.round((now - (this.lastActionTimestamp || now)) / 1000)}s`);
+                }
             } catch (error) {
-                console.error('Error during automation checks:', error);
+                console.error('[VSCode Automation] Error during automation checks:', error);
             }
         }
 
@@ -227,72 +252,61 @@
                 const cancelButton = document.querySelector(CONFIG.selectors.cancelButton);
                 if (cancelButton && Utils.isElementVisible(cancelButton)) return false;
 
-                console.log('AWAIT NEXT MOVE condition met - ready for next action');
+                console.log('[VSCode Automation] AWAIT NEXT MOVE condition met - ready for next action');
                 return true;
             } catch (error) {
-                console.error('Error checking AWAIT NEXT MOVE condition:', error);
+                console.error('[VSCode Automation] Error checking AWAIT NEXT MOVE condition:', error);
                 return false;
             }
         }
-
-        /**
-         * Запуск первоначальных проверок
-         */
-        runInitialChecks() {
-            // Небольшая задержка для загрузки DOM
-            setTimeout(() => {
-                this.performAllChecks();
-            }, 300);
-        }
-
-        /**
-         * Настройка очистки ресурсов
-         */
-        setupCleanup() {
-            const cleanup = () => {
-                if (this.observer) {
-                    this.observer.disconnect();
-                    this.observer = null;
-                }
-                this.isInitialized = false;
-                console.log('VSCodeAutomation cleaned up');
-            };
-
-            // Очистка при закрытии страницы
-            window.addEventListener('unload', cleanup);
-            window.addEventListener('beforeunload', cleanup);
-            
-            // Очистка при потере фокуса (опционально)
-            document.addEventListener('visibilitychange', () => {
-                if (document.hidden && this.observer) {
-                    console.log('Page hidden, pausing automation');
-                }
-            });
-        }
-
-        /**
-         * Принудительная остановка автоматизации
-         */
-        stop() {
-            if (this.observer) {
-                this.observer.disconnect();
-                this.observer = null;
-            }
-            this.isInitialized = false;
-            console.log('VSCodeAutomation stopped manually');
-        }
     }
 
-    // Инициализация автоматизации
+    // Создание экземпляра автоматизации
     const automation = new VSCodeAutomation();
     
-    // Ожидаем полной загрузки DOM
+    // Автоматический запуск после загрузки DOM
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => automation.init());
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => automation.start(), 1000);
+        });
     } else {
-        automation.init();
+        setTimeout(() => automation.start(), 1000);
     }
 
-    // Экспорт для возможного ручного управления через консоль
-    window.VSCodeAutomation = automation;
+    // Экспорт для управления через консоль браузера
+    window.VSCodeAutomation = {
+        // Основные методы управления
+        start: () => automation.start(),
+        stop: () => automation.stop(),
+        status: () => automation.getStatus(),
+        setInterval: (ms) => automation.setInterval(ms),
+        
+        // Информационные методы
+        help: () => {
+            console.log(`
+[VSCode Automation Help]
+Commands available:
+  VSCodeAutomation.start()         - Start automation
+  VSCodeAutomation.stop()          - Stop automation  
+  VSCodeAutomation.status()        - Show current status
+  VSCodeAutomation.setInterval(ms) - Change check interval (500-30000ms)
+  VSCodeAutomation.help()          - Show this help
+
+Current status: ${automation.isRunning ? 'RUNNING' : 'STOPPED'}
+Check interval: ${CONFIG.timing.checkInterval}ms
+            `);
+        },
+        
+        // Ссылка на сам объект автоматизации (для расширенного доступа)
+        _instance: automation,
+        _config: CONFIG
+    };
+
+    // Добавляем обработчики закрытия страницы
+    window.addEventListener('beforeunload', () => {
+        automation.stop();
+    });
+
+    // Приветственное сообщение
+    console.log('[VSCode Automation] Script loaded. Use VSCodeAutomation.help() for commands.');
 })();

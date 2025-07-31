@@ -9,6 +9,8 @@ import { CharacterBehaviorService } from '../../../src/character/services/behavi
 import { ActionExecutorService } from '../../../src/character/services/action/action-executor.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Dialog } from '../../../src/dialog/entities/dialog.entity';
+import { Message } from '../../../src/dialog/entities/message.entity';
+import { Character } from '../../../src/character/entities/character.entity';
 import { ModuleRef } from '@nestjs/core';
 import { MessageFormatterService } from '../../../src/telegram/services/message-formatter.service';
 import { AccessControlService } from '../../../src/telegram/services/access-control.service';
@@ -116,10 +118,47 @@ describe('MessageHandler', () => {
 
   describe('handleMessage', () => {
     it('should handle regular message for authorized user', async () => {
-      const mockCharacter = { id: 1, name: 'Test Character' } as any;
+      const mockCharacter = { id: 1, name: 'Test Character' } as Character;
       const mockDialog = { id: 1, telegramId: '12345', characterId: 1 };
-      const mockResponse = { response: 'Hello back!', analysis: {} as any };
-      const mockUserMessage = { id: 1, content: 'Hello' } as any;
+      const mockResponse = {
+        response: 'Hello back!',
+        analysis: {
+          urgency: 0.5,
+          userIntent: 'casual_talk' as const,
+          needsImpact: {},
+          emotionalAnalysis: {
+            userMood: 'neutral' as const,
+            emotionalIntensity: 0.5,
+            triggerEmotions: [],
+            expectedEmotionalResponse: 'neutral',
+          },
+          manipulationAnalysis: {
+            userVulnerability: 0,
+            applicableTechniques: [],
+            riskLevel: 'low' as const,
+            recommendedIntensity: 0,
+          },
+          specializationAnalysis: {
+            responseComplexityLevel: 'simple' as const,
+            requiredKnowledge: [],
+            domain: 'general',
+          },
+          behaviorAnalysis: {
+            interactionType: 'casual' as const,
+            conversationDirection: 'continue' as const,
+            userIntent: 'casual_talk',
+            keyTopics: [],
+          },
+          analysisMetadata: {
+            confidence: 0.8,
+            processingTime: 100,
+            llmProvider: 'test',
+            analysisVersion: '1.0',
+            timestamp: new Date(),
+          },
+        },
+      };
+      const mockUserMessage = { id: 1, content: 'Hello' } as Message;
 
       mockCharacterService.findOne.mockResolvedValue(mockCharacter);
       mockDialogRepository.findOne.mockResolvedValue(mockDialog);

@@ -1,6 +1,6 @@
 {
-    "last_updated": "2024-07-31T10:30:00Z",
-    "version": "1.0",
+    "last_updated": "2025-08-01T18:00:00Z",
+    "version": "1.1",
     "modules": {
         "auth": {
             "description": "Система аутентификации и авторизации",
@@ -24,18 +24,40 @@
             "main_files": [
                 "character.module.ts",
                 "character.service.ts",
-                "needs.service.ts"
+                "services/core/needs.service.ts",
+                "services/core/emotional-state.service.ts",
+                "services/core/memory.service.ts",
+                "services/core/specialization.service.ts"
             ],
             "dependencies": [
                 "llm",
                 "validation",
-                "cache"
+                "cache",
+                "logging"
             ],
             "exports": [
                 "CharacterModule",
                 "CharacterService",
-                "NeedsService"
-            ]
+                "NeedsService",
+                "EmotionalStateService",
+                "MemoryService",
+                "SpecializationService"
+            ],
+            "test_coverage": {
+                "overall": "67.96%",
+                "services": {
+                    "EmotionalStateService": "63.51%",
+                    "MemoryService": "74.75%",
+                    "NeedsService": "75.53%",
+                    "SpecializationService": "40.11%"
+                },
+                "test_files": [
+                    "test/character/services/core/emotional-state.service.unit.test.ts",
+                    "test/character/services/core/memory.service.unit.test.ts",
+                    "test/character/services/needs.service.test.ts",
+                    "test/character/services/specialization.service.unit.test.ts"
+                ]
+            }
         },
         "dialog": {
             "description": "Система диалогов и обработки сообщений",
@@ -155,7 +177,17 @@
             "dependencies": [],
             "exports": [
                 "LogService"
-            ]
+            ],
+            "test_coverage": {
+                "overall": "92.5%",
+                "statements": "92.5%",
+                "branches": "77.77%",
+                "functions": "100%",
+                "lines": "95.89%",
+                "test_files": [
+                    "test/logging/log.service.unit.test.ts"
+                ]
+            }
         },
         "cache": {
             "description": "Система кэширования",
@@ -190,12 +222,20 @@
                 "monitoring.service.ts"
             ],
             "dependencies": [
-                "logging"
+                "logging",
+                "cache",
+                "message-queue"
             ],
             "exports": [
                 "MonitoringModule",
                 "MonitoringService"
-            ]
+            ],
+            "test_coverage": {
+                "overall": "73.83%",
+                "test_files": [
+                    "test/monitoring/monitoring.service.unit.test.ts"
+                ]
+            }
         },
         "common": {
             "description": "Общие утилиты и компоненты",
@@ -630,6 +670,11 @@
         "test/validation/services/validation.service.test.ts": "Тесты сервиса валидации",
         "test/validation/validation-error-handler.service.test.ts": "Тесты обработчика ошибок валидации",
         "test/validation/validation.service.integration.test.ts": "Интеграционные тесты сервиса валидации",
+        "test/character/services/core/emotional-state.service.unit.test.ts": "Comprehensive unit тесты EmotionalStateService с 15 тестами, coverage 63.51%",
+        "test/character/services/core/memory.service.unit.test.ts": "Comprehensive unit тесты MemoryService с 18 тестами, coverage 74.75%",
+        "test/character/services/specialization.service.unit.test.ts": "Unit тесты SpecializationService с mock стратегией, 12 тестов",
+        "test/logging/log.service.unit.test.ts": "Comprehensive unit тесты LogService с 20 тестами, coverage 92.5%",
+        "test/monitoring/monitoring.service.unit.test.ts": "Comprehensive unit тесты MonitoringService с 24 тестами, coverage 73.83%",
         ".vscode/settings.json": "Настройки VS Code для проекта",
         ".vscode/README.md": "Документация настроек VS Code",
         ".yarnrc.yml": "Конфигурация Yarn пакетного менеджера"
@@ -662,5 +707,30 @@
         "Контейнеризация через Docker",
         "Централизованные сервисы для общих задач",
         "Dependency Injection через NestJS DI container"
-    ]
+    ],
+    "testing_status": {
+        "last_updated": "2025-08-01T18:00:00Z",
+        "overall_coverage": "67.96%",
+        "total_test_files": 103,
+        "total_tests": 472,
+        "passing_tests": 467,
+        "failing_tests": 5,
+        "test_success_rate": "98.94%",
+        "recent_improvements": {
+            "task_id": "TASK-001",
+            "coverage_before": "63.47%",
+            "coverage_after": "67.96%",
+            "improvement": "+4.49%",
+            "services_improved": [
+                "EmotionalStateService",
+                "MemoryService",
+                "NeedsService",
+                "SpecializationService",
+                "LogService",
+                "MonitoringService"
+            ],
+            "new_test_files_created": 3,
+            "tests_added": 120
+        }
+    }
 }

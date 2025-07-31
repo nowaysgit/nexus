@@ -137,7 +137,7 @@ describe('TechniqueStrategyService', () => {
     it('should have valid ethical constraints for all strategies', () => {
       const strategies = service.getAllStrategies();
 
-      strategies.forEach((strategy, techniqueType) => {
+      strategies.forEach((strategy, _techniqueType) => {
         expect(strategy.ethicalConstraints.maxUsagePerHour).toBeGreaterThan(0);
         expect(strategy.ethicalConstraints.cooldownMinutes).toBeGreaterThanOrEqual(0);
         expect(Array.isArray(strategy.ethicalConstraints.bannedCombinations)).toBe(true);
@@ -147,7 +147,7 @@ describe('TechniqueStrategyService', () => {
     it('should have valid context requirements for all strategies', () => {
       const strategies = service.getAllStrategies();
 
-      strategies.forEach((strategy, techniqueType) => {
+      strategies.forEach((strategy, _techniqueType) => {
         expect(strategy.contextRequirements.minRelationshipLevel).toBeGreaterThanOrEqual(0);
         expect(Array.isArray(strategy.contextRequirements.requiredEmotionalStates)).toBe(true);
         expect(Array.isArray(strategy.contextRequirements.forbiddenStates)).toBe(true);
@@ -157,7 +157,7 @@ describe('TechniqueStrategyService', () => {
     it('should have proper intensity modifiers range for all strategies', () => {
       const strategies = service.getAllStrategies();
 
-      strategies.forEach((strategy, techniqueType) => {
+      strategies.forEach((strategy, _techniqueType) => {
         Object.values(strategy.intensityModifiers).forEach(modifier => {
           expect(modifier).toBeGreaterThanOrEqual(0);
           expect(modifier).toBeLessThanOrEqual(1);
