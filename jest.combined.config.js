@@ -25,8 +25,7 @@ module.exports = {
         '!**/node_modules/**',
       ],
       coverageDirectory: './coverage',
-      forceExit: true,
-      testTimeout: 90000, // Дополнительно увеличиваем timeout для unit тестов
+      // Убираем устаревшие опции
     },
     // Интеграционные тесты
     {
@@ -42,12 +41,11 @@ module.exports = {
         '^.+\\.(t|j)s$': 'ts-jest',
       },
       setupFilesAfterEnv: ['<rootDir>/test/setup-integration.ts'],
-      forceExit: true,
-      testTimeout: 120000, // Увеличиваем timeout для интеграционных тестов
       maxWorkers: 1, // Интеграционные тесты выполняются последовательно
     }
   ],
   // Общие настройки для всех проектов
+  testTimeout: 120000, // Глобальный timeout для всех тестов
   collectCoverage: true,
   coverageReporters: ['text', 'lcov', 'html'],
   verbose: true,

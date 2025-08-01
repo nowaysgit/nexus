@@ -173,4 +173,83 @@ describe('SpecializationService', () => {
       expect(service).toBeInstanceOf(SpecializationService);
     });
   });
+
+  describe('новые методы для улучшения coverage', () => {
+    it('должен создавать оптимальную комбинацию специализаций', async () => {
+      mockCharacterRepository.findOne.mockResolvedValue(testCharacter);
+
+      const result = await service.createOptimalSpecializationCombination(testCharacter.id);
+
+      expect(result).toBeDefined();
+      expect(result.primaryType).toBeDefined();
+      expect(result.dominantDomains).toBeDefined();
+      expect(mockCharacterRepository.findOne).toHaveBeenCalledWith({
+        where: { id: testCharacter.id },
+        relations: ['personality'],
+      });
+    });
+
+    it('должен возвращать предложения по улучшению специализации', async () => {
+      mockCharacterRepository.findOne.mockResolvedValue(testCharacter);
+
+      const result = await service.getSpecializationImprovementSuggestions(testCharacter.id);
+
+      expect(Array.isArray(result)).toBe(true);
+      expect(mockCharacterRepository.findOne).toHaveBeenCalledWith({
+        where: { id: testCharacter.id },
+        relations: ['personality'],
+      });
+    });
+
+    it('должен обрабатывать ошибку при отсутствии персонажа в createOptimalSpecializationCombination', async () => {
+      mockCharacterRepository.findOne.mockResolvedValue(null);
+
+      await expect(service.createOptimalSpecializationCombination(999)).rejects.toThrow(
+        'Персонаж с ID 999 не найден',
+      );
+    });
+
+    it('должен возвращать пустой массив предложений для несуществующего персонажа', async () => {
+      mockCharacterRepository.findOne.mockResolvedValue(null);
+
+      const result = await service.getSpecializationImprovementSuggestions(999);
+
+      expect(Array.isArray(result)).toBe(true);
+      expect(result).toHaveLength(0);
+    });
+
+    it('должен возвращать рекомендации специализации для персонажа с traits', async () => {
+      mockCharacterRepository.findOne.mockResolvedValue(testCharacter);
+
+      const result = await service.getSpecializationRecommendations(testCharacter.id);
+
+      expect(Array.isArray(result)).toBe(true);
+      expect(mockCharacterRepository.findOne).toHaveBeenCalledWith({
+        where: { id: testCharacter.id },
+        relations: ['personality'],
+      });
+    });
+
+    it('должен возвращать пустой массив рекомендаций для персонажа без traits', async () => {
+      const characterWithoutTraits = {
+        ...testCharacter,
+        personality: {
+          traits: [],
+          hobbies: [],
+          fears: [],
+          values: [],
+          musicTaste: [],
+          strengths: [],
+          weaknesses: [],
+        },
+      };
+
+      mockCharacterRepository.findOne.mockResolvedValue(characterWithoutTraits);
+
+      const result = await service.getSpecializationRecommendations(testCharacter.id);
+
+      expect(Array.isArray(result)).toBe(true);
+      expect(result).toHaveLength(0);
+    });
+  });
 });

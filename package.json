@@ -33,7 +33,19 @@
     "migration:revert": "yarn typeorm migration:revert",
     "prepare": "husky install",
     "fix:lf": "eslint --fix \"{src,apps,libs}/**/*.ts\" && prettier --write \"{src,apps,libs}/**/*.ts\"",
-    "analyze-test-performance": "node scripts/analyze-test-performance.js"
+    "analyze-test-performance": "node scripts/analyze-test-performance.js",
+    "llm:setup": "./scripts/setup-llm.sh",
+    "llm:start": "docker compose -f docker-compose.llm.yml up -d",
+    "llm:stop": "docker compose -f docker-compose.llm.yml down",
+    "llm:restart": "yarn llm:stop && yarn llm:start",
+    "llm:logs": "docker compose -f docker-compose.llm.yml logs -f",
+    "llm:status": "docker compose -f docker-compose.llm.yml ps",
+    "llm:models": "./scripts/download-models.sh list",
+    "llm:models:dev": "./scripts/download-models.sh dev",
+    "llm:models:test": "./scripts/download-models.sh test",
+    "llm:models:prod": "./scripts/download-models.sh prod",
+    "llm:test": "yarn test:integration test/integration/llm",
+    "llm:ui": "docker compose -f docker-compose.llm.yml --profile dev up ollama-webui"
   },
   "dependencies": {
     "@kubernetes/client-node": "^1.1.2",

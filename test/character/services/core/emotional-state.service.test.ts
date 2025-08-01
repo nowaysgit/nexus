@@ -94,6 +94,8 @@ describe('EmotionalStateService', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+    // Очищаем все эмоциональные таймеры после каждого теста
+    service.clearEmotionalTimers();
   });
 
   describe('создание сервиса', () => {

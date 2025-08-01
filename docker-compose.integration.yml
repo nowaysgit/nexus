@@ -1,0 +1,130 @@
+version: '3.8'
+
+# Docker Compose для интеграционных тестов с LLM
+# Запуск: docker-compose -f docker-compose.integration.yml up -d
+
+services:
+  # Основная база данных для тестов
+  test-postgres:
+    image: postgres:15-alpine
+    container_name: nexus-test-postgres
+    environment:
+      POSTGRES_DB: nexus_test
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_password
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5433:5432"
+    volumes:
+      - test_postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-test-db.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test_user -d nexus_test"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - nexus-test-network
+
+  # Redis для кэширования в тестах
+  test-redis:
+    image: redis:7-alpine
+    container_name: nexus-test-redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - test_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - nexus-test-network
+
+  # Локальный Ollama для LLM тестов (облегченная версия)
+  test-ollama:
+    image: ollama/ollama:latest
+    container_name: nexus-test-ollama
+    ports:
+      - "11435:11434"
+    volumes:
+      - test_ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0:11434
+      - OLLAMA_ORIGINS=*
+      - OLLAMA_MODELS=/root/.ollama/models
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - nexus-test-network
+
+  # Сервис для автоматической загрузки моделей
+  test-model-setup:
+    image: curlimages/curl:latest
+    container_name: nexus-test-model-setup
+    depends_on:
+      test-ollama:
+        condition: service_healthy
+    command: >
+      sh -c "
+        echo 'Загружаем облегченную модель для тестов...'
+        curl -X POST http://test-ollama:11434/api/pull -d '{\"name\":\"llama3.2:1b\"}'
+        echo 'Модель загружена!'
+      "
+    networks:
+      - nexus-test-network
+
+  # Инициализация тестовой среды
+  test-init:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: nexus-test-init
+    depends_on:
+      test-postgres:
+        condition: service_healthy
+      test-redis:
+        condition: service_healthy
+      test-model-setup:
+        condition: service_completed_successfully
+    environment:
+      - NODE_ENV=test
+      - DATABASE_URL=postgresql://test_user:test_password@test-postgres:5432/nexus_test
+      - REDIS_URL=redis://test-redis:6379
+      - LLM_PROVIDER=llama
+      - LLM_ENDPOINT=http://test-ollama:11434
+      - LLM_MODEL=llama3.2:1b
+    volumes:
+      - .:/app
+      - /app/node_modules
+    working_dir: /app
+    command: >
+      sh -c "
+        echo 'Устанавливаем зависимости...'
+        npm ci
+        echo 'Выполняем миграции...'
+        npm run migration:run
+        echo 'Запускаем интеграционные тесты...'
+        npm run test:integration
+      "
+    networks:
+      - nexus-test-network
+
+volumes:
+  test_postgres_data:
+    driver: local
+  test_redis_data:
+    driver: local
+  test_ollama_data:
+    driver: local
+
+networks:
+  nexus-test-network:
+    driver: bridge
+    name: nexus-test-network

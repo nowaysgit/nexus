@@ -121,6 +121,12 @@ createTestSuite('EmotionalStateService Unit Tests', () => {
     _needsService = module.get(NeedsService);
   });
 
+  afterEach(() => {
+    jest.clearAllMocks();
+    // Очищаем все эмоциональные таймеры после каждого теста
+    service.clearEmotionalTimers();
+  });
+
   describe('getEmotionalState', () => {
     it('должен возвращать базовое эмоциональное состояние для нового персонажа', async () => {
       characterRepository.findOne.mockResolvedValue(mockCharacter as Character);

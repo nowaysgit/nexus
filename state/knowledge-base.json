@@ -1,6 +1,6 @@
 {
-    "version": "1.1",
-    "last_updated": "2025-08-01T18:00:00Z",
+    "version": "1.3",
+    "last_updated": "2025-08-01T22:40:00Z",
     "description": "База знаний автономного агента GitHub Copilot",
     "knowledge_categories": {
         "patterns": {
@@ -110,6 +110,35 @@
                     "usage_count": 1
                 },
                 {
+                    "id": "TEST-004",
+                    "name": "Jest Anti-Hanging Pattern",
+                    "description": "КРИТИЧЕСКОЕ правило предотвращения зависания Jest тестов через обязательные флаги",
+                    "use_cases": [
+                        "все запуски тестов",
+                        "CI/CD пайплайны",
+                        "локальная разработка"
+                    ],
+                    "implementation": "ОБЯЗАТЕЛЬНО использовать --detectOpenHandles --forceExit для всех команд jest",
+                    "benefits": [
+                        "предотвращение зависания тестов",
+                        "корректное завершение процессов",
+                        "стабильность CI/CD",
+                        "быстрое обнаружение утечек ресурсов"
+                    ],
+                    "drawbacks": [
+                        "принудительное завершение может скрыть некоторые проблемы",
+                        "необходимо помнить флаги"
+                    ],
+                    "examples": [
+                        "yarn test:all --detectOpenHandles --forceExit",
+                        "jest --detectOpenHandles --forceExit"
+                    ],
+                    "success_rate": 100.0,
+                    "usage_count": 1,
+                    "critical_importance": true,
+                    "mandatory": true
+                },
+                {
                     "id": "TEST-005",
                     "name": "Comprehensive Mock Strategy Pattern",
                     "description": "Стратегия полной изоляции сервисов в unit тестах через создание всеобъемлющих mock объектов",
@@ -188,7 +217,39 @@
                     "usage_count": 1
                 }
             ],
-            "deployment_patterns": []
+            "deployment_patterns": [
+                {
+                    "id": "DEPLOY-001",
+                    "name": "Mandatory Yarn Package Manager Pattern",
+                    "description": "КРИТИЧЕСКОЕ правило исключительного использования Yarn для всех операций с пакетами",
+                    "use_cases": [
+                        "установка зависимостей",
+                        "запуск скриптов",
+                        "все операции разработки",
+                        "CI/CD пайплайны"
+                    ],
+                    "implementation": "ТОЛЬКО yarn команды, ПОЛНЫЙ ЗАПРЕТ npm команд",
+                    "benefits": [
+                        "консистентность установки пакетов",
+                        "предсказуемые версии зависимостей",
+                        "улучшенная производительность",
+                        "лучшее кэширование"
+                    ],
+                    "drawbacks": [
+                        "необходимость переобучения команды",
+                        "строгие требования"
+                    ],
+                    "examples": [
+                        "yarn install → npm install ЗАПРЕЩЕНО",
+                        "yarn test → npm test ЗАПРЕЩЕНО",
+                        "yarn build → npm run build ЗАПРЕЩЕНО"
+                    ],
+                    "success_rate": 100.0,
+                    "usage_count": 1,
+                    "critical_importance": true,
+                    "mandatory": true
+                }
+            ]
         },
         "solutions": {
             "common_problems": [
@@ -244,7 +305,36 @@
             "debugging_strategies": []
         },
         "learning": {
-            "success_patterns": [],
+            "success_patterns": [
+                {
+                    "id": "SUCCESS-001",
+                    "task_id": "TASK-006-CRITICAL-FIX",
+                    "description": "Успешная архитектурная очистка с удалением дублированных 'Optimized' компонентов",
+                    "approach": "Полное удаление дублированных компонентов, объединение функциональности в основные сервисы",
+                    "lessons_learned": "Архитектурная чистота важнее временной производительности. Лучше иметь единую качественную реализацию, чем множественные версии.",
+                    "outcome": "Упрощение архитектуры, улучшение поддерживаемости, устранение путаницы в именовании",
+                    "date": "2025-08-01T22:00:00Z",
+                    "success_factors": [
+                        "четкий анализ дублирования",
+                        "последовательное удаление",
+                        "проверка интеграции"
+                    ]
+                },
+                {
+                    "id": "SUCCESS-002",
+                    "task_id": "TASK-010-ARCHITECTURE-RULES-UPDATE",
+                    "description": "Успешное добавление критических правил Jest и Yarn в базовые инструкции",
+                    "approach": "Множественные обновления в 8+ местах с добавлением КРИТИЧЕСКИХ ПРАВИЛ",
+                    "lessons_learned": "Системные правила должны быть задокументированы централизованно и применяться консистентно",
+                    "outcome": "Предотвращение зависания Jest тестов, унификация использования пакетного менеджера",
+                    "date": "2025-08-01T22:30:00Z",
+                    "success_factors": [
+                        "комплексный подход к обновлению",
+                        "четкое выделение критических правил",
+                        "множественная валидация"
+                    ]
+                }
+            ],
             "failure_patterns": [],
             "improvement_suggestions": [],
             "adaptation_rules": []

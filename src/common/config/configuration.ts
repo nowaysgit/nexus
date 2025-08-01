@@ -110,9 +110,10 @@ export default () => ({
       llama: {
         enabled: process.env.LLM_LLAMA_ENABLED !== 'false',
         priority: parseInt(process.env.LLM_LLAMA_PRIORITY || '2', 10),
-        endpoint: process.env.LLM_LLAMA_ENDPOINT || 'http://localhost:8080',
+        endpoint: process.env.LLM_LLAMA_ENDPOINT || 'http://localhost:11434',
         apiKey: process.env.LLM_LLAMA_API_KEY || '',
-        model: process.env.LLM_LLAMA_MODEL || 'llama-4',
+        model: process.env.LLM_LLAMA_MODEL || 'llama3.2:3b',
+        timeout: parseInt(process.env.LLM_LLAMA_TIMEOUT || '60000', 10),
       },
       claude: {
         enabled: process.env.LLM_CLAUDE_ENABLED === 'true',

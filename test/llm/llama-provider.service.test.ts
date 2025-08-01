@@ -35,10 +35,10 @@ describe('LlamaProviderService', () => {
           provide: ConfigService,
           useValue: {
             get: jest.fn().mockReturnValue({
-              endpoint: 'http://test-llama-endpoint:8080',
+              endpoint: 'http://test-llama-endpoint:11434',
               apiKey: 'test-api-key',
-              model: 'llama-4-70b',
-              timeout: 5000,
+              model: 'llama3.2',
+              timeout: 60000,
             }),
           },
         },
@@ -68,7 +68,7 @@ describe('LlamaProviderService', () => {
     it('должен инициализироваться с конфигурацией по умолчанию', () => {
       expect(service).toBeDefined();
       expect(service.providerType).toBe(LLMProviderType.LLAMA);
-      expect(service.providerName).toBe('Llama 4');
+      expect(service.providerName).toBe('Llama 3.2');
       expect(logService.setContext).toHaveBeenCalledWith('LlamaProviderService');
       expect(mockedAxios.create).toHaveBeenCalled();
     });
@@ -118,68 +118,51 @@ describe('LlamaProviderService', () => {
     it('должен возвращать true при успешном тестовом запросе', async () => {
       const mockResponse = {
         data: {
-          id: 'test-id',
-          object: 'chat.completion',
-          created: Date.now(),
-          model: 'llama-4-70b',
-          choices: [
+          models: [
             {
-              index: 0,
-              message: {
-                role: 'assistant',
-                content: 'Test response',
-              },
-              finish_reason: 'stop',
+              name: 'llama3.2',
+              modified_at: '2024-01-01T00:00:00Z',
+              size: 1234567890,
+              digest: 'sha256:abc123',
             },
           ],
-          usage: {
-            prompt_tokens: 5,
-            completion_tokens: 2,
-            total_tokens: 7,
-          },
         },
       };
 
-      mockHttpClient.post.mockResolvedValue(mockResponse);
+      mockHttpClient.get.mockResolvedValue(mockResponse);
 
       const result = await service.checkAvailability();
 
       expect(result).toBe(true);
-      expect(mockHttpClient.post).toHaveBeenCalledWith('/v1/chat/completions', expect.any(Object));
+      expect(mockHttpClient.get).toHaveBeenCalledWith('/api/tags');
     });
 
     it('должен возвращать false при ошибке API', async () => {
-      mockHttpClient.post.mockRejectedValue(new Error('API недоступен'));
+      mockHttpClient.get.mockRejectedValue(new Error('API недоступен'));
 
       const result = await service.checkAvailability();
 
       expect(result).toBe(false);
-      expect(logService.warn).toHaveBeenCalledWith('Llama API недоступен', expect.any(Object));
+      expect(logService.warn).toHaveBeenCalledWith('Ollama API недоступен', expect.any(Object));
     });
   });
 
   describe('generateText', () => {
     const mockResponse = {
       data: {
-        id: 'test-id',
-        object: 'chat.completion',
-        created: Date.now(),
-        model: 'llama-4-70b',
-        choices: [
-          {
-            index: 0,
-            message: {
-              role: 'assistant',
-              content: 'Тестовый ответ от Llama',
-            },
-            finish_reason: 'stop',
-          },
-        ],
-        usage: {
-          prompt_tokens: 10,
-          completion_tokens: 5,
-          total_tokens: 15,
+        model: 'llama3.2:latest',
+        created_at: '2024-01-01T00:00:00Z',
+        message: {
+          role: 'assistant',
+          content: 'Тестовый ответ от Llama',
         },
+        done: true,
+        total_duration: 1000000000,
+        load_duration: 100000000,
+        prompt_eval_count: 10,
+        prompt_eval_duration: 200000000,
+        eval_count: 5,
+        eval_duration: 300000000,
       },
     };
 
@@ -195,24 +178,21 @@ describe('LlamaProviderService', () => {
       expect(typeof result.requestInfo.requestId).toBe('string');
       expect(result.requestInfo.fromCache).toBe(false);
       expect(typeof result.requestInfo.executionTime).toBe('number');
-      expect(result.requestInfo.model).toBe('llama-4-70b');
-      expect(result.requestInfo.promptTokens).toBe(10);
-      expect(result.requestInfo.completionTokens).toBe(5);
-      expect(result.requestInfo.totalTokens).toBe(15);
+      expect(result.requestInfo.model).toBe('llama3.2:latest');
 
-      expect(mockHttpClient.post).toHaveBeenCalledWith('/v1/chat/completions', {
-        model: 'llama-4-70b',
+      expect(mockHttpClient.post).toHaveBeenCalledWith('/api/chat', {
+        model: 'llama3.2',
         messages: [
           {
             role: 'user',
             content: 'Тестовое сообщение',
           },
         ],
-        temperature: undefined,
-        max_tokens: undefined,
-        top_p: undefined,
-        frequency_penalty: undefined,
-        presence_penalty: undefined,
+        options: {
+          temperature: 0.7,
+          num_predict: 1000,
+          top_p: 0.9,
+        },
         stream: false,
       });
     });
@@ -227,13 +207,11 @@ describe('LlamaProviderService', () => {
         temperature: 0.7,
         maxTokens: 100,
         topP: 0.9,
-        frequencyPenalty: 0.1,
-        presencePenalty: 0.2,
       };
 
       await service.generateText(messages, options);
 
-      expect(mockHttpClient.post).toHaveBeenCalledWith('/v1/chat/completions', {
+      expect(mockHttpClient.post).toHaveBeenCalledWith('/api/chat', {
         model: 'custom-model',
         messages: [
           {
@@ -241,44 +219,22 @@ describe('LlamaProviderService', () => {
             content: 'Тестовое сообщение',
           },
         ],
-        temperature: 0.7,
-        max_tokens: 100,
-        top_p: 0.9,
-        frequency_penalty: 0.1,
-        presence_penalty: 0.2,
+        options: {
+          temperature: 0.7,
+          num_predict: 100,
+          top_p: 0.9,
+        },
         stream: false,
       });
     });
 
     it('должен выбрасывать ошибку при неправильном endpoint', async () => {
-      // Создаем новый сервис с некорректным endpoint
-      const mockConfigWithBadEndpoint = {
-        get: jest.fn().mockReturnValue({
-          endpoint: 'http://localhost:8080',
-        }),
-      };
-
-      const module: TestingModule = await Test.createTestingModule({
-        providers: [
-          LlamaProviderService,
-          {
-            provide: ConfigService,
-            useValue: mockConfigWithBadEndpoint,
-          },
-          {
-            provide: LogService,
-            useValue: logService,
-          },
-        ],
-      }).compile();
-
-      const testService = module.get<LlamaProviderService>(LlamaProviderService);
+      // Мокаем невалидный ответ от Ollama
+      mockHttpClient.post.mockRejectedValue(new Error('ECONNREFUSED'));
 
       const messages = [{ role: LLMMessageRole.USER, content: 'Тестовое сообщение' }];
 
-      await expect(testService.generateText(messages)).rejects.toThrow(
-        'Llama API endpoint не настроен. Проверьте настройки LLM_LLAMA_ENDPOINT.',
-      );
+      await expect(service.generateText(messages)).rejects.toThrow('ECONNREFUSED');
     });
 
     it('должен обрабатывать ошибки API', async () => {
@@ -294,25 +250,13 @@ describe('LlamaProviderService', () => {
     it('должен генерировать JSON ответ', async () => {
       const mockJsonResponse = {
         data: {
-          id: 'test-id',
-          object: 'chat.completion',
-          created: Date.now(),
-          model: 'llama-4-70b',
-          choices: [
-            {
-              index: 0,
-              message: {
-                role: 'assistant',
-                content: '{"name": "test", "value": 123}',
-              },
-              finish_reason: 'stop',
-            },
-          ],
-          usage: {
-            prompt_tokens: 10,
-            completion_tokens: 5,
-            total_tokens: 15,
+          model: 'llama3.2:latest',
+          created_at: '2024-01-01T00:00:00Z',
+          message: {
+            role: 'assistant',
+            content: '{"name": "test", "value": 123}',
           },
+          done: true,
         },
       };
 
@@ -327,34 +271,19 @@ describe('LlamaProviderService', () => {
       expect(typeof result.requestInfo.requestId).toBe('string');
       expect(result.requestInfo.fromCache).toBe(false);
       expect(typeof result.requestInfo.executionTime).toBe('number');
-      expect(result.requestInfo.model).toBe('llama-4-70b');
-      expect(result.requestInfo.promptTokens).toBe(10);
-      expect(result.requestInfo.completionTokens).toBe(5);
-      expect(result.requestInfo.totalTokens).toBe(15);
+      expect(result.requestInfo.model).toBe('llama3.2:latest');
     });
 
     it('должен обрабатывать некорректный JSON', async () => {
       const mockInvalidJsonResponse = {
         data: {
-          id: 'test-id',
-          object: 'chat.completion',
-          created: Date.now(),
-          model: 'llama-4-70b',
-          choices: [
-            {
-              index: 0,
-              message: {
-                role: 'assistant',
-                content: 'Некорректный JSON',
-              },
-              finish_reason: 'stop',
-            },
-          ],
-          usage: {
-            prompt_tokens: 10,
-            completion_tokens: 5,
-            total_tokens: 15,
+          model: 'llama3.2:latest',
+          created_at: '2024-01-01T00:00:00Z',
+          message: {
+            role: 'assistant',
+            content: 'Некорректный JSON',
           },
+          done: true,
         },
       };
 
@@ -385,12 +314,17 @@ describe('LlamaProviderService', () => {
     it('должен возвращать информацию о провайдере', () => {
       const info = service.getProviderInfo();
 
-      expect(info).toEqual({
-        type: LLMProviderType.LLAMA,
-        name: 'Llama 4',
-        models: ['llama-4-70b', 'llama-4-13b', 'llama-4-7b', 'llama-4-instruct'],
-        features: ['text_generation', 'json_generation', 'streaming', 'function_calling'],
-      });
+      expect(info.type).toBe(LLMProviderType.LLAMA);
+      expect(info.name).toBe('Llama 3.2');
+      expect(info.models.some(model => model.includes('llama3.2'))).toBe(true);
+      expect(info.models.some(model => model.includes('llama3.3'))).toBe(true);
+      expect(info.models.some(model => model.includes('llama3.1'))).toBe(true);
+      expect(info.features).toEqual([
+        'text_generation',
+        'json_generation',
+        'streaming',
+        'function_calling',
+      ]);
     });
   });
 });

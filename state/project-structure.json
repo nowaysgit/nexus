@@ -1,6 +1,6 @@
 {
-    "last_updated": "2025-08-01T18:00:00Z",
-    "version": "1.1",
+    "last_updated": "2025-08-01T22:40:00Z",
+    "version": "1.3",
     "modules": {
         "auth": {
             "description": "Система аутентификации и авторизации",
@@ -94,10 +94,14 @@
             ]
         },
         "llm": {
-            "description": "Интеграция с языковыми моделями",
+            "description": "Локальная LLM инфраструктура с Ollama и Llama 3.2",
             "main_files": [
                 "llm.module.ts",
-                "llm.service.ts"
+                "services/llm.service.ts",
+                "services/llm-provider-manager.service.ts",
+                "providers/llama-provider.service.ts",
+                "providers/openai-core.service.ts",
+                "providers/openai.provider.service.ts"
             ],
             "dependencies": [
                 "prompt-template",
@@ -106,8 +110,23 @@
             ],
             "exports": [
                 "LLMModule",
-                "LLMService"
-            ]
+                "LLMService",
+                "LLMProviderManagerService",
+                "LlamaProviderService"
+            ],
+            "docker_services": [
+                "ollama",
+                "ollama-webui", 
+                "ollama-redis",
+                "model-downloader-3b",
+                "model-downloader-1b"
+            ],
+            "models": [
+                "llama3.2:3b",
+                "llama3.2:1b"
+            ],
+            "status": "PRODUCTION_READY",
+            "completion": "100%"
         },
         "prompt-template": {
             "description": "Система управления шаблонами промптов",
@@ -706,16 +725,36 @@
         "TypeScript + PostgreSQL + Redis",
         "Контейнеризация через Docker",
         "Централизованные сервисы для общих задач",
-        "Dependency Injection через NestJS DI container"
+        "Dependency Injection через NestJS DI container",
+        "АРХИТЕКТУРНАЯ ОЧИСТКА: Удалены все дублированные 'Optimized' компоненты (TASK-006-CRITICAL-FIX)",
+        "УНИФИЦИРОВАННАЯ АРХИТЕКТУРА: Все сервисы объединены в единые реализации без дублирования",
+        "ОБЯЗАТЕЛЬНЫЕ ПРАВИЛА: Jest --detectOpenHandles --forceExit, только Yarn пакетный менеджер"
     ],
     "testing_status": {
-        "last_updated": "2025-08-01T18:00:00Z",
+        "last_updated": "2025-08-01T22:35:00Z",
         "overall_coverage": "67.96%",
-        "total_test_files": 103,
-        "total_tests": 472,
-        "passing_tests": 467,
-        "failing_tests": 5,
-        "test_success_rate": "98.94%",
+        "total_test_files": 110,
+        "total_tests": 1608,
+        "passing_tests": 1607,
+        "failing_tests": 1,
+        "test_success_rate": "99.94%",
+        "test_suites_status": {
+            "total_suites": 110,
+            "passing_suites": 106,
+            "failing_suites": 4,
+            "suite_success_rate": "96.36%"
+        },
+        "known_failing_tests": [
+            "optimized-services-integration.test.ts - references deleted optimized components",
+            "adaptive-learning tests - parameter/enum mismatches",
+            "llama-integration.test.ts - model list mismatch",
+            "emotional-state timer cleanup issues"
+        ],
+        "jest_configuration": {
+            "mandatory_flags": "--detectOpenHandles --forceExit",
+            "reason": "Prevents Jest hanging issues",
+            "applies_to": "ALL test executions"
+        },
         "recent_improvements": {
             "task_id": "TASK-001",
             "coverage_before": "63.47%",

@@ -241,27 +241,34 @@ export class NeedsService extends BaseService implements INeedsService {
       });
 
       if (!character) {
-        throw new Error(`Персонаж с ID ${characterId} не найден`);
+        throw new Error(`Character with ID ${characterId} not found`);
       }
 
       const defaultNeeds = this.getDefaultNeedsConfig();
       const createdNeeds: Need[] = [];
 
       for (const config of defaultNeeds) {
-        const need = this.needRepository.create({
-          characterId,
-          type: config.type,
-          currentValue: 0,
-          maxValue: 100,
-          threshold: config.threshold,
-          priority: config.priority,
-          growthRate: config.growthRate,
-          decayRate: 0.5,
-          isActive: true,
-        });
+        try {
+          const need = this.needRepository.create({
+            characterId,
+            type: config.type,
+            currentValue: 0,
+            maxValue: 100,
+            threshold: config.threshold,
+            priority: config.priority,
+            growthRate: config.growthRate,
+            decayRate: 0.5,
+            isActive: true,
+          });
 
-        const savedNeed = await this.needRepository.save(need);
-        createdNeeds.push(savedNeed);
+          const savedNeed = await this.needRepository.save(need);
+          createdNeeds.push(savedNeed);
+        } catch (saveError) {
+          this.logError(`Failed to save need ${config.type} for character ${characterId}`, {
+            error: saveError instanceof Error ? saveError.message : String(saveError),
+          });
+          throw saveError;
+        }
       }
 
       this.logInfo(
@@ -360,8 +367,9 @@ export class NeedsService extends BaseService implements INeedsService {
 
       this.logInfo('Все задачи по обработке потребностей поставлены в очередь.');
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       this.logError('Критическая ошибка при запуске фоновой обработки потребностей', {
-        error: error instanceof Error ? error.message : String(error),
+        error: errorMessage,
       });
     }
   }
@@ -430,7 +438,7 @@ export class NeedsService extends BaseService implements INeedsService {
       });
 
       if (!need) {
-        throw new Error(`Потребность типа ${type} не найдена для персонажа ${characterId}`);
+        throw new Error(`Need type ${type} not found for character ${characterId}`);
       }
 
       return this.mapToInterface(need);

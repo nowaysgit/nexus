@@ -21,12 +21,10 @@ module.exports = {
             skipTypeCheck: true,
         },
     },
-    // Увеличиваем таймаут для интеграционных тестов до 120 секунд
-    testTimeout: 120000,
+    // Убираем устаревшие Jest опции
+    testTimeout: 120000, // Правильная Jest опция для timeout
     // Уменьшаем вывод для ускорения
     verbose: false,
-    // Принудительное завершение Jest
-    forceExit: true,
     // Обнаружение открытых хендлов
     detectOpenHandles: true,
     // Уменьшаем количество воркеров для стабильности PostgreSQL подключений

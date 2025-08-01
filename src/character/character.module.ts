@@ -71,6 +71,12 @@ import { TechniqueHistoryService } from './services/technique/technique-history.
 import { StoryModule } from './story.module';
 import { forwardRef } from '@nestjs/common';
 
+// Adaptive Learning Module для системы обучения
+import { AdaptiveLearningModule } from './adaptive-learning.module';
+
+// Behavior Module для эмоциональной адаптации
+import { BehaviorModule } from './behavior.module';
+
 // Manipulation Entities
 import {
   TechniqueExecution,
@@ -112,6 +118,12 @@ import { UserManipulationProfileRepository } from './repositories/user-manipulat
     PromptTemplateModule,
     CacheModule,
     forwardRef(() => StoryModule),
+
+    // Adaptive Learning Module for AI-based learning
+    AdaptiveLearningModule,
+
+    // Behavior Module for emotional adaptation
+    BehaviorModule,
   ],
   controllers: [
     CharacterController,

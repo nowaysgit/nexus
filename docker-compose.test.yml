@@ -1,8 +1,16 @@
 version: '3.8'
 
+# Включение LLM сервисов для тестирования
+include:
+  - docker-compose.llm.yml
+
 networks:
   test-network:
     name: nexus_test-network
+  llm-network:
+    name: nexus_llm_network
+    driver: bridge
+    external: true # Ссылка на сеть из docker-compose.llm.yml
 
 services:
   # Тестовая база данных PostgreSQL
@@ -31,6 +39,39 @@ services:
     restart: unless-stopped
     networks:
       - test-network
+      - llm-network
+
+  # Тестовое API с поддержкой локального LLM
+  api-test:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: nexus-test-api
+    environment:
+      - NODE_ENV=test
+      - PORT=3001
+      - DB_HOST=postgres-test
+      - DB_PORT=5432
+      - DB_USERNAME=test_user
+      - DB_PASSWORD=test_password
+      - DB_DATABASE=nexus_test
+      - DB_SYNCHRONIZE=true
+      # LLM конфигурация для тестов
+      - LOCAL_LLM_ENABLED=true
+      - LOCAL_LLM_URL=http://ollama-light:11434
+      - LOCAL_LLM_MODEL=llama3.2:1b
+      - REDIS_LLM_URL=redis://redis-llm:6379
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      ollama-light:
+        condition: service_healthy
+    networks:
+      - test-network
+      - llm-network
+    profiles: [ "test" ]
 
 volumes:
   postgres_test_data:

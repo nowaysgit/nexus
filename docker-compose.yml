@@ -1,5 +1,9 @@
 version: '3.8'
 
+# Включение LLM сервисов через compose.include
+include:
+  - docker-compose.llm.yml
+
 services:
   postgres:
     image: postgres:16
@@ -13,6 +17,9 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+      - llm-network
 
   api:
     build:
@@ -22,6 +29,7 @@ services:
     restart: always
     depends_on:
       - postgres
+      - ollama # Подключение к локальному LLM
     ports:
       - "3000:3000"
     volumes:
@@ -38,6 +46,23 @@ services:
       - DB_SYNCHRONIZE=true
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      # Локальная LLM конфигурация
+      - LOCAL_LLM_ENABLED=true
+      - LOCAL_LLM_URL=http://ollama:11434
+      - LOCAL_LLM_MODEL=llama3.2:3b
+      - REDIS_LLM_URL=redis://redis-llm:6379
+    networks:
+      - app-network
+      - llm-network
+
+networks:
+  app-network:
+    name: nexus_app_network
+    driver: bridge
+  llm-network:
+    name: nexus_llm_network
+    driver: bridge
+    external: true # Ссылка на сеть из docker-compose.llm.yml
 
 volumes:
   postgres_data:

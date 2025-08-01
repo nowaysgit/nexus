@@ -1,0 +1,125 @@
+# Docker Compose конфигурация для локального запуска Llama 4
+# Используется для development и интеграционного тестирования
+
+version: '3.8'
+
+services:
+  # Ollama сервер для запуска Llama 4 моделей
+  ollama:
+    image: ollama/ollama:latest
+    container_name: nexus-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+      - ./models:/models
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+      - OLLAMA_ORIGINS=*
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    networks:
+      - llm-network
+
+  # Контейнер для автоматического скачивания и настройки моделей
+  ollama-setup:
+    image: curlimages/curl:latest
+    container_name: nexus-ollama-setup
+    depends_on:
+      - ollama
+    volumes:
+      - ./scripts:/scripts
+    networks:
+      - llm-network
+    command: >
+      sh -c "
+        echo 'Ожидание готовности Ollama...'
+        sleep 30
+        echo 'Загрузка моделей Llama...'
+        curl -X POST http://ollama:11434/api/pull -d '{\"name\":\"llama3.2:3b\"}' &&
+        curl -X POST http://ollama:11434/api/pull -d '{\"name\":\"llama3.2:1b\"}' &&
+        echo 'Модели загружены успешно!'
+      "
+    restart: "no"
+
+  # Облегченная версия для CI/CD и быстрых тестов
+  ollama-light:
+    image: ollama/ollama:latest
+    container_name: nexus-ollama-light
+    restart: unless-stopped
+    ports:
+      - "11435:11434"
+    volumes:
+      - ollama_light_data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+      - OLLAMA_ORIGINS=*
+    networks:
+      - llm-network
+    profiles: [ "test" ]
+
+  # Контейнер для загрузки облегченной модели
+  ollama-light-setup:
+    image: curlimages/curl:latest
+    container_name: nexus-ollama-light-setup
+    depends_on:
+      - ollama-light
+    networks:
+      - llm-network
+    profiles: [ "test" ]
+    command: >
+      sh -c "
+        echo 'Ожидание готовности Ollama Light...'
+        sleep 30
+        echo 'Загрузка облегченной модели для тестов...'
+        curl -X POST http://ollama-light:11434/api/pull -d '{\"name\":\"llama3.2:1b\"}' &&
+        echo 'Облегченная модель загружена!'
+      "
+    restart: "no"
+
+  # Redis для кеширования LLM ответов
+  redis-llm:
+    image: redis:7-alpine
+    container_name: nexus-redis-llm
+    restart: unless-stopped
+    ports:
+      - "6381:6379"
+    volumes:
+      - redis_llm_data:/data
+    networks:
+      - llm-network
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+
+  # Мониторинг и управление моделями
+  ollama-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: nexus-ollama-webui
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ollama_webui_data:/app/backend/data
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+    networks:
+      - llm-network
+    depends_on:
+      - ollama
+    profiles: [ "dev", "debug" ]
+
+volumes:
+  ollama_data:
+    name: nexus_ollama_data
+  ollama_light_data:
+    name: nexus_ollama_light_data
+  redis_llm_data:
+    name: nexus_redis_llm_data
+  ollama_webui_data:
+    name: nexus_ollama_webui_data
+
+networks:
+  llm-network:
+    name: nexus_llm_network
+    driver: bridge

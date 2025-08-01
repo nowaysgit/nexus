@@ -1925,4 +1925,31 @@ export class EmotionalStateService extends BaseService implements IEmotionalStat
     // Ограничиваем значимость в пределах 0-100
     return Math.max(0, Math.min(100, significance));
   }
+
+  /**
+   * Очищает все активные таймеры для персонажа (для тестов и cleanup)
+   */
+  clearEmotionalTimers(characterId?: number): void {
+    if (characterId !== undefined) {
+      // Очищаем таймеры для конкретного персонажа
+      const timers = this.emotionalTimers.get(characterId) || [];
+      timers.forEach(timer => clearInterval(timer));
+      this.emotionalTimers.delete(characterId);
+      this.logDebug(`Очищены таймеры для персонажа ${characterId}`);
+    } else {
+      // Очищаем все таймеры
+      this.emotionalTimers.forEach((timers, charId) => {
+        timers.forEach(timer => clearInterval(timer));
+        this.logDebug(`Очищены все таймеры для персонажа ${charId}`);
+      });
+      this.emotionalTimers.clear();
+    }
+  }
+
+  /**
+   * Cleanup метод для освобождения ресурсов
+   */
+  onModuleDestroy(): void {
+    this.clearEmotionalTimers();
+  }
 }

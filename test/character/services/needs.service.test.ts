@@ -164,6 +164,13 @@ describe('NeedsService', () => {
     }).compile();
 
     service = module.get<NeedsService>(NeedsService);
+
+    // Spy на методы логирования service для проверки вызовов
+    jest
+      .spyOn(service as any, 'logError')
+      .mockImplementation((message: string, meta: Record<string, any>) => {
+        mockLogService.error(message, meta);
+      });
   });
 
   describe('constructor', () => {
@@ -705,13 +712,15 @@ describe('NeedsService', () => {
     it('should handle character not found', async () => {
       mockCharacterRepository.findOne = jest.fn().mockResolvedValue(null);
 
-      await expect(service.createDefaultNeeds(999)).rejects.toThrow('Character not found');
+      await expect(service.createDefaultNeeds(999)).rejects.toThrow(
+        'Character with ID 999 not found',
+      );
 
       expect(mockLogService.error).toHaveBeenCalledWith(
         'Ошибка создания базовых потребностей',
         expect.objectContaining({
           characterId: 999,
-          error: 'Character not found',
+          error: 'Character with ID 999 not found',
         }),
       );
     });
@@ -738,9 +747,12 @@ describe('NeedsService', () => {
 
   describe('additional alias methods coverage', () => {
     it('should calculate needs growth correctly', async () => {
+      const oldDate = new Date();
+      oldDate.setHours(oldDate.getHours() - 2); // 2 часа назад
+
       const mockNeeds = [
-        new MockNeed({ id: 1, growthRate: 2.0, characterId: 1 }),
-        new MockNeed({ id: 2, growthRate: 1.5, characterId: 1 }),
+        new MockNeed({ id: 1, growthRate: 2.0, characterId: 1, lastUpdated: oldDate }),
+        new MockNeed({ id: 2, growthRate: 1.5, characterId: 1, lastUpdated: oldDate }),
       ];
 
       mockNeedRepository.find = jest.fn().mockResolvedValue(mockNeeds);
@@ -843,9 +855,9 @@ describe('NeedsService', () => {
     it('should handle missing need in getNeedsByType', async () => {
       mockNeedRepository.findOne = jest.fn().mockResolvedValue(null);
 
-      const result = await service.getNeedsByType(999, CharacterNeedType.SOCIAL_CONNECTION);
-
-      expect(result).toBeNull();
+      await expect(
+        service.getNeedsByType(999, CharacterNeedType.SOCIAL_CONNECTION),
+      ).rejects.toThrow('Need type SOCIAL_CONNECTION not found for character 999');
     });
 
     it('should handle repository errors in processNeedsGrowth', async () => {

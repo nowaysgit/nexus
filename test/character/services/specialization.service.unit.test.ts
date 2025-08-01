@@ -18,7 +18,7 @@ interface MockCharacter {
   };
 }
 
-interface MockRepository<T> {
+interface MockRepository<_T> {
   findOne: jest.Mock;
   save: jest.Mock;
   create: jest.Mock;
@@ -48,15 +48,17 @@ class MockSpecializationService {
 
   constructor(
     characterRepository: MockRepository<MockCharacter>,
-    llmService: MockLLMService,
-    promptTemplateService: MockPromptTemplateService,
-    logService: MockLogService,
+    _llmService: MockLLMService,
+    _promptTemplateService: MockPromptTemplateService,
+    _logService: MockLogService,
   ) {
     this.characterRepository = characterRepository;
   }
 
   async getSpecializationProfile(characterId: number) {
-    const character = await this.characterRepository.findOne({ where: { id: characterId } });
+    const character = (await this.characterRepository.findOne({
+      where: { id: characterId },
+    })) as MockCharacter | null;
 
     if (!character) {
       return {
@@ -124,7 +126,7 @@ class MockSpecializationService {
   async getSpecializationRecommendations(characterId: number) {
     const character = await this.characterRepository.findOne({ where: { id: characterId } });
 
-    if (!character || !character.personality.traits.length) {
+    if (!character || !character.personality?.traits?.length) {
       return [];
     }
 
@@ -133,6 +135,44 @@ class MockSpecializationService {
         domain: 'PSYCHOLOGY',
         reason: 'Based on character traits',
         confidence: 0.8,
+      },
+    ];
+  }
+
+  async createOptimalSpecializationCombination(characterId: number) {
+    const character = await this.characterRepository.findOne({ where: { id: characterId } });
+
+    if (!character) {
+      throw new Error(`Персонаж с ID ${characterId} не найден`);
+    }
+
+    return {
+      primaryType: 'ANALYST',
+      secondaryType: 'SOCIAL',
+      dominantDomains: ['PSYCHOLOGY', 'TECHNICAL'],
+      supportingDomains: ['GENERAL_CONVERSATION'],
+      learningStyle: 'analytical',
+      adaptabilityScore: 75,
+      curiosityLevel: 85,
+      socialPreference: 'moderate',
+    };
+  }
+
+  async getSpecializationImprovementSuggestions(characterId: number) {
+    const character = await this.characterRepository.findOne({ where: { id: characterId } });
+
+    if (!character) {
+      throw new Error(`Персонаж с ID ${characterId} не найден`);
+    }
+
+    return [
+      {
+        domain: 'PSYCHOLOGY',
+        currentLevel: 'BASIC',
+        targetLevel: 'INTERMEDIATE',
+        actionSteps: ['Study basic psychology', 'Practice emotional intelligence'],
+        timeframe: '3 months',
+        benefits: ['Better understanding of emotions', 'Improved communication'],
       },
     ];
   }
@@ -436,6 +476,95 @@ describe('SpecializationService Unit Tests', () => {
       characterRepository.findOne.mockRejectedValue(new Error('Database connection failed'));
 
       await expect(service.getSpecializationProfile(1)).rejects.toThrow();
+    });
+  });
+
+  describe('createOptimalSpecializationCombination', () => {
+    it('должен создавать оптимальную комбинацию специализаций для персонажа', async () => {
+      const mockCharacter = {
+        id: 1,
+        name: 'Test Character',
+        archetype: 'ENTHUSIAST',
+        personality: {
+          traits: ['curious', 'analytical', 'social'],
+          hobbies: ['reading', 'technology', 'music'],
+          fears: ['failure'],
+          values: ['knowledge', 'friendship'],
+          musicTaste: ['classical'],
+          strengths: ['analytical_thinking'],
+          weaknesses: ['impatience'],
+        },
+      };
+
+      characterRepository.findOne.mockResolvedValue(mockCharacter);
+
+      const result = await service.createOptimalSpecializationCombination(1);
+
+      expect(result).toHaveProperty('primaryType');
+      expect(result).toHaveProperty('secondaryType');
+      expect(result).toHaveProperty('dominantDomains');
+      expect(result).toHaveProperty('supportingDomains');
+      expect(result).toHaveProperty('learningStyle');
+      expect(result).toHaveProperty('adaptabilityScore');
+      expect(result).toHaveProperty('curiosityLevel');
+      expect(result).toHaveProperty('socialPreference');
+    });
+
+    it('должен выбрасывать ошибку для несуществующего персонажа', async () => {
+      characterRepository.findOne.mockResolvedValue(null);
+
+      await expect(service.createOptimalSpecializationCombination(999)).rejects.toThrow(
+        'Персонаж с ID 999 не найден',
+      );
+    });
+  });
+
+  describe('getSpecializationImprovementSuggestions', () => {
+    it('должен возвращать предложения по улучшению специализации', async () => {
+      const mockCharacter = {
+        id: 1,
+        name: 'Test Character',
+        archetype: 'ENTHUSIAST',
+        personality: {
+          traits: ['curious', 'analytical'],
+          hobbies: ['reading', 'science'],
+          fears: ['failure'],
+          values: ['knowledge'],
+          musicTaste: ['classical'],
+          strengths: ['logical_thinking'],
+          weaknesses: ['social_skills'],
+        },
+      };
+
+      characterRepository.findOne.mockResolvedValue(mockCharacter);
+
+      const result = await service.getSpecializationImprovementSuggestions(1);
+
+      expect(Array.isArray(result)).toBe(true);
+      expect(result.length).toBeGreaterThan(0);
+      result.forEach(suggestion => {
+        expect(suggestion).toHaveProperty('domain');
+        expect(suggestion).toHaveProperty('currentLevel');
+        expect(suggestion).toHaveProperty('targetLevel');
+        expect(suggestion).toHaveProperty('actionSteps');
+        expect(suggestion).toHaveProperty('timeframe');
+        expect(suggestion).toHaveProperty('benefits');
+      });
+    });
+
+    it('должен обрабатывать персонажа без personality', async () => {
+      const mockCharacter = {
+        id: 1,
+        name: 'Test Character',
+        archetype: 'ENTHUSIAST',
+        personality: null,
+      };
+
+      characterRepository.findOne.mockResolvedValue(mockCharacter);
+
+      const result = await service.getSpecializationImprovementSuggestions(1);
+
+      expect(Array.isArray(result)).toBe(true);
     });
   });
 });

@@ -54,6 +54,11 @@ export class DialogService extends BaseService implements IMessagingService {
   private readonly cacheTimeout = 5 * 60 * 1000; // 5 минут
   private readonly isTestMode: boolean;
 
+  // Оптимизированные кеш-константы
+  private readonly DIALOG_CACHE_PREFIX = 'dialog:';
+  private readonly HISTORY_CACHE_PREFIX = 'history:';
+  private readonly CACHE_TTL = 300; // 5 минут
+
   constructor(
     @InjectRepository(Dialog)
     private readonly dialogRepository: Repository<Dialog>,
@@ -701,5 +706,191 @@ export class DialogService extends BaseService implements IMessagingService {
     // Очищаем кэш сообщений для данного диалога
     // Аналогично, используем простую стратегию очистки всего кэша
     await this.cacheService.clear();
+  }
+
+  // =================================================================
+  // ОПТИМИЗИРОВАННЫЕ МЕТОДЫ (интегрированы из dialog-optimized.service)
+  // =================================================================
+
+  /**
+   * ОПТИМИЗАЦИЯ: Кешированное получение или создание диалога
+   */
+  async getOrCreateDialogOptimized(telegramId: string, characterId: number): Promise<Dialog> {
+    return this.withErrorHandling('кешированном получении диалога', async () => {
+      const cacheKey = `${this.DIALOG_CACHE_PREFIX}${telegramId}:${characterId}`;
+
+      // Проверяем кеш
+      const cached = await this.cacheService.get<Dialog>(cacheKey);
+      if (cached) {
+        this.logDebug('Диалог получен из кеша', { telegramId, characterId });
+        return cached;
+      }
+
+      // Ищем существующий диалог
+      let dialog = await this.dialogRepository
+        .createQueryBuilder('dialog')
+        .leftJoinAndSelect('dialog.character', 'character')
+        .where('dialog.characterId = :characterId', { characterId })
+        .andWhere('dialog.telegramId = :telegramId', { telegramId })
+        .andWhere('dialog.isActive = :isActive', { isActive: true })
+        .getOne();
+
+      if (!dialog) {
+        // Создаем новый диалог
+        const character = await this.characterRepository.findOne({
+          where: { id: characterId },
+        });
+
+        if (!character) {
+          throw new NotFoundException(`Персонаж с ID ${characterId} не найден`);
+        }
+
+        dialog = this.dialogRepository.create({
+          telegramId,
+          characterId,
+          character,
+          title: `Диалог с ${character.name}`,
+          startedAt: new Date(),
+          lastMessageAt: new Date(),
+          isActive: true,
+          lastInteractionDate: new Date(),
+        });
+
+        dialog = await this.dialogRepository.save(dialog);
+        this.logDebug('Создан новый диалог', { dialogId: dialog.id, telegramId, characterId });
+      }
+
+      // Кешируем результат
+      await this.cacheService.set(cacheKey, dialog, this.CACHE_TTL);
+      this.logDebug('Диалог добавлен в кеш', { dialogId: dialog.id, cacheKey });
+
+      return dialog;
+    });
+  }
+
+  /**
+   * ОПТИМИЗАЦИЯ: Получение истории диалога с кешированием
+   */
+  async getDialogHistoryOptimized(
+    telegramId: string,
+    characterId: number,
+    limit: number = 20,
+  ): Promise<Message[]> {
+    return this.withErrorHandling('получении истории диалога с кешем', async () => {
+      const cacheKey = `${this.HISTORY_CACHE_PREFIX}${telegramId}:${characterId}:${limit}`;
+
+      // Проверяем кеш
+      const cached = await this.cacheService.get<Message[]>(cacheKey);
+      if (cached) {
+        this.logDebug('История диалога получена из кеша', {
+          telegramId,
+          characterId,
+          messagesCount: cached.length,
+        });
+        return cached;
+      }
+
+      // Получаем диалог
+      const dialog = await this.getOrCreateDialogOptimized(telegramId, characterId);
+
+      // Получаем сообщения
+      const messages = await this.messageRepository
+        .createQueryBuilder('message')
+        .leftJoinAndSelect('message.user', 'user')
+        .leftJoinAndSelect('message.character', 'character')
+        .where('message.dialogId = :dialogId', { dialogId: dialog.id })
+        .orderBy('message.createdAt', 'DESC')
+        .limit(limit)
+        .getMany();
+
+      // Кешируем на меньшее время (2 минуты для истории)
+      await this.cacheService.set(cacheKey, messages, 120);
+      this.logDebug('История диалога добавлена в кеш', {
+        telegramId,
+        characterId,
+        messagesCount: messages.length,
+      });
+
+      return messages;
+    });
+  }
+
+  /**
+   * ОПТИМИЗАЦИЯ: Получение времени последней активности с кешированием
+   */
+  async getLastActivityTimeOptimized(characterId: number): Promise<Date> {
+    return this.withErrorHandling('получении времени последней активности', async () => {
+      const cacheKey = `activity:${characterId}`;
+
+      const cached = await this.cacheService.get<string>(cacheKey);
+      if (cached) {
+        return new Date(cached);
+      }
+
+      const result = await this.dialogRepository
+        .createQueryBuilder('dialog')
+        .select('MAX(dialog.lastInteractionDate)', 'lastActivity')
+        .where('dialog.characterId = :characterId', { characterId })
+        .andWhere('dialog.isActive = :isActive', { isActive: true })
+        .getRawOne();
+
+      const lastActivity = result?.lastActivity ? new Date(result.lastActivity) : new Date();
+
+      // Кешируем на 1 минуту
+      await this.cacheService.set(cacheKey, lastActivity.toISOString(), 60);
+
+      return lastActivity;
+    });
+  }
+
+  /**
+   * ОПТИМИЗАЦИЯ: Сохранение сообщения с автоматической инвалидацией кеша
+   */
+  async saveMessageOptimized(
+    telegramId: string,
+    characterId: number,
+    content: string,
+    isFromUser: boolean,
+    metadata?: MessageMetadata,
+  ): Promise<Message> {
+    return this.withErrorHandling('оптимизированном сохранении сообщения', async () => {
+      const dialog = await this.getOrCreateDialogOptimized(telegramId, characterId);
+
+      const message = this.messageRepository.create({
+        dialogId: dialog.id,
+        content,
+        isFromUser,
+        metadata: metadata || {},
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      const savedMessage = await this.messageRepository.save(message);
+
+      // Обновляем время последнего сообщения в диалоге
+      await this.dialogRepository.update(dialog.id, {
+        lastMessageAt: new Date(),
+        lastInteractionDate: new Date(),
+      });
+
+      // Инвалидируем релевантные кеши
+      const dialogCacheKey = `${this.DIALOG_CACHE_PREFIX}${telegramId}:${characterId}`;
+      const historyCacheKey = `${this.HISTORY_CACHE_PREFIX}${telegramId}:${characterId}:20`;
+      const activityCacheKey = `activity:${characterId}`;
+
+      await Promise.all([
+        this.cacheService.del(dialogCacheKey),
+        this.cacheService.del(historyCacheKey),
+        this.cacheService.del(activityCacheKey),
+      ]);
+
+      this.logDebug('Сообщение сохранено и кеш обновлен', {
+        messageId: savedMessage.id,
+        dialogId: dialog.id,
+        isFromUser,
+      });
+
+      return savedMessage;
+    });
   }
 }
