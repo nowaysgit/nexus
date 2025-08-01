@@ -8,7 +8,6 @@ import { DialogService } from '../../../dialog/services/dialog.service';
 import {
   IEmotionalAdaptationProfile,
   IEmotionalAdaptationPattern,
-  IEmotionalAdaptationTrigger,
   IEmotionalAdaptationRule,
   IEmotionalAdaptationEvent,
   IEmotionalResponsePreference,
@@ -122,8 +121,14 @@ export class EmotionalAdaptationService extends BaseService {
       // Сохраняем событие
       await this.saveAdaptationEvent(adaptationEvent);
 
-      // Эмитим событие адаптации
-      this.eventEmitter.emit('emotional_adaptation.applied', adaptationEvent);
+      // Эмитим событие адаптации (с обработкой ошибок)
+      try {
+        this.eventEmitter.emit('emotional_adaptation.applied', adaptationEvent);
+      } catch (error) {
+        this.logService.warn('Ошибка при эмиссии события адаптации', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
 
       return {
         userEmotionalResponse,
@@ -304,7 +309,7 @@ export class EmotionalAdaptationService extends BaseService {
         contextualAdaptation: true,
       },
       boundaryPreferences: {
-        maxIntensityDeviation: 2,
+        maxIntensityDeviation: 5, // Позволяем больше отклонений для адаптации
         allowedEmotionalRange: [],
         restrictedEmotions: [],
         adaptationLimits: {
@@ -396,7 +401,7 @@ export class EmotionalAdaptationService extends BaseService {
    * Генерирует рекомендации по адаптации
    */
   private async generateAdaptationRecommendations(
-    profile: IEmotionalAdaptationProfile,
+    _profile: IEmotionalAdaptationProfile,
     userResponse: any,
     currentEmotion: EmotionalState,
   ): Promise<IEmotionalAdaptationRule[]> {
@@ -455,7 +460,7 @@ export class EmotionalAdaptationService extends BaseService {
    * Применяет эмоциональную адаптацию
    */
   private async applyEmotionalAdaptation(
-    characterId: number,
+    _characterId: number,
     profile: IEmotionalAdaptationProfile,
     recommendations: IEmotionalAdaptationRule[],
   ): Promise<{ type: EmotionalAdaptationType; strength: number; applied: boolean }> {
@@ -491,7 +496,7 @@ export class EmotionalAdaptationService extends BaseService {
    */
   private async analyzeContextForAdaptation(
     context: string,
-    profile: IEmotionalAdaptationProfile,
+    _profile: IEmotionalAdaptationProfile,
   ): Promise<{ adaptationType: EmotionalAdaptationType; contextFactors: string[] }> {
     const contextFactors = this.extractContextFactors({ contextData: { context } });
 
@@ -517,22 +522,16 @@ export class EmotionalAdaptationService extends BaseService {
   private async adaptEmotionBasedOnPreferences(
     baseEmotion: EmotionalState,
     preferences: IEmotionalResponsePreference,
-    contextAnalysis: any,
-    profile: IEmotionalAdaptationProfile,
+    _contextAnalysis: any,
+    _profile: IEmotionalAdaptationProfile,
   ): Promise<EmotionalState> {
     const adaptedEmotion = { ...baseEmotion };
 
     // Адаптируем интенсивность
     if (adaptedEmotion.intensity < preferences.preferredIntensityRange.min) {
-      adaptedEmotion.intensity = Math.min(
-        preferences.preferredIntensityRange.min,
-        adaptedEmotion.intensity + 1,
-      );
+      adaptedEmotion.intensity = preferences.preferredIntensityRange.min;
     } else if (adaptedEmotion.intensity > preferences.preferredIntensityRange.max) {
-      adaptedEmotion.intensity = Math.max(
-        preferences.preferredIntensityRange.max,
-        adaptedEmotion.intensity - 1,
-      );
+      adaptedEmotion.intensity = preferences.preferredIntensityRange.max;
     }
 
     // Адаптируем тип эмоции если он в списке избегаемых
@@ -587,7 +586,7 @@ export class EmotionalAdaptationService extends BaseService {
     profile: IEmotionalAdaptationProfile,
     baseEmotion: EmotionalState,
     adaptedEmotion: EmotionalState,
-    adaptationType: EmotionalAdaptationType,
+    _adaptationType: EmotionalAdaptationType,
   ): Promise<void> {
     profile.interactionCount++;
 
@@ -609,13 +608,30 @@ export class EmotionalAdaptationService extends BaseService {
   // Вспомогательные методы для анализа
 
   private countPositiveIndicators(text: string): number {
-    const positiveWords = ['хорошо', 'отлично', 'замечательно', 'прекрасно', 'спасибо', 'нравится'];
-    return positiveWords.filter(word => text.toLowerCase().includes(word)).length;
+    const positiveWords = [
+      'хорошо',
+      'отлично',
+      'замечательно',
+      'прекрасно',
+      'спасибо',
+      'нравится',
+      'отлично!',
+    ];
+    return positiveWords.filter(word => text.toLowerCase().includes(word.toLowerCase())).length;
   }
 
   private countNegativeIndicators(text: string): number {
-    const negativeWords = ['плохо', 'ужасно', 'не нравится', 'раздражает', 'злит', 'расстраивает'];
-    return negativeWords.filter(word => text.toLowerCase().includes(word)).length;
+    const negativeWords = [
+      'плохо',
+      'ужасно',
+      'не нравится',
+      'раздражает',
+      'злит',
+      'расстраивает',
+      'агрессивно',
+      'слишком',
+    ];
+    return negativeWords.filter(word => text.toLowerCase().includes(word.toLowerCase())).length;
   }
 
   private countNeutralIndicators(text: string): number {
@@ -632,26 +648,36 @@ export class EmotionalAdaptationService extends BaseService {
     return Math.min(1, (wordCount * 0.1 + questionCount * 0.3 + exclamationCount * 0.2) / 10);
   }
 
-  private inferSatisfactionLevel(text: string, emotion: EmotionalState): number {
+  private inferSatisfactionLevel(text: string, _emotion: EmotionalState): number {
     const positive = this.countPositiveIndicators(text);
     const negative = this.countNegativeIndicators(text);
     const engagement = this.measureEngagementLevel(text);
 
     // Базовая удовлетворенность на основе тональности
     let satisfaction = 0.5;
+
+    // Увеличиваем влияние позитивных слов
     if (positive > negative) {
-      satisfaction += 0.3;
+      satisfaction = 0.6 + positive * 0.2; // Начинаем с 0.6 для позитивных
     } else if (negative > positive) {
-      satisfaction -= 0.3;
+      satisfaction = 0.4 - negative * 0.2; // Снижаем для негативных
+    } else if (negative > 0 && positive === 0) {
+      // Если есть только негативные слова без позитивных
+      satisfaction = 0.3 - negative * 0.1;
+    } else if (positive > 0 && negative === 0) {
+      // Если есть только позитивные слова без негативных
+      satisfaction = 0.7 + positive * 0.1;
     }
 
-    // Корректируем на основе вовлеченности
-    satisfaction = satisfaction * (0.5 + engagement * 0.5);
+    // Дополнительно увеличиваем за высокую вовлеченность, но не слишком сильно
+    if (engagement > 0.3) {
+      satisfaction += 0.1;
+    }
 
     return Math.max(0, Math.min(1, satisfaction));
   }
 
-  private classifyPatternType(emotion: EmotionalState, userResponse: any): string {
+  private classifyPatternType(_emotion: EmotionalState, userResponse: any): string {
     if (userResponse.emotionalIndicators.satisfaction > 0.7) {
       return 'positive_reinforcement';
     } else if (userResponse.emotionalIndicators.satisfaction < 0.3) {
@@ -749,30 +775,30 @@ export class EmotionalAdaptationService extends BaseService {
   }
 
   private async extractEmotionalPatterns(
-    interactionHistory: any[],
-    feedbackSignals: any[],
+    _interactionHistory: any[],
+    _feedbackSignals: any[],
   ): Promise<IEmotionalAdaptationPattern[]> {
     // Заглушка для извлечения паттернов
     return [];
   }
 
   private async updateAdaptationRules(
-    profile: IEmotionalAdaptationProfile,
-    patterns: IEmotionalAdaptationPattern[],
+    _profile: IEmotionalAdaptationProfile,
+    _patterns: IEmotionalAdaptationPattern[],
   ): Promise<void> {
     // Заглушка для обновления правил
   }
 
   private async adjustModelSensitivity(
-    profile: IEmotionalAdaptationProfile,
-    feedbackSignals: any[],
+    _profile: IEmotionalAdaptationProfile,
+    _feedbackSignals: any[],
   ): Promise<void> {
     // Заглушка для корректировки чувствительности
   }
 
   private async updateLongTermTrends(
-    characterId: number,
-    patterns: IEmotionalAdaptationPattern[],
+    _characterId: number,
+    _patterns: IEmotionalAdaptationPattern[],
   ): Promise<void> {
     // Заглушка для обновления долгосрочных трендов
   }
@@ -783,8 +809,8 @@ export class EmotionalAdaptationService extends BaseService {
   }
 
   private async generateRecommendationsFromAnalysis(
-    analysis: any,
-    profile: IEmotionalAdaptationProfile,
+    _analysis: any,
+    _profile: IEmotionalAdaptationProfile,
   ): Promise<IEmotionalAdaptationRule[]> {
     // Заглушка для генерации рекомендаций
     return [];

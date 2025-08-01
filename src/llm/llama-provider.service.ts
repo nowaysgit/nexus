@@ -241,7 +241,7 @@ export class LlamaProviderService {
    */
   async getModelInfo(model: string): Promise<OllamaModel | null> {
     try {
-      const models = await this.listModels();
+      const _models = await this.listModels();
       const response = await this.httpClient.get('/api/tags');
       const modelData: OllamaModel[] = response.data.models || [];
 
@@ -259,7 +259,7 @@ export class LlamaProviderService {
     try {
       this.logger.log(`Starting to pull model: ${model}`);
 
-      const response = await this.httpClient.post(
+      const _response = await this.httpClient.post(
         '/api/pull',
         { name: model },
         {

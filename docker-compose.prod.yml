@@ -4,7 +4,7 @@ services:
   postgres:
     image: postgres:16
     container_name: character-bot-postgres
-    restart: always
+    restart: unless-stopped
     environment:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_USER: ${DB_USERNAME}
@@ -13,20 +13,28 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - app-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_DATABASE}" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
   api:
     build:
       context: .
-      dockerfile: Dockerfile.prod
+      dockerfile: Dockerfile
+      target: production
     container_name: character-bot-api
-    restart: always
+    restart: unless-stopped
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     ports:
-      - "${PORT}:${PORT}"
+      - "${PORT:-3000}:${PORT:-3000}"
     environment:
       - NODE_ENV=production
-      - PORT=${PORT}
+      - PORT=${PORT:-3000}
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_USERNAME=${DB_USERNAME}
@@ -35,8 +43,21 @@ services:
       - DB_SYNCHRONIZE=false
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://localhost:11434}
     networks:
       - app-network
+    healthcheck:
+      test: [ "CMD", "node", "-e", "require('http').get('http://localhost:${PORT:-3000}/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
 
 networks:
   app-network:

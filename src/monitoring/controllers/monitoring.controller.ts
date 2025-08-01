@@ -93,6 +93,72 @@ export class MonitoringController {
     }
   }
 
+  // =========== Health Checks ===========
+
+  @Get('health')
+  @ApiOperation({ summary: 'Проверка общего состояния приложения' })
+  async getHealth(): Promise<{
+    status: string;
+    timestamp: string;
+    uptime: number;
+    version?: string;
+  }> {
+    try {
+      const uptime = process.uptime();
+      const version = process.env.npm_package_version || '1.0.0';
+
+      return {
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        uptime,
+        version,
+      };
+    } catch (error) {
+      this.logService.error('Ошибка health check', this.formatError(error));
+      throw new InternalServerErrorException('Health check failed');
+    }
+  }
+
+  @Get('health/ready')
+  @ApiOperation({ summary: 'Readiness probe для Kubernetes/Docker' })
+  async getReadiness(): Promise<{ status: string; checks: Record<string, string> }> {
+    try {
+      const checks: Record<string, string> = {};
+
+      // Проверяем доступность основных сервисов
+      try {
+        this.monitoringService.getMetrics('system', 1);
+        checks.database = 'ok';
+      } catch {
+        checks.database = 'error';
+      }
+
+      const allChecksOk = Object.values(checks).every(status => status === 'ok');
+
+      return {
+        status: allChecksOk ? 'ready' : 'not_ready',
+        checks,
+      };
+    } catch (error) {
+      this.logService.error('Ошибка readiness check', this.formatError(error));
+      throw new InternalServerErrorException('Readiness check failed');
+    }
+  }
+
+  @Get('health/live')
+  @ApiOperation({ summary: 'Liveness probe для Kubernetes/Docker' })
+  async getLiveness(): Promise<{ status: string; timestamp: string }> {
+    try {
+      return {
+        status: 'alive',
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      this.logService.error('Ошибка liveness check', this.formatError(error));
+      throw new InternalServerErrorException('Liveness check failed');
+    }
+  }
+
   @Get('metrics/stats/:metricName')
   @ApiOperation({ summary: 'Получить статистику метрики' })
   async getMetricStats(

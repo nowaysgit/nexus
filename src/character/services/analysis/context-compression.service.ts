@@ -87,7 +87,7 @@ export class ContextCompressionService extends BaseService {
    */
   async analyzeAndCompressContext(
     contextData: string,
-    characterId: number,
+    _characterId: number,
     compressionType: CompressionType = CompressionType.ADAPTIVE,
   ): Promise<ICompressionResult> {
     return this.withErrorHandling('анализе и компрессии контекста', async () => {
@@ -406,7 +406,7 @@ export class ContextCompressionService extends BaseService {
    */
   private calculateSemanticImportance(
     segment: IContextSegment,
-    semanticGraph: Map<string, ISemanticNode>,
+    _semanticGraph: Map<string, ISemanticNode>,
   ): number {
     if (segment.semanticNodes.length === 0) return 0.1;
 
@@ -449,7 +449,7 @@ export class ContextCompressionService extends BaseService {
    * Определение комбинированной важности
    */
   private async determineCombinedImportance(
-    content: string,
+    _content: string,
     semanticImportance: number,
     temporalImportance: number,
     emotionalImportance: number,
@@ -614,7 +614,7 @@ export class ContextCompressionService extends BaseService {
    */
   private async performSemanticCompression(
     segments: IContextSegment[],
-    semanticGraph: Map<string, ISemanticNode>,
+    _semanticGraph: Map<string, ISemanticNode>,
   ): Promise<{ segments: IContextSegment[]; quality: number }> {
     // Группировка сегментов по семантической схожести
     const groups = this.groupBySemanticsimilarity(segments);

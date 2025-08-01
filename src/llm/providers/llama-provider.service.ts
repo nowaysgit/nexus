@@ -15,53 +15,49 @@ import {
 } from '../../common/interfaces/llm-provider.interface';
 
 /**
- * Интерфейс для запроса к Llama API
+ * Интерфейс для запроса к Ollama API
  */
-interface LlamaApiRequest {
+interface OllamaChatRequest {
   model: string;
   messages: Array<{
     role: string;
     content: string;
   }>;
-  temperature?: number;
-  max_tokens?: number;
-  top_p?: number;
-  frequency_penalty?: number;
-  presence_penalty?: number;
-  stream?: boolean;
-}
-
-/**
- * Интерфейс для ответа от Llama API
- */
-interface LlamaApiResponse {
-  id: string;
-  object: string;
-  created: number;
-  model: string;
-  choices: Array<{
-    index: number;
-    message: {
-      role: string;
-      content: string;
-    };
-    finish_reason: string;
-  }>;
-  usage: {
-    prompt_tokens: number;
-    completion_tokens: number;
-    total_tokens: number;
+  options?: {
+    temperature?: number;
+    num_predict?: number;
+    top_p?: number;
   };
+  stream: boolean;
 }
 
 /**
- * Llama 4 провайдер для работы с Llama моделями
+ * Интерфейс для ответа от Ollama API
+ */
+interface OllamaChatResponse {
+  model: string;
+  created_at: string;
+  message: {
+    role: string;
+    content: string;
+  };
+  done: boolean;
+  total_duration?: number;
+  load_duration?: number;
+  prompt_eval_count?: number;
+  prompt_eval_duration?: number;
+  eval_count?: number;
+  eval_duration?: number;
+}
+
+/**
+ * Llama 3.2 провайдер для работы с Llama моделями
  * Реализует общий интерфейс ILLMProvider
  */
 @Injectable()
 export class LlamaProviderService implements ILLMProvider {
   readonly providerType = LLMProviderType.LLAMA;
-  readonly providerName = 'Llama 4';
+  readonly providerName = 'Llama 3.2';
 
   private readonly httpClient: AxiosInstance;
   private readonly endpoint: string;
@@ -86,7 +82,7 @@ export class LlamaProviderService implements ILLMProvider {
     this.endpoint =
       llamaConfig?.endpoint || process.env.LLM_LLAMA_ENDPOINT || 'http://localhost:8080';
     this.apiKey = llamaConfig?.apiKey || process.env.LLM_LLAMA_API_KEY || '';
-    this.defaultModel = llamaConfig?.model || process.env.LLM_LLAMA_MODEL || 'llama-4-70b';
+    this.defaultModel = llamaConfig?.model || process.env.LLM_LLAMA_MODEL || 'llama3.2:3b';
     this.timeout = llamaConfig?.timeout || 30000;
 
     // Инициализируем HTTP клиент
@@ -112,17 +108,11 @@ export class LlamaProviderService implements ILLMProvider {
    */
   async checkAvailability(): Promise<boolean> {
     try {
-      // Отправляем тестовый запрос
-      const testMessages: ILLMMessage[] = [{ role: LLMMessageRole.USER, content: 'Test' }];
-
-      await this.generateText(testMessages, {
-        maxTokens: 5,
-        temperature: 0,
-      });
-
+      // Отправляем тестовый запрос для проверки доступности API
+      await this.httpClient.get('/api/tags');
       return true;
     } catch (error) {
-      this.logService.warn('Llama API недоступен', {
+      this.logService.warn('Ollama API недоступен', {
         error: error instanceof Error ? error.message : String(error),
         endpoint: this.endpoint,
       });
@@ -131,21 +121,99 @@ export class LlamaProviderService implements ILLMProvider {
   }
 
   /**
-   * Генерация текста через Llama
+   * Проверка здоровья Llama API
+   */
+  async checkHealth(): Promise<boolean> {
+    return this.checkAvailability();
+  }
+
+  /**
+   * Получение списка доступных моделей
+   */
+  async listModels(): Promise<string[]> {
+    try {
+      const response = await this.httpClient.get<{
+        models?: Array<{ name?: string; model?: string }>;
+      }>('/api/tags');
+
+      if (response.data?.models) {
+        return response.data.models
+          .map(model => model.name || model.model)
+          .filter((name): name is string => typeof name === 'string');
+      }
+
+      // Возвращаем модели по умолчанию если API недоступен
+      return ['llama3.2:3b', 'llama3.3:70b', 'llama3.1:8b'];
+    } catch (error) {
+      this.logService.warn('Не удалось получить список моделей от Llama API', {
+        error: error instanceof Error ? error.message : String(error),
+        endpoint: this.endpoint,
+      });
+
+      // Возвращаем модели по умолчанию
+      return ['llama3.2:3b', 'llama3.3:70b', 'llama3.1:8b'];
+    }
+  }
+
+  /**
+   * Генерация текста через Llama - перегрузка для строки
+   */
+  async generateText(prompt: string, model?: string): Promise<string>;
+
+  /**
+   * Генерация текста через Llama - перегрузка для сообщений
    */
   async generateText(
     messages: ILLMMessage[],
-    options: ILLMRequestOptions = {},
-  ): Promise<ILLMTextResult> {
+    options?: ILLMRequestOptions,
+  ): Promise<ILLMTextResult>;
+
+  /**
+   * Генерация текста через Llama - перегрузка с опциями
+   */
+  async generateText(prompt: string, model: string, options: ILLMRequestOptions): Promise<string>;
+
+  /**
+   * Генерация текста через Llama - основная реализация
+   */
+  async generateText(
+    messagesOrPrompt: ILLMMessage[] | string,
+    modelOrOptions?: string | ILLMRequestOptions,
+    options?: ILLMRequestOptions,
+  ): Promise<ILLMTextResult | string> {
     const startTime = Date.now();
     const requestId = this.generateRequestId();
 
     try {
+      // Определяем тип входных данных и подготавливаем сообщения
+      let messages: ILLMMessage[];
+      let finalOptions: ILLMRequestOptions;
+      let returnAsString = false;
+
+      if (typeof messagesOrPrompt === 'string') {
+        // Вызов со строкой
+        returnAsString = true;
+        messages = [{ role: LLMMessageRole.USER, content: messagesOrPrompt }];
+
+        if (typeof modelOrOptions === 'string') {
+          // generateText(prompt, model) или generateText(prompt, model, options)
+          finalOptions = options || {};
+          finalOptions.model = modelOrOptions;
+        } else {
+          // generateText(prompt, options)
+          finalOptions = modelOrOptions || {};
+        }
+      } else {
+        // Вызов с массивом сообщений
+        messages = messagesOrPrompt;
+        finalOptions = (modelOrOptions as ILLMRequestOptions) || {};
+      }
+
       this.logService.debug('Отправляем запрос к Llama API', {
         requestId,
         endpoint: this.endpoint,
         messagesCount: messages.length,
-        options,
+        options: finalOptions,
       });
 
       // Проверяем доступность API
@@ -156,37 +224,39 @@ export class LlamaProviderService implements ILLMProvider {
         throw new Error('Llama API endpoint не настроен. Проверьте настройки LLM_LLAMA_ENDPOINT.');
       }
 
-      // Подготавливаем запрос
-      const request: LlamaApiRequest = {
-        model: options.model || this.defaultModel,
+      // Подготавливаем запрос в формате Ollama
+      const request: OllamaChatRequest = {
+        model: finalOptions.model || this.defaultModel,
         messages: messages.map(msg => ({
           role: msg.role,
           content: msg.content,
         })),
-        temperature: options.temperature,
-        max_tokens: options.maxTokens,
-        top_p: options.topP,
-        frequency_penalty: options.frequencyPenalty,
-        presence_penalty: options.presencePenalty,
+        options: {
+          temperature: finalOptions.temperature ?? 0.7,
+          num_predict: finalOptions.maxTokens ?? 1000,
+          top_p: finalOptions.topP ?? 0.9,
+        },
         stream: false,
       };
 
-      // Выполняем запрос к Llama API
-      const response = await this.httpClient.post<LlamaApiResponse>(
-        '/v1/chat/completions',
-        request,
-      );
+      // Выполняем запрос к Ollama API
+      const response = await this.httpClient.post<OllamaChatResponse>('/api/chat', request);
 
       const executionTime = Date.now() - startTime;
-      const responseContent = response.data.choices[0]?.message?.content || '';
+      const responseContent: string = response.data?.message?.content || '';
 
-      this.logService.debug('Получен ответ от Llama API', {
+      this.logService.debug('Получен ответ от Ollama API', {
         requestId,
         executionTime,
-        promptTokens: response.data.usage?.prompt_tokens,
-        completionTokens: response.data.usage?.completion_tokens,
-        totalTokens: response.data.usage?.total_tokens,
+        promptEvalCount: response.data?.prompt_eval_count,
+        evalCount: response.data?.eval_count,
+        totalDuration: response.data?.total_duration,
       });
+
+      // Возвращаем результат в нужном формате
+      if (returnAsString) {
+        return responseContent;
+      }
 
       return {
         text: responseContent,
@@ -194,10 +264,10 @@ export class LlamaProviderService implements ILLMProvider {
           requestId,
           fromCache: false,
           executionTime,
-          model: response.data.model || request.model,
-          promptTokens: response.data.usage?.prompt_tokens,
-          completionTokens: response.data.usage?.completion_tokens,
-          totalTokens: response.data.usage?.total_tokens,
+          model: response.data?.model || request.model,
+          promptTokens: response.data?.prompt_eval_count,
+          completionTokens: response.data?.eval_count,
+          totalTokens: (response.data?.prompt_eval_count || 0) + (response.data?.eval_count || 0),
         },
       };
     } catch (error) {
@@ -207,8 +277,8 @@ export class LlamaProviderService implements ILLMProvider {
         requestId,
         executionTime,
         error: error instanceof Error ? error.message : String(error),
-        messagesCount: messages.length,
-        options,
+        messagesCount: Array.isArray(messagesOrPrompt) ? messagesOrPrompt.length : 1,
+        options: modelOrOptions,
         endpoint: this.endpoint,
       });
 
@@ -328,13 +398,53 @@ export class LlamaProviderService implements ILLMProvider {
   }
 
   /**
-   * Потоковая генерация текста через Llama
+   * Потоковая генерация текста через Llama - перегрузка для строки
+   */
+  async generateTextStream(
+    prompt: string,
+    model: string,
+    onChunk: (chunk: string) => void,
+  ): Promise<void>;
+
+  /**
+   * Потоковая генерация текста через Llama - перегрузка для сообщений
    */
   async generateTextStream(
     messages: ILLMMessage[],
     callbacks: ILLMStreamCallbacks,
-    options: ILLMRequestOptions = {},
+    options?: ILLMRequestOptions,
+  ): Promise<void>;
+
+  /**
+   * Потоковая генерация текста через Llama - основная реализация
+   */
+  async generateTextStream(
+    messagesOrPrompt: ILLMMessage[] | string,
+    callbacksOrModel: ILLMStreamCallbacks | string,
+    optionsOrCallback?: ILLMRequestOptions | ((chunk: string) => void),
   ): Promise<void> {
+    // Определяем тип входных данных
+    let messages: ILLMMessage[];
+    let callbacks: ILLMStreamCallbacks;
+    let options: ILLMRequestOptions = {};
+
+    if (typeof messagesOrPrompt === 'string') {
+      // Вызов со строкой: generateTextStream(prompt, model, onChunk)
+      messages = [{ role: LLMMessageRole.USER, content: messagesOrPrompt }];
+      const model = callbacksOrModel as string;
+      const onChunk = optionsOrCallback as (chunk: string) => void;
+
+      options.model = model;
+      callbacks = {
+        onProgress: onChunk,
+      };
+    } else {
+      // Вызов с массивом сообщений
+      messages = messagesOrPrompt;
+      callbacks = callbacksOrModel as ILLMStreamCallbacks;
+      options = (optionsOrCallback as ILLMRequestOptions) || {};
+    }
+
     try {
       if (callbacks.onStart) {
         callbacks.onStart();
@@ -346,7 +456,8 @@ export class LlamaProviderService implements ILLMProvider {
 
       if (callbacks.onProgress) {
         // Имитируем потоковую передачу, разбивая текст на части
-        const words = result.text.split(' ');
+        const resultText = typeof result === 'string' ? result : result.text;
+        const words = resultText.split(' ');
         let currentText = '';
 
         for (const word of words) {
@@ -359,7 +470,8 @@ export class LlamaProviderService implements ILLMProvider {
       }
 
       if (callbacks.onComplete) {
-        callbacks.onComplete(result.text);
+        const resultText = typeof result === 'string' ? result : result.text;
+        callbacks.onComplete(resultText);
       }
     } catch (error) {
       if (callbacks.onError) {
@@ -389,7 +501,7 @@ export class LlamaProviderService implements ILLMProvider {
     return {
       type: this.providerType,
       name: this.providerName,
-      models: ['llama-4-70b', 'llama-4-13b', 'llama-4-7b', 'llama-4-instruct'],
+      models: ['llama3.2:3b', 'llama3.3:70b', 'llama3.1:8b', 'llama3.2:instruct'],
       features: ['text_generation', 'json_generation', 'streaming', 'function_calling'],
     };
   }

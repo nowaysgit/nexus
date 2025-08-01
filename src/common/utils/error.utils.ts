@@ -193,7 +193,7 @@ export function validateEnum<T>(
     // Используем только числовые значения если они есть, иначе строковые
     const targetValues = numericValues.length > 0 ? numericValues : stringValues;
 
-    if (!targetValues.includes(value as T)) {
+    if (!(targetValues as unknown[]).includes(value)) {
       throw new Error(`${paramName} должен быть одним из: ${targetValues.join(', ')}`);
     }
     return value as T;

@@ -14,6 +14,23 @@ import {
   LearningConfig,
 } from '../../interfaces/learning.interfaces';
 
+interface BehaviorRecommendations {
+  preferredTechniques: string[];
+  avoidTechniques: string[];
+  confidence: number;
+  emotionalTone?: string;
+  responseLength?: 'short' | 'medium' | 'long';
+}
+
+interface AdaptationData {
+  techniqueWeights?: Record<string, number>;
+  emotionalReactivity?: Record<string, number>;
+  communicationStyles?: string[];
+  avoidanceTriggers?: string[];
+  preferences?: Record<string, any>;
+  [key: string]: any;
+}
+
 /**
  * Сервис для адаптивного обучения персонажей на основе обратной связи
  * Анализирует собранные сигналы и адаптирует поведение персонажей
@@ -114,13 +131,7 @@ export class CharacterLearningService extends BaseService {
       dialogContext?: string[];
       timeOfDay?: string;
     },
-  ): Promise<{
-    preferredTechniques: string[];
-    avoidTechniques: string[];
-    emotionalTone?: string;
-    responseLength?: 'short' | 'medium' | 'long';
-    confidence: number;
-  }> {
+  ): Promise<BehaviorRecommendations> {
     return this.withErrorHandling('получении рекомендаций поведения', async () => {
       const adaptation = await this.getCharacterAdaptation(characterId, userId);
 
@@ -382,7 +393,7 @@ export class CharacterLearningService extends BaseService {
   /**
    * Агрегирует рекомендации из нескольких паттернов
    */
-  private aggregateRecommendations(patterns: LearnedBehaviorPattern[]): any {
+  private aggregateRecommendations(patterns: LearnedBehaviorPattern[]): BehaviorRecommendations {
     const allPreferred = patterns.flatMap(p => p.recommendations.preferredTechniques);
     const allAvoid = patterns.flatMap(p => p.recommendations.avoidTechniques);
 
@@ -399,7 +410,10 @@ export class CharacterLearningService extends BaseService {
   /**
    * Объединяет существующие адаптации с новыми паттернами
    */
-  private mergeAdaptations(existing: any, patterns: LearnedBehaviorPattern[]): any {
+  private mergeAdaptations(
+    existing: AdaptationData | null | undefined,
+    patterns: LearnedBehaviorPattern[],
+  ): AdaptationData {
     const techniqueWeights: Record<string, number> = existing?.techniqueWeights || {};
 
     patterns.forEach(pattern => {
